@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- BOOYAH Letters -->
+    <LinearLayout
+        android:id="@+id/letters_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="80dp">
+
+        <ImageView
+            android:id="@+id/letter_b"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/letter_b"
+            android:alpha="0"
+            android:scaleX="0.8"
+            android:scaleY="0.8"
+            android:layout_margin="6dp" />
+
+        <ImageView
+            android:id="@+id/letter_o"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/letter_o"
+            android:alpha="0"
+            android:scaleX="0.8"
+            android:scaleY="0.8"
+            android:layout_margin="6dp" />
+
+        <ImageView
+            android:id="@+id/letter_o2"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/letter_o2"
+            android:alpha="0"
+            android:scaleX="0.8"
+            android:scaleY="0.8"
+            android:layout_margin="6dp" />
+
+        <ImageView
+            android:id="@+id/letter_y"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/letter_y"
+            android:alpha="0"
+            android:scaleX="0.8"
+            android:scaleY="0.8"
+            android:layout_margin="6dp" />
+
+        <ImageView
+            android:id="@+id/letter_a"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/letter_a"
+            android:alpha="0"
+            android:scaleX="0.8"
+            android:scaleY="0.8"
+            android:layout_margin="6dp" />
+
+        <ImageView
+            android:id="@+id/letter_h"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/letter_h"
+            android:alpha="0"
+            android:scaleX="0.8"
+            android:scaleY="0.8"
+            android:layout_margin="6dp" />
+
+    </LinearLayout>
+
+    <!-- X Logo -->
+    <ImageView
+        android:id="@+id/logo_x"
+        android:layout_width="270dp"
+        android:layout_height="270dp"
+        android:layout_gravity="center"
+        android:src="@drawable/logo_x"
+        android:scaleX="0.6"
+        android:scaleY="0.6"
+        android:alpha="0" />
+
+</FrameLayout>

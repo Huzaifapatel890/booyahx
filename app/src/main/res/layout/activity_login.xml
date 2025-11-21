@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/login_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_esports_gradient"
+    android:padding="24dp">
+
+  <!-- MAIN LOGO -->
+  <ImageView
+      android:id="@+id/logo"
+      android:layout_width="220dp"
+      android:layout_height="220dp"
+      android:layout_centerHorizontal="true"
+      android:layout_marginTop="50dp"
+      android:src="@drawable/loginpage_logo"
+      android:adjustViewBounds="true"
+      android:background="@android:color/transparent" />
+
+  <!-- LOGIN BUTTONS AT BOTTOM -->
+  <LinearLayout
+      android:id="@+id/bottom_buttons"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:layout_alignParentBottom="true"
+      android:paddingBottom="80dp">
+
+    <!-- GOOGLE SIGN-IN BUTTON -->
+    <LinearLayout
+        android:id="@+id/btnGoogle"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/btn_google"
+        android:paddingLeft="18dp"
+        android:paddingRight="18dp"
+        android:layout_marginBottom="20dp">
+
+      <ImageView
+          android:layout_width="40dp"
+          android:layout_height="40dp"
+          android:src="@drawable/ic_google_logo"
+          android:background="@android:color/transparent"
+          android:contentDescription="google icon" />
+
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Sign in with Google"
+          android:textColor="#00C3FF"
+          android:textSize="17sp"
+          android:textStyle="bold"
+          android:layout_marginLeft="14dp" />
+    </LinearLayout>
+
+    <!-- MOBILE SIGN-IN -->
+    <LinearLayout
+        android:id="@+id/btnMobile"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center"
+        android:background="@drawable/btn_neon_blue"
+        android:orientation="horizontal">
+
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Sign in with Username"
+          android:textColor="#00C3FF"
+          android:textSize="17sp"
+          android:textStyle="bold" />
+    </LinearLayout>
+  </LinearLayout>
+
+
+</RelativeLayout>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_dark_gradient"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/txtLoginTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Login"
+        android:textSize="32sp"
+        android:textColor="#00C3FF"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginTop="70dp" />
+
+    <TextView
+        android:id="@+id/txtLoginSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Login with username and password"
+        android:textColor="#7FA9C1"
+        android:textSize="15sp"
+        android:gravity="center"
+        android:layout_marginTop="6dp" />
+
+    <EditText
+        android:id="@+id/etLoginUsername"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="40dp"
+        android:hint="Username"
+        android:padding="16dp"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#7FA9C1"
+        android:background="@drawable/btn_neon_blue"
+        android:inputType="textPersonName" />
+
+    <EditText
+        android:id="@+id/etLoginPassword"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="16dp"
+        android:hint="Password"
+        android:padding="16dp"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#7FA9C1"
+        android:background="@drawable/btn_neon_blue"
+        android:inputType="textPassword" />
+
+    <LinearLayout
+        android:id="@+id/btnLogin"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center"
+        android:layout_marginTop="40dp"
+        android:background="@drawable/btn_neon_blue">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Login"
+            android:textColor="#00C3FF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+    <TextView
+        android:id="@+id/txtForgotPassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Forgot Password?"
+        android:textColor="#00C3FF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp" />
+    <TextView
+        android:id="@+id/txtCreateAccount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Create Account"
+        android:textColor="#00C3FF"
+        android:textSize="15sp"
+        android:gravity="center"
+        android:layout_marginTop="20dp" />
+
+</LinearLayout>

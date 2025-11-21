@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Vibration Permission -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/booyahx_logo"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.BooyahX">
+
+        <!-- SPLASH SCREEN (Launcher) -->
+        <activity
+            android:name="com.booyahx.SplashActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- LOGIN SELECTION PAGE -->
+        <activity
+            android:name="com.booyahx.LoginActivity"
+            android:exported="false" />
+
+        <!-- USERNAME + PASSWORD LOGIN -->
+        <activity
+            android:name="com.booyahx.LoginUsernameActivity"
+            android:exported="false" />
+
+        <!-- REGISTER ACCOUNT PAGE -->
+        <activity
+            android:name="com.booyahx.RegisterActivity"
+            android:exported="false" />
+
+        <!-- FORGOT PASSWORD PAGE -->
+        <activity
+            android:name="com.booyahx.ForgotPasswordActivity"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
