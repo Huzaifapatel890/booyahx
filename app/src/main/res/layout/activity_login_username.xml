@@ -32,34 +32,62 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="40dp"
-        android:hint="Username"
+        android:hint="Enter email"
         android:padding="16dp"
         android:textColor="#FFFFFF"
         android:textColorHint="#7FA9C1"
         android:background="@drawable/btn_neon_blue"
         android:inputType="textPersonName" />
 
-    <EditText
-        android:id="@+id/etLoginPassword"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="16dp"
-        android:hint="Password"
-        android:padding="16dp"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#7FA9C1"
         android:background="@drawable/btn_neon_blue"
-        android:inputType="textPassword" />
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
 
+        <EditText
+            android:id="@+id/etLoginPassword"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:hint="Password"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#7FA9C1"
+            android:paddingEnd="40dp"
+            android:inputType="textPassword"
+            android:background="@android:color/transparent" />
+
+        <ImageView
+            android:id="@+id/eyeLogin"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:src="@drawable/eye_toggle" />
+    </RelativeLayout>
+
+    <!-- LOGIN BUTTON WITH LOADER -->
     <LinearLayout
         android:id="@+id/btnLogin"
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:gravity="center"
         android:layout_marginTop="40dp"
-        android:background="@drawable/btn_neon_blue">
+        android:background="@drawable/btn_neon_blue"
+        android:orientation="horizontal">
+
+        <ProgressBar
+            android:id="@+id/loginLoader"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="12dp"
+            android:visibility="gone"
+            android:indeterminate="true"
+            android:indeterminateTint="#00C3FF" />
 
         <TextView
+            android:id="@+id/txtLoginBtnText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Login"
@@ -67,6 +95,7 @@
             android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
+
     <TextView
         android:id="@+id/txtForgotPassword"
         android:layout_width="wrap_content"
@@ -77,6 +106,7 @@
         android:textStyle="bold"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="12dp" />
+
     <TextView
         android:id="@+id/txtCreateAccount"
         android:layout_width="match_parent"

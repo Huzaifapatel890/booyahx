@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "94416444686",
+    "project_id": "long-ceiling-479806-j3",
+    "storage_bucket": "long-ceiling-479806-j3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:94416444686:android:9b85b2479fdd5854680b5f",
+        "android_client_info": {
+          "package_name": "com.booyahx"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "94416444686-65lr45ch2ujn7rv1latge4qmiau73jg2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCFLx3U0lAc5DmJhsR4BbuB-a0KiNfes3s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "94416444686-65lr45ch2ujn7rv1latge4qmiau73jg2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -59,17 +59,25 @@
             android:padding="16dp" />
 
         <!-- SEND OTP BUTTON -->
-        <TextView
+        <RelativeLayout
             android:id="@+id/btnSendOtp"
             android:layout_width="match_parent"
             android:layout_height="56dp"
+            android:background="@drawable/btn_neon_blue"
             android:gravity="center"
-            android:layout_marginTop="20dp"
-            android:text="Send OTP"
-            android:textColor="#00C3FF"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:background="@drawable/btn_neon_blue" />
+            android:layout_marginTop="20dp">
+
+            <TextView
+                android:id="@+id/txtSendOtp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Send OTP"
+                android:textColor="#00C3FF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+
+        </RelativeLayout>
 
         <!-- OTP BOXES -->
         <LinearLayout
@@ -169,19 +177,25 @@
             android:padding="16dp" />
 
         <!-- REGISTER BUTTON -->
-        <TextView
+        <RelativeLayout
             android:id="@+id/btnRegister"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:layout_marginTop="24dp"
+            android:background="@drawable/btn_neon_blue"
             android:gravity="center"
-            android:text="Register"
-            android:textColor="#00C3FF"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:background="@drawable/btn_neon_blue" />
+            android:layout_marginTop="24dp">
 
-        <!-- LOGIN LINK -->
+            <TextView
+                android:id="@+id/txtRegister"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Register"
+                android:textColor="#00C3FF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+        </RelativeLayout>
+
         <TextView
             android:id="@+id/txtGoLogin"
             android:layout_width="match_parent"

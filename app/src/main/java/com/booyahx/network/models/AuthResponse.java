@@ -1,37 +1,28 @@
 package com.booyahx.network.models;
 
-public class AuthResponse {
-    private int status;
-    private boolean success;
-    private String message;
-    private AuthData data;
+import com.google.gson.annotations.SerializedName;
 
-    public int getStatus() {
-        return status;
-    }
+public class AuthResponse {
+
+    @SerializedName("success")
+    private boolean success;
+
+    @SerializedName("message")
+    private String message;
+
+    // This will work even if backend returns token OR access_token OR accessToken
+    @SerializedName(value = "token", alternate = {"access_token", "accessToken"})
+    private String token;
 
     public boolean isSuccess() {
         return success;
     }
 
+    public String getToken() {
+        return token;
+    }
+
     public String getMessage() {
         return message;
-    }
-
-    public AuthData getData() {
-        return data;
-    }
-
-    public static class AuthData {
-        private String accessToken;
-        private String refreshToken;
-
-        public String getAccessToken() {
-            return accessToken;
-        }
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
     }
 }
