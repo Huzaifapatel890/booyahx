@@ -376,7 +376,7 @@
 
         <!-- PROFILE -->
         <LinearLayout
-            android:id="@+id/navProfile"
+            android:id="@+id/NavSettings"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
@@ -384,17 +384,17 @@
             android:orientation="vertical">
 
             <ImageView
-                android:id="@+id/icNavProfile"
+                android:id="@+id/icNavsettings"
                 android:layout_width="22dp"
                 android:layout_height="22dp"
-                android:src="@drawable/ic_profile"
-                android:contentDescription="profile" />
+                android:src="@drawable/ic_settings"
+                android:contentDescription="settings" />
 
             <TextView
                 android:id="@+id/tvNavProfile"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Profile"
+                android:text="Settings"
                 android:textColor="#AAAAAA"
                 android:textSize="11sp"
                 android:layout_marginTop="3dp" />

@@ -1,9 +1,9 @@
 package com.booyahx.network.models;
 
 public class GoogleLoginRequest {
-    public String token;
+    public String idToken;
 
-    public GoogleLoginRequest(String token) {
-        this.token = token;
+    public GoogleLoginRequest(String idToken) {
+        this.idToken = idToken;
     }
 }
