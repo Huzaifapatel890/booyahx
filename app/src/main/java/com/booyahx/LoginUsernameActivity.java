@@ -1,11 +1,12 @@
 package com.booyahx;
 
-import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.PasswordTransformationMethod;
+import android.view.Gravity;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -13,10 +14,15 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.LoginRequest;
 import com.booyahx.network.models.AuthResponse;
+
+import org.json.JSONObject;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -30,7 +36,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
     ImageView eyeLogin;
     ProgressBar loginLoader;
 
-    boolean showPass = false;
+    Boolean showPass = false;
 
     ApiService api;
 
@@ -42,7 +48,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
         if (getSupportActionBar() != null)
             getSupportActionBar().hide();
 
-        api = ApiClient.getClient().create(ApiService.class);
+        api = ApiClient.getClient(this).create(ApiService.class);  // ✔ Use context
 
         etLoginUsername = findViewById(R.id.etLoginUsername);
         etLoginPassword = findViewById(R.id.etLoginPassword);
@@ -51,11 +57,11 @@ public class LoginUsernameActivity extends AppCompatActivity {
         txtForgotPassword = findViewById(R.id.txtForgotPassword);
         eyeLogin = findViewById(R.id.eyeLogin);
 
-        // NEW
         loginLoader = findViewById(R.id.loginLoader);
         txtLoginBtnText = findViewById(R.id.txtLoginBtnText);
 
-        // 👁 Toggle Password + Change Icon
+        loginLoader.setVisibility(View.GONE);
+
         eyeLogin.setOnClickListener(v -> {
             showPass = !showPass;
 
@@ -69,7 +75,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
             etLoginPassword.setSelection(etLoginPassword.getText().length());
         });
 
-        // Login button
         btnLogin.setOnClickListener(v -> {
             String email = etLoginUsername.getText().toString().trim();
             String pass = etLoginPassword.getText().toString().trim();
@@ -77,58 +82,98 @@ public class LoginUsernameActivity extends AppCompatActivity {
             if (email.isEmpty()) { etLoginUsername.setError("Enter email"); return; }
             if (pass.isEmpty()) { etLoginPassword.setError("Enter password"); return; }
 
-            // SHOW LOADER
-            btnLogin.setEnabled(false);
-            loginLoader.setVisibility(View.VISIBLE);
-            txtLoginBtnText.setText("Please wait...");
-
             loginUser(email, pass);
         });
 
-        txtForgotPassword.setOnClickListener(v -> {
-            startActivity(new Intent(LoginUsernameActivity.this, ForgotPasswordActivity.class));
-        });
+        txtForgotPassword.setOnClickListener(v ->
+                startActivity(new Intent(LoginUsernameActivity.this, ForgotPasswordActivity.class))
+        );
 
-        txtCreateAccount.setOnClickListener(v -> {
-            startActivity(new Intent(LoginUsernameActivity.this, RegisterActivity.class));
-        });
+        txtCreateAccount.setOnClickListener(v ->
+                startActivity(new Intent(LoginUsernameActivity.this, RegisterActivity.class))
+        );
     }
 
+    // ----------------------------------------------------
+    // CUSTOM TOAST
+    // ----------------------------------------------------
+    private void showTopRightToast(String message) {
+        TextView tv = new TextView(this);
+        tv.setText(message);
+        tv.setPadding(40, 25, 40, 25);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setBackgroundResource(R.drawable.toast_bg);
+        tv.setTextSize(14);
+
+        Toast toast = new Toast(getApplicationContext());
+        toast.setView(tv);
+        toast.setDuration(Toast.LENGTH_SHORT);
+
+        toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
+
+        AlphaAnimation fade = new AlphaAnimation(0f, 1f);
+        fade.setDuration(350);
+        tv.startAnimation(fade);
+
+        toast.show();
+    }
+
+    // ----------------------------------------------------
+    // LOGIN USER
+    // ----------------------------------------------------
     private void loginUser(String email, String password) {
+
         Call<AuthResponse> call = api.loginUser(new LoginRequest(email, password));
 
         call.enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
 
-                // HIDE LOADER
-                btnLogin.setEnabled(true);
-                loginLoader.setVisibility(View.GONE);
-                txtLoginBtnText.setText("Login");
+                if (response.isSuccessful() && response.body() != null && response.body().success) {
 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    // ----------------------------------------------------
+                    // 🔥 SAVE ACCESS + REFRESH TOKEN (IMPORTANT)
+                    // ----------------------------------------------------
+                    TokenManager.saveTokens(
+                            LoginUsernameActivity.this,
+                            response.body().data.accessToken,
+                            response.body().data.refreshToken
+                    );
 
-                    getSharedPreferences("USER", MODE_PRIVATE)
-                            .edit().putString("TOKEN", response.body().getToken()).apply();
+                    // SUCCESS MESSAGE
+                    String msg = response.body().message;
+                    showTopRightToast(msg != null ? msg : "Login successful");
 
-                    Toast.makeText(LoginUsernameActivity.this, "Login Successful 🎉", Toast.LENGTH_SHORT).show();
-                    startActivity(new Intent(LoginUsernameActivity.this, DashboardActivity.class));
+                    // ----------------------------------------------------
+                    // 🔥 CLEAR STACK → GO TO DASHBOARD
+                    // ----------------------------------------------------
+                    Intent intent = new Intent(LoginUsernameActivity.this, DashboardActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
                     finish();
 
                 } else {
-                    Toast.makeText(LoginUsernameActivity.this, "Invalid Credentials!", Toast.LENGTH_SHORT).show();
+
+                    try {
+                        String err = response.errorBody() != null ? response.errorBody().string() : null;
+
+                        if (err != null) {
+                            JSONObject obj = new JSONObject(err);
+                            String msg = obj.optString("message", "Invalid Credentials!");
+                            showTopRightToast(msg);
+                        } else {
+                            showTopRightToast("Invalid Credentials!");
+                        }
+
+                    } catch (Exception e) {
+                        showTopRightToast("Invalid Credentials!");
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<AuthResponse> call, Throwable t) {
-
-                // HIDE LOADER
-                btnLogin.setEnabled(true);
-                loginLoader.setVisibility(View.GONE);
-                txtLoginBtnText.setText("Login");
-
-                Toast.makeText(LoginUsernameActivity.this, "Network Error!", Toast.LENGTH_SHORT).show();
+                showTopRightToast("Network Error!");
             }
         });
     }

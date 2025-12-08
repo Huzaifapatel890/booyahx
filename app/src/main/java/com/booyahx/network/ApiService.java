@@ -33,7 +33,9 @@ public interface ApiService {
     @POST("/api/auth/reset-password")
     Call<SimpleResponse> resetPassword(@Body ResetPasswordRequest request);
 
-    @Headers("Content-Type: application/json")
     @POST("/api/auth/google-login")
-    Call<GoogleLoginResponse> loginWithGoogle(@Body GoogleLoginRequest request);
+    Call<GoogleLoginResponse> loginWithGoogle(@Body GoogleLoginRequest req);
+
+    @POST("/api/auth/refresh-token")
+    Call<RefreshResponse> refreshToken(@Body RefreshRequest request);
 }

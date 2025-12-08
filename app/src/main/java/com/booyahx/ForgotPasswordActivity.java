@@ -1,13 +1,16 @@
 package com.booyahx;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.PasswordTransformationMethod;
+import android.view.Gravity;
 import android.view.View;
+import android.view.animation.AlphaAnimation;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -15,6 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
@@ -22,36 +26,35 @@ import com.booyahx.network.models.ForgotPasswordRequest;
 import com.booyahx.network.models.ResetPasswordRequest;
 import com.booyahx.network.models.SimpleResponse;
 
+import org.json.JSONObject;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
 public class ForgotPasswordActivity extends AppCompatActivity {
 
-    // INPUTS
     EditText etForgotEmail;
     EditText otp1, otp2, otp3, otp4, otp5, otp6;
     EditText etNewPassword, etConfirmPassword;
 
-    // BUTTONS
     TextView btnSendOtp, btnVerifyOtp, btnReset;
     ImageView eyeNew, eyeConfirm;
 
-    // LAYOUTS
     LinearLayout otpContainer, passwordContainer;
 
-    // FLAGS
     boolean otpSent = false;
-    boolean otpVerified = false;
     boolean showPassNew = false;
-    boolean showPassConfirm = false;
 
-    // TIMER
     CountDownTimer timer;
-    long timeLeft = 60000; // 60 seconds
+    long timeLeft = 60000;
 
-    // API
     ApiService api;
+
+    private static final String PREFS = "APP_PREFS";
+    private static final String KEY_OTP_BLOCK_UNTIL = "otp_block_until";
+
+    private CountDownTimer localBlockTimer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,23 +63,36 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        api = ApiClient.getClient().create(ApiService.class);
+        api = ApiClient.getClient(this).create(ApiService.class);
 
         initViews();
         setupOtpAutoMove();
         setupEyeButtons();
 
+        passwordContainer.setVisibility(View.GONE);
+        btnReset.setVisibility(View.GONE);
+        btnVerifyOtp.setVisibility(View.GONE);
+
+        etConfirmPassword.setVisibility(View.GONE);
+        eyeConfirm.setVisibility(View.GONE);
+        hideConfirmPasswordRow();
+
+        long blockUntil = getBlockUntilMillis();
+        long now = System.currentTimeMillis();
+        if (blockUntil > now) {
+            startLocalBlockCountdown(blockUntil - now);
+        }
+
         btnSendOtp.setOnClickListener(v -> sendOtp());
-        btnVerifyOtp.setOnClickListener(v -> verifyOtp());
         btnReset.setOnClickListener(v -> resetPassword());
     }
 
     private void initViews() {
         etForgotEmail = findViewById(R.id.etForgotEmail);
-        btnSendOtp    = findViewById(R.id.btnSendOtp);
-        btnReset      = findViewById(R.id.btnReset);
+        btnSendOtp = findViewById(R.id.btnSendOtp);
+        btnReset = findViewById(R.id.btnReset);
 
-        otpContainer  = findViewById(R.id.otpContainer);
+        otpContainer = findViewById(R.id.otpContainer);
         otp1 = findViewById(R.id.otp1);
         otp2 = findViewById(R.id.otp2);
         otp3 = findViewById(R.id.otp3);
@@ -84,61 +100,106 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         otp5 = findViewById(R.id.otp5);
         otp6 = findViewById(R.id.otp6);
 
-        btnVerifyOtp       = findViewById(R.id.btnVerifyOtp);
-        passwordContainer  = findViewById(R.id.passwordContainer);
-        etNewPassword      = findViewById(R.id.etNewPassword);
-        etConfirmPassword  = findViewById(R.id.etConfirmPassword);
-        eyeNew             = findViewById(R.id.eyeNew);
-        eyeConfirm         = findViewById(R.id.eyeConfirm);
+        btnVerifyOtp = findViewById(R.id.btnVerifyOtp);
+        passwordContainer = findViewById(R.id.passwordContainer);
+        etNewPassword = findViewById(R.id.etNewPassword);
+        etConfirmPassword = findViewById(R.id.etConfirmPassword);
+        eyeNew = findViewById(R.id.eyeNew);
+        eyeConfirm = findViewById(R.id.eyeConfirm);
     }
 
     // ------------------------------------------------------------
-    //  🔹 SEND OTP WITH LOADING
+    //  Custom Fade-in Top Right Toast
+    // ------------------------------------------------------------
+    private void showTopRightToast(String message) {
+        TextView tv = new TextView(this);
+        tv.setText(message);
+        tv.setPadding(40, 25, 40, 25);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setBackgroundResource(R.drawable.toast_bg);
+        tv.setTextSize(14);
+
+        Toast toast = new Toast(getApplicationContext());
+        toast.setView(tv);
+        toast.setDuration(Toast.LENGTH_SHORT);
+
+        toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
+
+        AlphaAnimation fade = new AlphaAnimation(0f, 1f);
+        fade.setDuration(350);
+        tv.startAnimation(fade);
+
+        toast.show();
+    }
+
+    // ------------------------------------------------------------
+    //  SEND OTP  (NOW SHOWS BACKEND MESSAGE)
     // ------------------------------------------------------------
     private void sendOtp() {
-        String email = etForgotEmail.getText().toString().trim();
-
-        if (email.isEmpty()) {
-            Toast.makeText(this, "Enter your email", Toast.LENGTH_SHORT).show();
+        long now = System.currentTimeMillis();
+        long blockUntil = getBlockUntilMillis();
+        if (blockUntil > now) {
+            long remainingSec = (blockUntil - now + 999) / 1000;
+            showTopRightToast("Try again in " + remainingSec + "s");
+            startLocalBlockCountdown(blockUntil - now);
             return;
         }
 
-        startLoading(btnSendOtp);
+        String email = etForgotEmail.getText().toString().trim();
+        if (email.isEmpty()) {
+            showTopRightToast("Enter email");
+            return;
+        }
 
         Call<SimpleResponse> call = api.forgotPassword(new ForgotPasswordRequest(email));
         call.enqueue(new Callback<SimpleResponse>() {
             @Override
             public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
 
-                stopLoading(btnSendOtp, "Send OTP");
+                if (response.isSuccessful() && response.body() != null) {
 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    otpSent = true;
-                    otpContainer.setVisibility(View.VISIBLE);
-                    passwordContainer.setVisibility(View.GONE);
-                    clearOtpBoxes();
-                    startOtpCountdown();
-                    Toast.makeText(ForgotPasswordActivity.this, "OTP Sent!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(ForgotPasswordActivity.this, "Failed! Check email", Toast.LENGTH_SHORT).show();
+                    showTopRightToast(response.body().getMessage()); // BACKEND MESSAGE
+
+                    if (response.body().isSuccess()) {
+                        otpSent = true;
+                        otpContainer.setVisibility(View.VISIBLE);
+                        passwordContainer.setVisibility(View.VISIBLE);
+                        btnReset.setVisibility(View.VISIBLE);
+
+                        clearOtpBoxes();
+                        startOtpCountdown();
+                    }
+
+                    return;
+                }
+
+                // 🔥 Extract backend error message
+                try {
+                    if (response.errorBody() != null) {
+                        String error = response.errorBody().string();
+                        JSONObject obj = new JSONObject(error);
+                        String msg = obj.optString("message", "Failed");
+                        showTopRightToast(msg);
+                    }
+                } catch (Exception ignored) {
+                    showTopRightToast("Failed");
                 }
             }
 
             @Override
             public void onFailure(Call<SimpleResponse> call, Throwable t) {
-                stopLoading(btnSendOtp, "Send OTP");
-                Toast.makeText(ForgotPasswordActivity.this, "Network Error!", Toast.LENGTH_SHORT).show();
+                showTopRightToast(t.getMessage());
             }
         });
     }
 
     // ------------------------------------------------------------
-    //  🔸 VERIFY OTP (UI only)
+    //  RESET PASSWORD (NOW SHOWS BACKEND MESSAGE)
     // ------------------------------------------------------------
-    private void verifyOtp() {
+    private void resetPassword() {
 
         if (!otpSent) {
-            Toast.makeText(this, "Send OTP first", Toast.LENGTH_SHORT).show();
+            showTopRightToast("Send OTP first");
             return;
         }
 
@@ -150,91 +211,60 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 otp6.getText().toString();
 
         if (otp.length() != 6) {
-            Toast.makeText(this, "Enter full OTP", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        startLoading(btnVerifyOtp);
-
-        // Delay to simulate server verification smoothness
-        btnVerifyOtp.postDelayed(() -> {
-            stopLoading(btnVerifyOtp, "Verify OTP");
-
-            otpVerified = true;
-            passwordContainer.setVisibility(View.VISIBLE);
-            btnSendOtp.setText("Verified");
-
-            Toast.makeText(this, "OTP Verified!", Toast.LENGTH_SHORT).show();
-        }, 600);
-    }
-
-    // ------------------------------------------------------------
-    //  🟢 RESET PASSWORD API WITH LOADER
-    // ------------------------------------------------------------
-    private void resetPassword() {
-
-        if (!otpVerified) {
-            Toast.makeText(this, "Verify OTP first", Toast.LENGTH_SHORT).show();
+            showTopRightToast("Enter full OTP");
             return;
         }
 
         String newPass = etNewPassword.getText().toString().trim();
-        String confirm = etConfirmPassword.getText().toString().trim();
-
         if (newPass.length() < 8) {
-            Toast.makeText(this, "Password must be 8+ characters", Toast.LENGTH_SHORT).show();
+            showTopRightToast("Password must be 8+ characters");
             return;
         }
-        if (!newPass.equals(confirm)) {
-            Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String fullOtp = otp1.getText().toString() +
-                otp2.getText().toString() +
-                otp3.getText().toString() +
-                otp4.getText().toString() +
-                otp5.getText().toString() +
-                otp6.getText().toString();
 
         ResetPasswordRequest req = new ResetPasswordRequest(
                 etForgotEmail.getText().toString().trim(),
-                fullOtp,
+                otp,
                 newPass
         );
 
-        startLoading(btnReset);
-
         Call<SimpleResponse> call = api.resetPassword(req);
-
         call.enqueue(new Callback<SimpleResponse>() {
             @Override
             public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
 
-                stopLoading(btnReset, "Reset Password");
+                if (response.isSuccessful() && response.body() != null) {
 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    Toast.makeText(ForgotPasswordActivity.this, "Password Reset Successful 🎉", Toast.LENGTH_LONG).show();
-                    startActivity(new Intent(ForgotPasswordActivity.this, LoginUsernameActivity.class));
-                    finish();
-                } else {
-                    Toast.makeText(ForgotPasswordActivity.this, "Invalid OTP or Email!", Toast.LENGTH_SHORT).show();
+                    showTopRightToast(response.body().getMessage()); // backend message
+
+                    if (response.body().isSuccess()) {
+                        startActivity(new Intent(ForgotPasswordActivity.this, LoginUsernameActivity.class));
+                        finish();
+                    }
+                    return;
+                }
+
+                try {
+                    if (response.errorBody() != null) {
+                        JSONObject obj = new JSONObject(response.errorBody().string());
+                        String msg = obj.optString("message", "Invalid request");
+                        showTopRightToast(msg);
+                    }
+                } catch (Exception e) {
+                    showTopRightToast("Failed");
                 }
             }
 
             @Override
             public void onFailure(Call<SimpleResponse> call, Throwable t) {
-                stopLoading(btnReset, "Reset Password");
-                Toast.makeText(ForgotPasswordActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                showTopRightToast(t.getMessage());
             }
         });
     }
 
     // ------------------------------------------------------------
-    //  ⏱ OTP TIMER
+    //  OTP TIMER
     // ------------------------------------------------------------
     private void startOtpCountdown() {
-
         btnSendOtp.setEnabled(false);
 
         timer = new CountDownTimer(timeLeft, 1000) {
@@ -253,9 +283,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         }.start();
     }
 
-    // ------------------------------------------------------------
-    //  OTP AUTOFILL MOVEMENT
-    // ------------------------------------------------------------
     private void setupOtpAutoMove() {
         EditText[] boxes = {otp1, otp2, otp3, otp4, otp5, otp6};
 
@@ -266,56 +293,81 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 @Override public void afterTextChanged(Editable s) {}
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {
-                    if (s.length() == 1 && index < boxes.length - 1) boxes[index + 1].requestFocus();
-                    else if (s.length() == 0 && index > 0) boxes[index - 1].requestFocus();
+                    if (s.length() == 1 && index < boxes.length - 1)
+                        boxes[index + 1].requestFocus();
+                    else if (s.length() == 0 && index > 0)
+                        boxes[index - 1].requestFocus();
                 }
             });
         }
     }
 
     private void clearOtpBoxes() {
-        otp1.setText(""); otp2.setText(""); otp3.setText("");
-        otp4.setText(""); otp5.setText(""); otp6.setText("");
+        otp1.setText("");
+        otp2.setText("");
+        otp3.setText("");
+        otp4.setText("");
+        otp5.setText("");
+        otp6.setText("");
         otp1.requestFocus();
     }
 
-    // ------------------------------------------------------------
-    //  👁 PASSWORD EYE TOGGLE
-    // ------------------------------------------------------------
     private void setupEyeButtons() {
-
         eyeNew.setOnClickListener(v -> {
             showPassNew = !showPassNew;
-            if (showPassNew)
+            if (showPassNew) {
                 etNewPassword.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-            else
+                eyeNew.setImageDrawable(ContextCompat.getDrawable(ForgotPasswordActivity.this, R.drawable.ic_eye_on));
+            } else {
                 etNewPassword.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                eyeNew.setImageDrawable(ContextCompat.getDrawable(ForgotPasswordActivity.this, R.drawable.ic_eye_off));
+            }
             etNewPassword.setSelection(etNewPassword.getText().length());
-            eyeNew.setSelected(showPassNew);
         });
 
-        eyeConfirm.setOnClickListener(v -> {
-            showPassConfirm = !showPassConfirm;
-            if (showPassConfirm)
-                etConfirmPassword.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-            else
-                etConfirmPassword.setTransformationMethod(PasswordTransformationMethod.getInstance());
-            etConfirmPassword.setSelection(etConfirmPassword.getText().length());
-            eyeConfirm.setSelected(showPassConfirm);
-        });
+        eyeConfirm.setVisibility(View.GONE);
+        etConfirmPassword.setVisibility(View.GONE);
     }
 
-    // ------------------------------------------------------------
-    //  ⭐ BUTTON LOADING SYSTEM (NO UI CHANGES)
-    // ------------------------------------------------------------
-    private void startLoading(TextView btn) {
-        btn.setEnabled(false);
-        btn.setAlpha(0.5f);
+    private void hideConfirmPasswordRow() {
+        if (passwordContainer.getChildCount() > 1) {
+            View confirmRow = passwordContainer.getChildAt(1);
+            confirmRow.setVisibility(View.GONE);
+        }
     }
 
-    private void stopLoading(TextView btn, String label) {
-        btn.setEnabled(true);
-        btn.setAlpha(1f);
-        btn.setText(label);
+    private long getBlockUntilMillis() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        return prefs.getLong(KEY_OTP_BLOCK_UNTIL, 0L);
     }
+
+    private void setBlockUntilMillis(long millis) {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        prefs.edit().putLong(KEY_OTP_BLOCK_UNTIL, millis).apply();
+    }
+
+    private void startLocalBlockCountdown(long millis) {
+
+        if (localBlockTimer != null)
+            localBlockTimer.cancel();
+
+        btnSendOtp.setEnabled(false);
+
+        localBlockTimer = new CountDownTimer(millis, 1000) {
+            @Override
+            public void onTick(long msLeft) {
+                btnSendOtp.setText("Resend in " + (msLeft / 1000) + "s");
+            }
+
+            @Override
+            public void onFinish() {
+                btnSendOtp.setEnabled(true);
+                btnSendOtp.setText("Send OTP");
+                setBlockUntilMillis(0L);
+            }
+        }.start();
+    }
+
+    private void startLoading(TextView btn) {}
+    private void stopLoading(TextView btn, String label) {}
 }

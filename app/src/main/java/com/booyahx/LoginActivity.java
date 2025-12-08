@@ -5,14 +5,18 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.Gravity;
+import android.view.animation.AlphaAnimation;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.booyahx.network.ApiService;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.models.GoogleLoginRequest;
 import com.booyahx.network.models.GoogleLoginResponse;
+import com.booyahx.TokenManager;
+
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -27,7 +31,6 @@ import retrofit2.Response;
 public class LoginActivity extends AppCompatActivity {
 
     LinearLayout btnGoogle, btnMobile;
-
     GoogleSignInClient mGoogleSignInClient;
     private static final int RC_GOOGLE = 100;
 
@@ -39,37 +42,51 @@ public class LoginActivity extends AppCompatActivity {
         btnGoogle = findViewById(R.id.btnGoogle);
         btnMobile = findViewById(R.id.btnMobile);
 
-        // REMOVE ACTION BAR
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().hide();
-        }
+        if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        // ---------------------------
-        // GOOGLE LOGIN SETUP
-        // ---------------------------
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken("944164444686-o2vtkpfvrbgas2o7qgfgi3in20sudq2in.apps.googleusercontent.com")
+                .requestIdToken("94416444686-65lr45ch2ujn7rv1latge4qmiau73jg2.apps.googleusercontent.com")
                 .requestEmail()
                 .build();
 
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
-        // ON GOOGLE BUTTON CLICK
         btnGoogle.setOnClickListener(v -> {
             Intent signInIntent = mGoogleSignInClient.getSignInIntent();
             startActivityForResult(signInIntent, RC_GOOGLE);
         });
 
-        // MOBILE LOGIN
-        btnMobile.setOnClickListener(v -> {
-            Intent intent = new Intent(LoginActivity.this, LoginUsernameActivity.class);
-            startActivity(intent);
-        });
+        btnMobile.setOnClickListener(v ->
+                startActivity(new Intent(LoginActivity.this, LoginUsernameActivity.class))
+        );
     }
 
-    // ------------------------------------
-    // HANDLE GOOGLE LOGIN RESULT
-    // ------------------------------------
+    // ----------------------------------------------------
+    // CUSTOM NEON TOAST
+    // ----------------------------------------------------
+    private void showTopRightToast(String message) {
+        TextView tv = new TextView(this);
+        tv.setText(message);
+        tv.setPadding(40, 25, 40, 25);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setBackgroundResource(R.drawable.toast_bg);
+        tv.setTextSize(14);
+
+        Toast toast = new Toast(getApplicationContext());
+        toast.setView(tv);
+        toast.setDuration(Toast.LENGTH_SHORT);
+        toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
+
+        AlphaAnimation fade = new AlphaAnimation(0f, 1f);
+        fade.setDuration(350);
+        tv.startAnimation(fade);
+
+        toast.show();
+    }
+
+    // ----------------------------------------------------
+    // GOOGLE SIGN-IN RESULT
+    // ----------------------------------------------------
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -81,27 +98,22 @@ public class LoginActivity extends AppCompatActivity {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
 
                 if (account != null) {
-                    String idToken = account.getIdToken();
-
-                    // SEND TOKEN TO BACKEND
-                    sendTokenToServer(idToken);
+                    sendTokenToServer(account.getIdToken());
                 }
 
             } catch (ApiException e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Google Sign-In Failed!", Toast.LENGTH_SHORT).show();
+                showTopRightToast("Google Sign-In failed: " + e.getStatusCode());
             }
         }
     }
 
-    // ------------------------------------
-    // SEND GOOGLE TOKEN TO BACKEND
-    // ------------------------------------
+    // ----------------------------------------------------
+    // SEND GOOGLE TOKEN TO SERVER
+    // ----------------------------------------------------
     private void sendTokenToServer(String token) {
 
         GoogleLoginRequest req = new GoogleLoginRequest(token);
-
-        ApiService api = ApiClient.getClient().create(ApiService.class);
+        ApiService api = ApiClient.getClient(this).create(ApiService.class);
 
         api.loginWithGoogle(req).enqueue(new Callback<GoogleLoginResponse>() {
             @Override
@@ -110,38 +122,41 @@ public class LoginActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     GoogleLoginResponse resp = response.body();
 
-                    if (resp.success) {
+                    if (resp.success && resp.data != null) {
 
-                        saveJwt(resp.jwt);
+                        // ----------------------------------------------------
+                        // 🔥 SAVE ACCESS + REFRESH TOKENS
+                        // ----------------------------------------------------
+                        TokenManager.saveTokens(
+                                LoginActivity.this,
+                                resp.data.accessToken,
+                                resp.data.refreshToken
+                        );
 
-                        Toast.makeText(LoginActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
+                        // SUCCESS MESSAGE
+                        showTopRightToast(resp.message != null ? resp.message : "Login success!");
 
-                        // GO TO DASHBOARD
+                        // ----------------------------------------------------
+                        // 🔥 BACK-STACK CLEAR: MAKE DASHBOARD ROOT ACTIVITY
+                        // ----------------------------------------------------
                         Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
                         finish();
 
                     } else {
-                        Toast.makeText(LoginActivity.this, resp.message, Toast.LENGTH_SHORT).show();
+                        showTopRightToast(resp.message != null ? resp.message : "Login failed");
                     }
 
                 } else {
-                    Toast.makeText(LoginActivity.this, "Server Error", Toast.LENGTH_SHORT).show();
+                    showTopRightToast("Server error");
                 }
             }
 
             @Override
             public void onFailure(Call<GoogleLoginResponse> call, Throwable t) {
-                Toast.makeText(LoginActivity.this, "Network Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                showTopRightToast("Network Error: " + t.getMessage());
             }
         });
-    }
-
-    // SAVE JWT TOKEN
-    private void saveJwt(String jwt) {
-        getSharedPreferences("AUTH", MODE_PRIVATE)
-                .edit()
-                .putString("jwt", jwt)
-                .apply();
     }
 }

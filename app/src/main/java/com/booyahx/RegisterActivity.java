@@ -1,25 +1,29 @@
 package com.booyahx;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.View;
+import android.view.Gravity;
+import android.view.animation.AlphaAnimation;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.AuthResponse;
 import com.booyahx.network.models.RegisterRequest;
 import com.booyahx.network.models.RegisterResponse;
 import com.booyahx.network.models.VerifyOtpRequest;
+
+import org.json.JSONObject;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -30,12 +34,11 @@ public class RegisterActivity extends AppCompatActivity {
     EditText etUsername, etEmail, etPassword;
     RelativeLayout btnSendOtp, btnRegister;
     TextView txtSendOtp, txtRegister, txtGoLogin;
-    ProgressBar loaderSendOtp, loaderRegister;
 
     LinearLayout otpContainer;
     EditText otp1, otp2, otp3, otp4, otp5, otp6;
 
-    boolean otpSent = false;
+    Boolean otpSent = false;
     CountDownTimer timer;
     long timeLeft = 60000;
 
@@ -48,7 +51,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        api = ApiClient.getClient().create(ApiService.class);
+        api = ApiClient.getClient(this).create(ApiService.class);
 
         initViews();
         setupOtpAutoMove();
@@ -68,9 +71,6 @@ public class RegisterActivity extends AppCompatActivity {
 
         txtSendOtp = findViewById(R.id.txtSendOtp);
         txtRegister = findViewById(R.id.txtRegister);
-
-
-
         txtGoLogin = findViewById(R.id.txtGoLogin);
 
         otpContainer = findViewById(R.id.otpContainer);
@@ -83,44 +83,76 @@ public class RegisterActivity extends AppCompatActivity {
         otp6 = findViewById(R.id.otp6);
     }
 
-    // 🌐 SEND OTP
+    private void showTopRightToast(String message) {
+        TextView tv = new TextView(this);
+        tv.setText(message);
+        tv.setPadding(40, 25, 40, 25);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setBackgroundResource(R.drawable.toast_bg);
+        tv.setTextSize(14);
+
+        Toast toast = new Toast(getApplicationContext());
+        toast.setView(tv);
+        toast.setDuration(Toast.LENGTH_SHORT);
+        toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
+
+        AlphaAnimation fade = new AlphaAnimation(0f, 1f);
+        fade.setDuration(350);
+        tv.startAnimation(fade);
+
+        toast.show();
+    }
+
+    // ----------------------------------------------------
+    // SEND OTP
+    // ----------------------------------------------------
     private void sendOtp() {
         String email = etEmail.getText().toString().trim();
         String name = etUsername.getText().toString().trim();
 
-        if (email.isEmpty()) { Toast.makeText(this, "Enter email", Toast.LENGTH_SHORT).show(); return; }
-        if (name.isEmpty()) { Toast.makeText(this, "Enter username", Toast.LENGTH_SHORT).show(); return; }
-
-        startLoading(btnSendOtp, txtSendOtp, loaderSendOtp);
+        if (email.isEmpty()) { showTopRightToast("Enter email"); return; }
+        if (name.isEmpty()) { showTopRightToast("Enter username"); return; }
 
         Call<RegisterResponse> call = api.registerUser(new RegisterRequest(email, name));
         call.enqueue(new Callback<RegisterResponse>() {
             @Override
             public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
-                stopLoading(btnSendOtp, txtSendOtp, loaderSendOtp, "Send OTP");
 
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    otpContainer.setVisibility(View.VISIBLE);
+
+                    otpContainer.setVisibility(android.view.View.VISIBLE);
                     otpSent = true;
                     startOtpCountdown();
-                    Toast.makeText(RegisterActivity.this, "OTP Sent!", Toast.LENGTH_SHORT).show();
+
+                    showTopRightToast(response.body().getMessage());
+
                 } else {
-                    Toast.makeText(RegisterActivity.this, "Failed to send OTP!", Toast.LENGTH_SHORT).show();
+                    try {
+                        String err = response.errorBody() != null ? response.errorBody().string() : null;
+                        if (err != null) {
+                            JSONObject obj = new JSONObject(err);
+                            showTopRightToast(obj.optString("message", "Failed to send OTP!"));
+                        } else {
+                            showTopRightToast("Failed to send OTP!");
+                        }
+                    } catch (Exception e) {
+                        showTopRightToast("Failed to send OTP!");
+                    }
                 }
             }
 
-            @Override
-            public void onFailure(Call<RegisterResponse> call, Throwable t) {
-                stopLoading(btnSendOtp, txtSendOtp, loaderSendOtp, "Send OTP");
-                Toast.makeText(RegisterActivity.this, "Network Error!", Toast.LENGTH_SHORT).show();
+            @Override public void onFailure(Call<RegisterResponse> call, Throwable t) {
+                showTopRightToast("Network Error!");
             }
         });
     }
 
+    // ----------------------------------------------------
     // VERIFY OTP + REGISTER
+    // ----------------------------------------------------
     private void verifyOtpAndRegister() {
 
-        if (!otpSent) { Toast.makeText(this, "Send OTP first", Toast.LENGTH_SHORT).show(); return; }
+        if (!otpSent) { showTopRightToast("Send OTP first"); return; }
 
         String otp =
                 otp1.getText().toString() + otp2.getText().toString() +
@@ -130,45 +162,50 @@ public class RegisterActivity extends AppCompatActivity {
         String email = etEmail.getText().toString().trim();
         String pass = etPassword.getText().toString().trim();
 
-        if (otp.length() != 6) { Toast.makeText(this, "Invalid OTP!", Toast.LENGTH_SHORT).show(); return; }
-        if (pass.length() < 8) { Toast.makeText(this, "Password must be 8+ characters", Toast.LENGTH_SHORT).show(); return; }
-
-        startLoading(btnRegister, txtRegister, loaderRegister);
+        if (otp.length() != 6) { showTopRightToast("Invalid OTP!"); return; }
+        if (pass.length() < 8) { showTopRightToast("Password must be 8+ characters"); return; }
 
         Call<AuthResponse> call = api.verifyOtp(new VerifyOtpRequest(email, otp, pass));
         call.enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
-                stopLoading(btnRegister, txtRegister, loaderRegister, "Register");
 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                    Toast.makeText(RegisterActivity.this, "Registration Successful 🎉", Toast.LENGTH_LONG).show();
+                if (response.isSuccessful() && response.body() != null && response.body().success) {
+
+                    // 🔥 SAVE TOKENS FROM REGISTER RESPONSE
+                    TokenManager.saveTokens(
+                            RegisterActivity.this,
+                            response.body().data.accessToken,
+                            response.body().data.refreshToken
+                    );
+
+                    showTopRightToast(response.body().message);
+
+                    // 🔥 CLEAR BACKSTACK → GO DASHBOARD
+                    Intent intent = new Intent(RegisterActivity.this, DashboardActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
                     finish();
+
                 } else {
-                    Toast.makeText(RegisterActivity.this, "Wrong OTP!", Toast.LENGTH_SHORT).show();
+                    try {
+                        String err = response.errorBody() != null ? response.errorBody().string() : null;
+                        if (err != null) {
+                            JSONObject obj = new JSONObject(err);
+                            showTopRightToast(obj.optString("message", "Check OTP!"));
+                        } else {
+                            showTopRightToast("Check OTP!");
+                        }
+                    } catch (Exception e) {
+                        showTopRightToast("Check OTP!");
+                    }
                 }
             }
 
-            @Override
-            public void onFailure(Call<AuthResponse> call, Throwable t) {
-                stopLoading(btnRegister, txtRegister, loaderRegister, "Register");
-                Toast.makeText(RegisterActivity.this, "Network Error!", Toast.LENGTH_SHORT).show();
+            @Override public void onFailure(Call<AuthResponse> call, Throwable t) {
+                showTopRightToast("Network Error!");
             }
         });
-    }
-
-    // LOADING SYSTEM
-    private void startLoading(RelativeLayout btn, TextView txt, ProgressBar loader) {
-        btn.setEnabled(false);
-        txt.setVisibility(View.INVISIBLE);
-        loader.setVisibility(View.VISIBLE);
-    }
-
-    private void stopLoading(RelativeLayout btn, TextView txt, ProgressBar loader, String label) {
-        btn.setEnabled(true);
-        txt.setText(label);
-        txt.setVisibility(View.VISIBLE);
-        loader.setVisibility(View.GONE);
     }
 
     private void startOtpCountdown() {
@@ -190,7 +227,8 @@ public class RegisterActivity extends AppCompatActivity {
             boxes[i].addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
                 @Override public void afterTextChanged(Editable s) {}
-                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {
                     if (s.length() == 1 && index < boxes.length - 1)
                         boxes[index + 1].requestFocus();
                     else if (s.length() == 0 && index > 0)

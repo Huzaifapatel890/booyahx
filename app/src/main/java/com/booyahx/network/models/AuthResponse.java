@@ -4,25 +4,22 @@ import com.google.gson.annotations.SerializedName;
 
 public class AuthResponse {
 
-    @SerializedName("success")
-    private boolean success;
+    public boolean success;
+    public String message;
 
-    @SerializedName("message")
-    private String message;
+    @SerializedName("data")
+    public Data data;
 
-    // This will work even if backend returns token OR access_token OR accessToken
-    @SerializedName(value = "token", alternate = {"access_token", "accessToken"})
-    private String token;
-
-    public boolean isSuccess() {
-        return success;
+    public static class Data {
+        public String accessToken;
+        public String refreshToken;
+        public User user;
     }
 
-    public String getToken() {
-        return token;
-    }
-
-    public String getMessage() {
-        return message;
+    public static class User {
+        public String id;
+        public String email;
+        public String name;
+        public boolean isEmailVerified;
     }
 }

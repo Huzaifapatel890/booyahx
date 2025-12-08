@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">Booyah X</string>
+    <string name="app_name">BooyahX</string>
+
+    <!-- Google Sign-In Web Client ID -->
+    <string name="default_web_client_id">94416444686-65lr45ch2ujn7rv1latge4qmiau73jg2.apps.googleusercontent.com</string>
+
 </resources>
