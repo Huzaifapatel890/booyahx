@@ -15,6 +15,7 @@ import com.booyahx.network.ApiService;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.models.GoogleLoginRequest;
 import com.booyahx.network.models.GoogleLoginResponse;
+import com.booyahx.TokenManager;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -107,12 +108,12 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     // ----------------------------------------------------
-    // SEND GOOGLE TOKEN TO server
+    // SEND GOOGLE TOKEN TO SERVER
     // ----------------------------------------------------
     private void sendTokenToServer(String token) {
 
         GoogleLoginRequest req = new GoogleLoginRequest(token);
-        ApiService api = ApiClient.getClient().create(ApiService.class);
+        ApiService api = ApiClient.getClient(this).create(ApiService.class);
 
         api.loginWithGoogle(req).enqueue(new Callback<GoogleLoginResponse>() {
             @Override
@@ -121,35 +122,34 @@ public class LoginActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     GoogleLoginResponse resp = response.body();
 
-                    if (resp.success) {
+                    if (resp.success && resp.data != null) {
 
-                        saveJwt(resp.jwt);
+                        // ----------------------------------------------------
+                        // 🔥 SAVE ACCESS + REFRESH TOKENS
+                        // ----------------------------------------------------
+                        TokenManager.saveTokens(
+                                LoginActivity.this,
+                                resp.data.accessToken,
+                                resp.data.refreshToken
+                        );
 
-                        // 🔥 SUCCESS MESSAGE FROM BACKEND
+                        // SUCCESS MESSAGE
                         showTopRightToast(resp.message != null ? resp.message : "Login success!");
 
-                        startActivity(new Intent(LoginActivity.this, DashboardActivity.class));
+                        // ----------------------------------------------------
+                        // 🔥 BACK-STACK CLEAR: MAKE DASHBOARD ROOT ACTIVITY
+                        // ----------------------------------------------------
+                        Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
                         finish();
 
                     } else {
-                        // 🔥 ERROR MESSAGE FROM BACKEND
                         showTopRightToast(resp.message != null ? resp.message : "Login failed");
                     }
 
                 } else {
-                    // 🔥 API error JSON message
-                    try {
-                        String err = response.errorBody() != null ? response.errorBody().string() : null;
-
-                        if (err != null && err.contains("message")) {
-                            showTopRightToast(new org.json.JSONObject(err).optString("message", "Server error"));
-                        } else {
-                            showTopRightToast("Server error");
-                        }
-
-                    } catch (Exception e) {
-                        showTopRightToast("Server error");
-                    }
+                    showTopRightToast("Server error");
                 }
             }
 
@@ -158,15 +158,5 @@ public class LoginActivity extends AppCompatActivity {
                 showTopRightToast("Network Error: " + t.getMessage());
             }
         });
-    }
-
-    // ----------------------------------------------------
-    // SAVE JWT
-    // ----------------------------------------------------
-    private void saveJwt(String jwt) {
-        getSharedPreferences("AUTH", MODE_PRIVATE)
-                .edit()
-                .putString("jwt", jwt)
-                .apply();
     }
 }

@@ -9,6 +9,7 @@
     <!-- OPTIONAL: If LoginActivity only needs NoActionBar -->
     <style name="Theme.BooyahX.NoActionBar" parent="Theme.AppCompat.NoActionBar" />
 
+
     <!-- OTP BOX STYLE -->
     <style name="OtpBox">
         <item name="android:layout_width">48dp</item>
@@ -22,30 +23,37 @@
     </style>
 
 
-    <!-- 🔥 ADD THESE (Settings Styles) — THEY FIX THE CRASH -->
-    <!-- SETTINGS ROW STYLE -->
+
+    <!-- ====================================================== -->
+    <!-- 🔥 NEW — NEON SETTINGS UI STYLES (MATCHING YOUR IMAGE) -->
+    <!-- ====================================================== -->
+
+    <!-- SETTINGS ROW STYLE (NEON BORDER OUTLINE) -->
     <style name="SettingsItemStyle">
         <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:orientation">horizontal</item>
-        <item name="android:padding">14dp</item>
+        <item name="android:layout_height">60dp</item>
+        <item name="android:background">@drawable/neon_item_border</item>
+        <item name="android:paddingLeft">20dp</item>
+        <item name="android:paddingRight">20dp</item>
         <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:layout_marginBottom">16dp</item>
     </style>
 
-    <!-- SETTINGS ICON STYLE -->
+    <!-- SETTINGS ICON STYLE (NEON BLUE ICONS) -->
     <style name="SettingsIconStyle">
-        <item name="android:layout_width">22dp</item>
-        <item name="android:layout_height">22dp</item>
-        <item name="android:layout_marginEnd">15dp</item>
-        <item name="android:tint">#FFFFFF</item>
+        <item name="android:layout_width">26dp</item>
+        <item name="android:layout_height">26dp</item>
+        <item name="android:layout_marginEnd">16dp</item>
+        <item name="android:tint">#00C8FF</item>
     </style>
 
-    <!-- SETTINGS TEXT STYLE -->
+    <!-- SETTINGS TEXT STYLE (WHITE, CLEAN, BIGGER) -->
     <style name="SettingsTextStyle">
-        <item name="android:layout_width">wrap_content</item>   <!-- REQUIRED -->
-        <item name="android:layout_height">wrap_content</item>  <!-- REQUIRED -->
-        <item name="android:textSize">16sp</item>
         <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
     </style>
 
 </resources>

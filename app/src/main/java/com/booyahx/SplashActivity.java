@@ -36,15 +36,17 @@ public class SplashActivity extends AppCompatActivity {
 
         ImageView[] letters = {b, o, o2, y, a, h};
 
-        long delay = 250; // letter drop spacing
+        long delay = 250; // drop spacing
 
-        // DROP LETTERS + mini vibration pop each time
+        // DROP ANIMATION
         for (int i = 0; i < letters.length; i++) {
             int index = i;
 
             new Handler().postDelayed(() -> {
 
-                // animate drop
+                letters[index].setAlpha(1f);
+                letters[index].setScaleX(1f);
+                letters[index].setScaleY(1f);
                 letters[index].animate()
                         .alpha(1f)
                         .scaleX(1f)
@@ -53,13 +55,12 @@ public class SplashActivity extends AppCompatActivity {
                         .setInterpolator(new AccelerateDecelerateInterpolator())
                         .start();
 
-                // mini pop vibration
                 vibrateMini();
 
             }, delay * index);
         }
 
-        // X DROP + strong vibration impact
+        // X logo drop
         new Handler().postDelayed(() -> {
 
             x.animate()
@@ -70,27 +71,48 @@ public class SplashActivity extends AppCompatActivity {
                     .setInterpolator(new AccelerateDecelerateInterpolator())
                     .start();
 
-            vibrateBoom(); // BIG pulse for main logo
+            vibrateBoom();
 
         }, 1800);
 
-        // Move to login
-        new Handler().postDelayed(() -> {
-            startActivity(new Intent(SplashActivity.this, LoginActivity.class));
-            finish();
-        }, 3000);
+        // AFTER animations → Decide where to go
+        new Handler().postDelayed(this::checkLoginStatus, 3000);
     }
 
-    // ====== VIBRATION FUNCTIONS ======
+    // =========================
+    //   CHECK TOKEN / REDIRECT
+    // =========================
+    private void checkLoginStatus() {
 
+        // ✔ Use TokenManager instead of old SharedPreferences
+        String accessToken = TokenManager.getAccessToken(this);
+
+        if (accessToken != null && !accessToken.isEmpty()) {
+
+            // USER LOGGED IN → GO DASHBOARD
+            Intent i = new Intent(SplashActivity.this, DashboardActivity.class);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(i);
+
+        } else {
+
+            // NO TOKEN → GO LOGIN
+            Intent i = new Intent(SplashActivity.this, LoginActivity.class);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(i);
+        }
+
+        finish();
+    }
+
+    // =========================
+    // VIBRATION HELPERS
+    // =========================
     private void vibrateMini() {
         if (vibrator == null || !vibrator.hasVibrator()) return;
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(
-                    25,  // duration
-                    200  // amplitude (light pop)
-            ));
+            vibrator.vibrate(VibrationEffect.createOneShot(25, 200));
         } else {
             vibrator.vibrate(25);
         }
@@ -100,10 +122,7 @@ public class SplashActivity extends AppCompatActivity {
         if (vibrator == null || !vibrator.hasVibrator()) return;
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createOneShot(
-                    120,  // duration
-                    255   // maximum amplitude = BOOM effect
-            ));
+            vibrator.vibrate(VibrationEffect.createOneShot(120, 255));
         } else {
             vibrator.vibrate(120);
         }

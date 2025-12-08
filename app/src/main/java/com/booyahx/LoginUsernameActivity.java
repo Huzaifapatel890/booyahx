@@ -1,6 +1,5 @@
 package com.booyahx;
 
-import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.method.HideReturnsTransformationMethod;
@@ -15,6 +14,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.LoginRequest;
@@ -34,7 +36,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
     ImageView eyeLogin;
     ProgressBar loginLoader;
 
-    boolean showPass = false;
+    Boolean showPass = false;
 
     ApiService api;
 
@@ -46,7 +48,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
         if (getSupportActionBar() != null)
             getSupportActionBar().hide();
 
-        api = ApiClient.getClient().create(ApiService.class);
+        api = ApiClient.getClient(this).create(ApiService.class);  // ✔ Use context
 
         etLoginUsername = findViewById(R.id.etLoginUsername);
         etLoginPassword = findViewById(R.id.etLoginPassword);
@@ -120,27 +122,38 @@ public class LoginUsernameActivity extends AppCompatActivity {
     // LOGIN USER
     // ----------------------------------------------------
     private void loginUser(String email, String password) {
+
         Call<AuthResponse> call = api.loginUser(new LoginRequest(email, password));
 
         call.enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                if (response.isSuccessful() && response.body() != null && response.body().success) {
 
-                    getSharedPreferences("USER", MODE_PRIVATE)
-                            .edit().putString("TOKEN", response.body().getToken()).apply();
+                    // ----------------------------------------------------
+                    // 🔥 SAVE ACCESS + REFRESH TOKEN (IMPORTANT)
+                    // ----------------------------------------------------
+                    TokenManager.saveTokens(
+                            LoginUsernameActivity.this,
+                            response.body().data.accessToken,
+                            response.body().data.refreshToken
+                    );
 
-                    // 🔥 SUCCESS MESSAGE FROM BACKEND
-                    String msg = response.body().getMessage();
+                    // SUCCESS MESSAGE
+                    String msg = response.body().message;
                     showTopRightToast(msg != null ? msg : "Login successful");
 
-                    startActivity(new Intent(LoginUsernameActivity.this, DashboardActivity.class));
+                    // ----------------------------------------------------
+                    // 🔥 CLEAR STACK → GO TO DASHBOARD
+                    // ----------------------------------------------------
+                    Intent intent = new Intent(LoginUsernameActivity.this, DashboardActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
                     finish();
 
                 } else {
 
-                    // 🔥 ERROR MESSAGE FROM BACKEND
                     try {
                         String err = response.errorBody() != null ? response.errorBody().string() : null;
 

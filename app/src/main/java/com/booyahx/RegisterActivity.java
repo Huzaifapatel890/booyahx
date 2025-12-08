@@ -15,6 +15,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.AuthResponse;
@@ -37,7 +38,7 @@ public class RegisterActivity extends AppCompatActivity {
     LinearLayout otpContainer;
     EditText otp1, otp2, otp3, otp4, otp5, otp6;
 
-    boolean otpSent = false;
+    Boolean otpSent = false;
     CountDownTimer timer;
     long timeLeft = 60000;
 
@@ -50,7 +51,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        api = ApiClient.getClient().create(ApiService.class);
+        api = ApiClient.getClient(this).create(ApiService.class);
 
         initViews();
         setupOtpAutoMove();
@@ -82,9 +83,6 @@ public class RegisterActivity extends AppCompatActivity {
         otp6 = findViewById(R.id.otp6);
     }
 
-    // ----------------------------------------------------
-    // NEON CUSTOM TOAST
-    // ----------------------------------------------------
     private void showTopRightToast(String message) {
         TextView tv = new TextView(this);
         tv.setText(message);
@@ -126,11 +124,9 @@ public class RegisterActivity extends AppCompatActivity {
                     otpSent = true;
                     startOtpCountdown();
 
-                    // 🔥 SUCCESS TOAST FROM BACKEND MESSAGE
                     showTopRightToast(response.body().getMessage());
 
                 } else {
-                    // 🔥 ERROR TOAST FROM BACKEND
                     try {
                         String err = response.errorBody() != null ? response.errorBody().string() : null;
                         if (err != null) {
@@ -145,8 +141,7 @@ public class RegisterActivity extends AppCompatActivity {
                 }
             }
 
-            @Override
-            public void onFailure(Call<RegisterResponse> call, Throwable t) {
+            @Override public void onFailure(Call<RegisterResponse> call, Throwable t) {
                 showTopRightToast("Network Error!");
             }
         });
@@ -175,38 +170,44 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
 
-                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                if (response.isSuccessful() && response.body() != null && response.body().success) {
 
-                    // 🔥 SUCCESS MESSAGE FROM BACKEND
-                    showTopRightToast(response.body().getMessage());
+                    // 🔥 SAVE TOKENS FROM REGISTER RESPONSE
+                    TokenManager.saveTokens(
+                            RegisterActivity.this,
+                            response.body().data.accessToken,
+                            response.body().data.refreshToken
+                    );
 
-                    startActivity(new Intent(RegisterActivity.this, DashboardActivity.class));
+                    showTopRightToast(response.body().message);
+
+                    // 🔥 CLEAR BACKSTACK → GO DASHBOARD
+                    Intent intent = new Intent(RegisterActivity.this, DashboardActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
                     finish();
 
                 } else {
-                    // 🔥 ERROR MESSAGE FROM BACKEND
                     try {
                         String err = response.errorBody() != null ? response.errorBody().string() : null;
                         if (err != null) {
                             JSONObject obj = new JSONObject(err);
-                            showTopRightToast(obj.optString("message", "Check Otp!"));
+                            showTopRightToast(obj.optString("message", "Check OTP!"));
                         } else {
-                            showTopRightToast("Check Otp!");
+                            showTopRightToast("Check OTP!");
                         }
                     } catch (Exception e) {
-                        showTopRightToast("Check Otp!");
+                        showTopRightToast("Check OTP!");
                     }
                 }
             }
 
-            @Override
-            public void onFailure(Call<AuthResponse> call, Throwable t) {
+            @Override public void onFailure(Call<AuthResponse> call, Throwable t) {
                 showTopRightToast("Network Error!");
             }
         });
     }
 
-    // OTP TIMER
     private void startOtpCountdown() {
         timer = new CountDownTimer(timeLeft, 1000) {
             @Override public void onTick(long ms) {
@@ -219,7 +220,6 @@ public class RegisterActivity extends AppCompatActivity {
         }.start();
     }
 
-    // AUTO MOVE OTP FOCUS
     private void setupOtpAutoMove() {
         EditText[] boxes = {otp1, otp2, otp3, otp4, otp5, otp6};
         for (int i = 0; i < boxes.length; i++) {

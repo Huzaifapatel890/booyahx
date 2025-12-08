@@ -63,7 +63,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        api = ApiClient.getClient().create(ApiService.class);
+        api = ApiClient.getClient(this).create(ApiService.class);
 
         initViews();
         setupOtpAutoMove();

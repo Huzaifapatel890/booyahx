@@ -35,4 +35,7 @@ public interface ApiService {
 
     @POST("/api/auth/google-login")
     Call<GoogleLoginResponse> loginWithGoogle(@Body GoogleLoginRequest req);
+
+    @POST("/api/auth/refresh-token")
+    Call<RefreshResponse> refreshToken(@Body RefreshRequest request);
 }

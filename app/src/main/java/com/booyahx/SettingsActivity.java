@@ -2,15 +2,13 @@ package com.booyahx;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
+import android.widget.LinearLayout;
+
 import androidx.appcompat.app.AppCompatActivity;
-import com.booyahx.settings.ChangePasswordActivity;
-import com.booyahx.settings.AboutActivity;
-import com.booyahx.settings.EditProfileActivity;
-import com.booyahx.settings.ThemeActivity;
-import com.booyahx.settings.WinningHistoryActivity;
-import com.booyahx.settings.SupportActivity;
+
 public class SettingsActivity extends AppCompatActivity {
+
+    LinearLayout btnLogout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -19,35 +17,24 @@ public class SettingsActivity extends AppCompatActivity {
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        // Click listeners
-        findViewById(R.id.btnEditProfile).setOnClickListener(v -> {
-            startActivity(new Intent(SettingsActivity.this, EditProfileActivity.class));
-        });
+        btnLogout = findViewById(R.id.btnLogout);
 
-        findViewById(R.id.btnChangePassword).setOnClickListener(v -> {
-            startActivity(new Intent(SettingsActivity.this, ChangePasswordActivity.class));
-        });
+        btnLogout.setOnClickListener(v -> performLogout());
+    }
 
-        findViewById(R.id.btnTheme).setOnClickListener(v -> {
-            startActivity(new Intent(SettingsActivity.this, ThemeActivity.class));
-        });
+    // -----------------------------------------
+    // 🔥 SAFE LOGOUT FUNCTION
+    // -----------------------------------------
+    private void performLogout() {
 
-        findViewById(R.id.btnSupport).setOnClickListener(v -> {
-            startActivity(new Intent(SettingsActivity.this, SupportActivity.class));
-        });
+        // 1. Clear token storage
+        TokenManager.logout(this);
 
-        findViewById(R.id.btnAbout).setOnClickListener(v -> {
-            startActivity(new Intent(SettingsActivity.this, AboutActivity.class));
-        });
+        // 2. Completely clear activity stack & redirect to login
+        Intent intent = new Intent(SettingsActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
 
-        findViewById(R.id.btnHistory).setOnClickListener(v -> {
-            startActivity(new Intent(SettingsActivity.this, WinningHistoryActivity.class));
-        });
-
-        findViewById(R.id.btnLogout).setOnClickListener(v -> {
-            getSharedPreferences("USER", MODE_PRIVATE).edit().clear().apply();
-            startActivity(new Intent(SettingsActivity.this, LoginUsernameActivity.class));
-            finish();
-        });
+        finish();
     }
 }
