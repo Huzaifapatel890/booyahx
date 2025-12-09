@@ -45,13 +45,14 @@ public class LoginActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken("94416444686-65lr45ch2ujn7rv1latge4qmiau73jg2.apps.googleusercontent.com")
+                .requestIdToken("94416444686-r9qnipffen0vre39o2sab53689nkfjf0.apps.googleusercontent.com")
                 .requestEmail()
                 .build();
 
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         btnGoogle.setOnClickListener(v -> {
+            LoaderOverlay.show(LoginActivity.this);   // 🔵 SHOW LOADER BEFORE GOOGLE POPUP
             Intent signInIntent = mGoogleSignInClient.getSignInIntent();
             startActivityForResult(signInIntent, RC_GOOGLE);
         });
@@ -92,6 +93,7 @@ public class LoginActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == RC_GOOGLE) {
+
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
 
             try {
@@ -99,46 +101,45 @@ public class LoginActivity extends AppCompatActivity {
 
                 if (account != null) {
                     sendTokenToServer(account.getIdToken());
+                } else {
+                    LoaderOverlay.hide(LoginActivity.this);
+                    showTopRightToast("Google Sign-In failed");
                 }
 
             } catch (ApiException e) {
+                LoaderOverlay.hide(LoginActivity.this);
                 showTopRightToast("Google Sign-In failed: " + e.getStatusCode());
             }
         }
     }
 
     // ----------------------------------------------------
-    // SEND GOOGLE TOKEN TO SERVER
+    // SEND GOOGLE TOKEN TO SERVER + LOADER
     // ----------------------------------------------------
     private void sendTokenToServer(String token) {
 
-        GoogleLoginRequest req = new GoogleLoginRequest(token);
         ApiService api = ApiClient.getClient(this).create(ApiService.class);
+        GoogleLoginRequest req = new GoogleLoginRequest(token);
 
         api.loginWithGoogle(req).enqueue(new Callback<GoogleLoginResponse>() {
             @Override
             public void onResponse(Call<GoogleLoginResponse> call, Response<GoogleLoginResponse> response) {
+
+                LoaderOverlay.hide(LoginActivity.this);  // 🔵 ALWAYS HIDE LOADER
 
                 if (response.isSuccessful() && response.body() != null) {
                     GoogleLoginResponse resp = response.body();
 
                     if (resp.success && resp.data != null) {
 
-                        // ----------------------------------------------------
-                        // 🔥 SAVE ACCESS + REFRESH TOKENS
-                        // ----------------------------------------------------
                         TokenManager.saveTokens(
                                 LoginActivity.this,
                                 resp.data.accessToken,
                                 resp.data.refreshToken
                         );
 
-                        // SUCCESS MESSAGE
                         showTopRightToast(resp.message != null ? resp.message : "Login success!");
 
-                        // ----------------------------------------------------
-                        // 🔥 BACK-STACK CLEAR: MAKE DASHBOARD ROOT ACTIVITY
-                        // ----------------------------------------------------
                         Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
@@ -155,6 +156,7 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<GoogleLoginResponse> call, Throwable t) {
+                LoaderOverlay.hide(LoginActivity.this);
                 showTopRightToast("Network Error: " + t.getMessage());
             }
         });

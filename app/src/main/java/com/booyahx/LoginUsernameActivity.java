@@ -48,7 +48,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
         if (getSupportActionBar() != null)
             getSupportActionBar().hide();
 
-        api = ApiClient.getClient(this).create(ApiService.class);  // ✔ Use context
+        api = ApiClient.getClient(this).create(ApiService.class);
 
         etLoginUsername = findViewById(R.id.etLoginUsername);
         etLoginPassword = findViewById(R.id.etLoginPassword);
@@ -60,6 +60,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
         loginLoader = findViewById(R.id.loginLoader);
         txtLoginBtnText = findViewById(R.id.txtLoginBtnText);
 
+        // Button loader inside the button stays hidden (we’re using fullscreen loader)
         loginLoader.setVisibility(View.GONE);
 
         eyeLogin.setOnClickListener(v -> {
@@ -94,9 +95,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
         );
     }
 
-    // ----------------------------------------------------
-    // CUSTOM TOAST
-    // ----------------------------------------------------
     private void showTopRightToast(String message) {
         TextView tv = new TextView(this);
         tv.setText(message);
@@ -119,9 +117,12 @@ public class LoginUsernameActivity extends AppCompatActivity {
     }
 
     // ----------------------------------------------------
-    // LOGIN USER
+    // LOGIN USER + FULLSCREEN LOADER
     // ----------------------------------------------------
     private void loginUser(String email, String password) {
+
+        // 🔵 SHOW FULLSCREEN LOADER
+        LoaderOverlay.show(LoginUsernameActivity.this);
 
         Call<AuthResponse> call = api.loginUser(new LoginRequest(email, password));
 
@@ -129,24 +130,20 @@ public class LoginUsernameActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
 
+                // 🔵 ALWAYS HIDE LOADER WHEN RESPONSE ARRIVES
+                LoaderOverlay.hide(LoginUsernameActivity.this);
+
                 if (response.isSuccessful() && response.body() != null && response.body().success) {
 
-                    // ----------------------------------------------------
-                    // 🔥 SAVE ACCESS + REFRESH TOKEN (IMPORTANT)
-                    // ----------------------------------------------------
                     TokenManager.saveTokens(
                             LoginUsernameActivity.this,
                             response.body().data.accessToken,
                             response.body().data.refreshToken
                     );
 
-                    // SUCCESS MESSAGE
                     String msg = response.body().message;
                     showTopRightToast(msg != null ? msg : "Login successful");
 
-                    // ----------------------------------------------------
-                    // 🔥 CLEAR STACK → GO TO DASHBOARD
-                    // ----------------------------------------------------
                     Intent intent = new Intent(LoginUsernameActivity.this, DashboardActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
@@ -173,6 +170,10 @@ public class LoginUsernameActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<AuthResponse> call, Throwable t) {
+
+                // 🔵 HIDE LOADER ON FAILURE TOO
+                LoaderOverlay.hide(LoginUsernameActivity.this);
+
                 showTopRightToast("Network Error!");
             }
         });

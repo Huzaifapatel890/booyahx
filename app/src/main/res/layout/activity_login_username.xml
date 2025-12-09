@@ -1,120 +1,130 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/bg_dark_gradient"
-    android:padding="24dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/txtLoginTitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Login"
-        android:textSize="32sp"
-        android:textColor="#00C3FF"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginTop="70dp" />
-
-    <TextView
-        android:id="@+id/txtLoginSubtitle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Login with username and password"
-        android:textColor="#7FA9C1"
-        android:textSize="15sp"
-        android:gravity="center"
-        android:layout_marginTop="6dp" />
-
-    <EditText
-        android:id="@+id/etLoginUsername"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="40dp"
-        android:hint="Enter email"
-        android:padding="16dp"
-        android:textColor="#FFFFFF"
-        android:textColorHint="#7FA9C1"
-        android:background="@drawable/btn_neon_blue"
-        android:inputType="textPersonName" />
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="16dp"
-        android:background="@drawable/btn_neon_blue"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
-
-        <EditText
-            android:id="@+id/etLoginPassword"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:hint="Password"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#7FA9C1"
-            android:paddingEnd="40dp"
-            android:inputType="textPassword"
-            android:background="@android:color/transparent" />
-
-        <ImageView
-            android:id="@+id/eyeLogin"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:src="@drawable/eye_toggle" />
-    </RelativeLayout>
-
-    <!-- LOGIN BUTTON WITH LOADER -->
+    <!-- ORIGINAL SCREEN CONTENT -->
     <LinearLayout
-        android:id="@+id/btnLogin"
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:gravity="center"
-        android:layout_marginTop="40dp"
-        android:background="@drawable/btn_neon_blue"
-        android:orientation="horizontal">
-
-        <ProgressBar
-            android:id="@+id/loginLoader"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginEnd="12dp"
-            android:visibility="gone"
-            android:indeterminate="true"
-            android:indeterminateTint="#00C3FF" />
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_dark_gradient"
+        android:padding="24dp">
 
         <TextView
-            android:id="@+id/txtLoginBtnText"
-            android:layout_width="wrap_content"
+            android:id="@+id/txtLoginTitle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Login"
+            android:textSize="32sp"
             android:textColor="#00C3FF"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="70dp" />
+
+        <TextView
+            android:id="@+id/txtLoginSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Login with username and password"
+            android:textColor="#7FA9C1"
+            android:textSize="15sp"
+            android:gravity="center"
+            android:layout_marginTop="6dp" />
+
+        <EditText
+            android:id="@+id/etLoginUsername"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="40dp"
+            android:hint="Enter email"
+            android:padding="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#7FA9C1"
+            android:background="@drawable/btn_neon_blue"
+            android:inputType="textPersonName" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/btn_neon_blue"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <EditText
+                android:id="@+id/etLoginPassword"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:hint="Password"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#7FA9C1"
+                android:paddingEnd="40dp"
+                android:inputType="textPassword"
+                android:background="@android:color/transparent" />
+
+            <ImageView
+                android:id="@+id/eyeLogin"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:src="@drawable/eye_toggle" />
+        </RelativeLayout>
+
+        <!-- LOGIN BUTTON WITH LOADER -->
+        <LinearLayout
+            android:id="@+id/btnLogin"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center"
+            android:layout_marginTop="40dp"
+            android:background="@drawable/btn_neon_blue"
+            android:orientation="horizontal">
+
+            <ProgressBar
+                android:id="@+id/loginLoader"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginEnd="12dp"
+                android:visibility="gone"
+                android:indeterminate="true"
+                android:indeterminateTint="#00C3FF" />
+
+            <TextView
+                android:id="@+id/txtLoginBtnText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Login"
+                android:textColor="#00C3FF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txtForgotPassword"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Forgot Password?"
+            android:textColor="#00C3FF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/txtCreateAccount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Create Account"
+            android:textColor="#00C3FF"
+            android:textSize="15sp"
+            android:gravity="center"
+            android:layout_marginTop="20dp" />
+
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/txtForgotPassword"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Forgot Password?"
-        android:textColor="#00C3FF"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="12dp" />
+    <!-- 🔵 FULLSCREEN LOADER OVERLAY (BLOCKS TOUCHES) -->
+    <include layout="@layout/loader_overlay" />
 
-    <TextView
-        android:id="@+id/txtCreateAccount"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Create Account"
-        android:textColor="#00C3FF"
-        android:textSize="15sp"
-        android:gravity="center"
-        android:layout_marginTop="20dp" />
-
-</LinearLayout>
+</FrameLayout>
