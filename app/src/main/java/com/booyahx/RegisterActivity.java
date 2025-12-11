@@ -104,19 +104,29 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     // ----------------------------------------------------
-    // SEND OTP
+    // SEND OTP WITH LOADER
     // ----------------------------------------------------
     private void sendOtp() {
         String email = etEmail.getText().toString().trim();
         String name = etUsername.getText().toString().trim();
 
-        if (email.isEmpty()) { showTopRightToast("Enter email"); return; }
-        if (name.isEmpty()) { showTopRightToast("Enter username"); return; }
+        if (email.isEmpty()) {
+            showTopRightToast("Enter email");
+            return;
+        }
+        if (name.isEmpty()) {
+            showTopRightToast("Enter username");
+            return;
+        }
+
+        LoaderOverlay.show(RegisterActivity.this);  // 🔵 SHOW LOADER
 
         Call<RegisterResponse> call = api.registerUser(new RegisterRequest(email, name));
         call.enqueue(new Callback<RegisterResponse>() {
             @Override
             public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
+
+                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
 
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
 
@@ -141,18 +151,23 @@ public class RegisterActivity extends AppCompatActivity {
                 }
             }
 
-            @Override public void onFailure(Call<RegisterResponse> call, Throwable t) {
+            @Override
+            public void onFailure(Call<RegisterResponse> call, Throwable t) {
+                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
                 showTopRightToast("Network Error!");
             }
         });
     }
 
     // ----------------------------------------------------
-    // VERIFY OTP + REGISTER
+    // VERIFY OTP + REGISTER WITH LOADER
     // ----------------------------------------------------
     private void verifyOtpAndRegister() {
 
-        if (!otpSent) { showTopRightToast("Send OTP first"); return; }
+        if (!otpSent) {
+            showTopRightToast("Send OTP first");
+            return;
+        }
 
         String otp =
                 otp1.getText().toString() + otp2.getText().toString() +
@@ -162,13 +177,23 @@ public class RegisterActivity extends AppCompatActivity {
         String email = etEmail.getText().toString().trim();
         String pass = etPassword.getText().toString().trim();
 
-        if (otp.length() != 6) { showTopRightToast("Invalid OTP!"); return; }
-        if (pass.length() < 8) { showTopRightToast("Password must be 8+ characters"); return; }
+        if (otp.length() != 6) {
+            showTopRightToast("Invalid OTP!");
+            return;
+        }
+        if (pass.length() < 8) {
+            showTopRightToast("Password must be 8+ characters");
+            return;
+        }
+
+        LoaderOverlay.show(RegisterActivity.this);  // 🔵 SHOW LOADER
 
         Call<AuthResponse> call = api.verifyOtp(new VerifyOtpRequest(email, otp, pass));
         call.enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
+
+                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
 
                 if (response.isSuccessful() && response.body() != null && response.body().success) {
 
@@ -202,7 +227,9 @@ public class RegisterActivity extends AppCompatActivity {
                 }
             }
 
-            @Override public void onFailure(Call<AuthResponse> call, Throwable t) {
+            @Override
+            public void onFailure(Call<AuthResponse> call, Throwable t) {
+                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
                 showTopRightToast("Network Error!");
             }
         });

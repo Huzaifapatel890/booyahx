@@ -47,6 +47,10 @@
         <!-- <activity
             android:name="com.booyahx.SettingsActivity"
             android:exported="false" /> -->
+        <activity
+            android:name=".AboutUsActivity"
+            android:parentActivityName=".DashboardActivity"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
 
         <!-- MAIN DASHBOARD (now contains all fragments) -->
         <activity

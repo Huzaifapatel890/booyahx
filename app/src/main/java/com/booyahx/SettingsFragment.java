@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -46,8 +45,7 @@ public class SettingsFragment extends Fragment {
         });
 
         view.findViewById(R.id.btnAboutUs).setOnClickListener(v -> {
-            // TODO: Open About Us Activity
-            // startActivity(new Intent(requireContext(), AboutActivity.class));
+            startActivity(new Intent(requireContext(), AboutUsActivity.class));
         });
 
         view.findViewById(R.id.btnSupport).setOnClickListener(v -> {
