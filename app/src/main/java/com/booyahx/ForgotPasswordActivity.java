@@ -25,6 +25,7 @@ import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ForgotPasswordRequest;
 import com.booyahx.network.models.ResetPasswordRequest;
 import com.booyahx.network.models.SimpleResponse;
+import com.booyahx.utils.CSRFHelper;
 
 import org.json.JSONObject;
 
@@ -83,8 +84,35 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             startLocalBlockCountdown(blockUntil - now);
         }
 
-        btnSendOtp.setOnClickListener(v -> sendOtp());
-        btnReset.setOnClickListener(v -> resetPassword());
+        // 🔥 APPLY CSRF BEFORE SENDING OTP
+        btnSendOtp.setOnClickListener(v -> {
+            CSRFHelper.fetchToken(ForgotPasswordActivity.this, new CSRFHelper.CSRFCallback() {
+                @Override
+                public void onSuccess(String token) {
+                    sendOtp();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    showTopRightToast("Security check failed. Try again.");
+                }
+            });
+        });
+
+        // 🔥 APPLY CSRF BEFORE RESET PASSWORD
+        btnReset.setOnClickListener(v -> {
+            CSRFHelper.fetchToken(ForgotPasswordActivity.this, new CSRFHelper.CSRFCallback() {
+                @Override
+                public void onSuccess(String token) {
+                    resetPassword();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    showTopRightToast("Security check failed. Try again.");
+                }
+            });
+        });
     }
 
     private void initViews() {
@@ -108,9 +136,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         eyeConfirm = findViewById(R.id.eyeConfirm);
     }
 
-    // ------------------------------------------------------------
-    //  Custom Neon Toast
-    // ------------------------------------------------------------
     private void showTopRightToast(String message) {
         TextView tv = new TextView(this);
         tv.setText(message);
@@ -122,7 +147,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         Toast toast = new Toast(getApplicationContext());
         toast.setView(tv);
         toast.setDuration(Toast.LENGTH_SHORT);
-
         toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
 
         AlphaAnimation fade = new AlphaAnimation(0f, 1f);
@@ -133,7 +157,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     }
 
     // ------------------------------------------------------------
-    //  SEND OTP WITH LOADER
+    // SEND OTP WITH LOADER
     // ------------------------------------------------------------
     private void sendOtp() {
 
@@ -190,7 +214,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     }
 
     // ------------------------------------------------------------
-    //  RESET PASSWORD WITH LOADER
+    // RESET PASSWORD WITH LOADER
     // ------------------------------------------------------------
     private void resetPassword() {
 
@@ -265,7 +289,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     }
 
     // ------------------------------------------------------------
-    //  OTP TIMER + HELPERS
+    // OTP TIMER + HELPERS
     // ------------------------------------------------------------
     private void startOtpCountdown() {
         btnSendOtp.setEnabled(false);

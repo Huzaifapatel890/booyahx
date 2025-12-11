@@ -38,4 +38,6 @@ public interface ApiService {
 
     @POST("/api/auth/refresh-token")
     Call<RefreshResponse> refreshToken(@Body RefreshRequest request);
+    @GET("api/auth/csrf-token")
+    Call<CsrfResponse> getCsrfToken();
 }

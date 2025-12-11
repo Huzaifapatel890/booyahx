@@ -22,6 +22,7 @@ import com.booyahx.network.models.AuthResponse;
 import com.booyahx.network.models.RegisterRequest;
 import com.booyahx.network.models.RegisterResponse;
 import com.booyahx.network.models.VerifyOtpRequest;
+import com.booyahx.utils.CSRFHelper;
 
 import org.json.JSONObject;
 
@@ -56,8 +57,36 @@ public class RegisterActivity extends AppCompatActivity {
         initViews();
         setupOtpAutoMove();
 
-        btnSendOtp.setOnClickListener(v -> sendOtp());
-        btnRegister.setOnClickListener(v -> verifyOtpAndRegister());
+        // 🔵 APPLY CSRF LOGIC BEFORE SENDING OTP
+        btnSendOtp.setOnClickListener(v -> {
+            CSRFHelper.fetchToken(RegisterActivity.this, new CSRFHelper.CSRFCallback() {
+                @Override
+                public void onSuccess(String token) {
+                    sendOtp();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    showTopRightToast("Security Error! Try again.");
+                }
+            });
+        });
+
+        // 🔵 APPLY CSRF BEFORE VERIFY OTP & REGISTER
+        btnRegister.setOnClickListener(v -> {
+            CSRFHelper.fetchToken(RegisterActivity.this, new CSRFHelper.CSRFCallback() {
+                @Override
+                public void onSuccess(String token) {
+                    verifyOtpAndRegister();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    showTopRightToast("Security Error! Try again.");
+                }
+            });
+        });
+
         txtGoLogin.setOnClickListener(v -> finish());
     }
 
@@ -119,14 +148,14 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        LoaderOverlay.show(RegisterActivity.this);  // 🔵 SHOW LOADER
+        LoaderOverlay.show(RegisterActivity.this);
 
         Call<RegisterResponse> call = api.registerUser(new RegisterRequest(email, name));
         call.enqueue(new Callback<RegisterResponse>() {
             @Override
             public void onResponse(Call<RegisterResponse> call, Response<RegisterResponse> response) {
 
-                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
+                LoaderOverlay.hide(RegisterActivity.this);
 
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
 
@@ -153,7 +182,7 @@ public class RegisterActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<RegisterResponse> call, Throwable t) {
-                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
+                LoaderOverlay.hide(RegisterActivity.this);
                 showTopRightToast("Network Error!");
             }
         });
@@ -186,18 +215,17 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        LoaderOverlay.show(RegisterActivity.this);  // 🔵 SHOW LOADER
+        LoaderOverlay.show(RegisterActivity.this);
 
         Call<AuthResponse> call = api.verifyOtp(new VerifyOtpRequest(email, otp, pass));
         call.enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
 
-                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
+                LoaderOverlay.hide(RegisterActivity.this);
 
                 if (response.isSuccessful() && response.body() != null && response.body().success) {
 
-                    // 🔥 SAVE TOKENS FROM REGISTER RESPONSE
                     TokenManager.saveTokens(
                             RegisterActivity.this,
                             response.body().data.accessToken,
@@ -206,7 +234,6 @@ public class RegisterActivity extends AppCompatActivity {
 
                     showTopRightToast(response.body().message);
 
-                    // 🔥 CLEAR BACKSTACK → GO DASHBOARD
                     Intent intent = new Intent(RegisterActivity.this, DashboardActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
@@ -229,7 +256,7 @@ public class RegisterActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<AuthResponse> call, Throwable t) {
-                LoaderOverlay.hide(RegisterActivity.this);  // 🔵 HIDE LOADER
+                LoaderOverlay.hide(RegisterActivity.this);
                 showTopRightToast("Network Error!");
             }
         });

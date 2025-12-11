@@ -48,10 +48,13 @@
             android:name="com.booyahx.SettingsActivity"
             android:exported="false" /> -->
         <activity
-            android:name=".AboutUsActivity"
+            android:name=".settings.AboutActivity$AboutUsActivity"
             android:parentActivityName=".DashboardActivity"
             android:theme="@style/Theme.BooyahX.NoActionBar" />
-
+        <activity
+            android:name=".settings.ActivityChangePassword$ChangePasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
         <!-- MAIN DASHBOARD (now contains all fragments) -->
         <activity
             android:name="com.booyahx.DashboardActivity"

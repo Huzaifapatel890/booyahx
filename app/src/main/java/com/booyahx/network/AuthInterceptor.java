@@ -5,6 +5,7 @@ import android.content.Context;
 import com.booyahx.TokenManager;
 import com.booyahx.network.models.RefreshRequest;
 import com.booyahx.network.models.RefreshResponse;
+import com.booyahx.utils.CSRFHelper;
 
 import java.io.IOException;
 
@@ -28,12 +29,27 @@ public class AuthInterceptor implements Interceptor {
         Request original = chain.request();
         Request.Builder builder = original.newBuilder();
 
+        // -------------------------------
+        // ADD JWT
+        // -------------------------------
         if (access != null) {
             builder.header("Authorization", "Bearer " + access);
         }
 
+        // -------------------------------
+        // ADD CSRF TOKEN  (🔥 YOUR MISSING PART)
+        // -------------------------------
+        String csrf = CSRFHelper.getToken(context);
+        if (csrf != null && !csrf.isEmpty()) {
+            builder.header("X-CSRF-Token", csrf);
+        }
+
+        // Proceed with request
         Response response = chain.proceed(builder.build());
 
+        // -------------------------------
+        // HANDLE 401 -> REFRESH TOKEN
+        // -------------------------------
         if (response.code() == 401) {
             response.close();
 
@@ -62,6 +78,7 @@ public class AuthInterceptor implements Interceptor {
 
                 Request newRequest = original.newBuilder()
                         .header("Authorization", "Bearer " + newAccess)
+                        .header("X-CSRF-Token", csrf) // ADD AGAIN
                         .build();
 
                 return chain.proceed(newRequest);

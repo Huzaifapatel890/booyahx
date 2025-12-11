@@ -16,19 +16,18 @@ public class ApiClient {
 
     private static final String BASE_URL = "https://api.gaminghuballday.buzz";
 
-    // MAIN client — uses AuthInterceptor (automatically attaches tokens + handles refresh)
+    // MAIN client — uses AuthInterceptor + CookieStore
     public static Retrofit getClient(Context context) {
 
         if (retrofit == null) {
 
-            // Logging interceptor
             HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
             logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-            // Main client with AuthInterceptor
             OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(new AuthInterceptor(context))   // 🔥 ADD THIS LINE
-                    .addInterceptor(logging)                        // logging AFTER auth
+                    .cookieJar(new CookieStore())   // 🔥 CUSTOM COOKIE HANDLING
+                    .addInterceptor(new AuthInterceptor(context))
+                    .addInterceptor(logging)
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)
@@ -45,12 +44,13 @@ public class ApiClient {
         return retrofit;
     }
 
-    // SECOND client — used ONLY for /refresh-token (NO AuthInterceptor allowed)
+    // SECOND client — used ONLY for refresh token
     public static Retrofit getRefreshInstance() {
 
         if (refreshRetrofit == null) {
 
             OkHttpClient client = new OkHttpClient.Builder()
+                    .cookieJar(new CookieStore())   // 🔥 Same cookie store for refresh
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)

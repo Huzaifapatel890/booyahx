@@ -21,6 +21,7 @@ import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.LoginRequest;
 import com.booyahx.network.models.AuthResponse;
+import com.booyahx.utils.CSRFHelper;
 
 import org.json.JSONObject;
 
@@ -60,7 +61,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
         loginLoader = findViewById(R.id.loginLoader);
         txtLoginBtnText = findViewById(R.id.txtLoginBtnText);
 
-        // Button loader inside the button stays hidden (we’re using fullscreen loader)
         loginLoader.setVisibility(View.GONE);
 
         eyeLogin.setOnClickListener(v -> {
@@ -83,7 +83,19 @@ public class LoginUsernameActivity extends AppCompatActivity {
             if (email.isEmpty()) { etLoginUsername.setError("Enter email"); return; }
             if (pass.isEmpty()) { etLoginPassword.setError("Enter password"); return; }
 
-            loginUser(email, pass);
+            // 🔵 FIRST GET CSRF TOKEN BEFORE LOGIN
+            CSRFHelper.fetchToken(LoginUsernameActivity.this, new CSRFHelper.CSRFCallback() {
+                @Override
+                public void onSuccess(String token) {
+                    // Now perform login
+                    loginUser(email, pass);
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    showTopRightToast("Security error! Please try again.");
+                }
+            });
         });
 
         txtForgotPassword.setOnClickListener(v ->
@@ -121,7 +133,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
     // ----------------------------------------------------
     private void loginUser(String email, String password) {
 
-        // 🔵 SHOW FULLSCREEN LOADER
         LoaderOverlay.show(LoginUsernameActivity.this);
 
         Call<AuthResponse> call = api.loginUser(new LoginRequest(email, password));
@@ -130,7 +141,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
 
-                // 🔵 ALWAYS HIDE LOADER WHEN RESPONSE ARRIVES
                 LoaderOverlay.hide(LoginUsernameActivity.this);
 
                 if (response.isSuccessful() && response.body() != null && response.body().success) {
@@ -171,7 +181,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<AuthResponse> call, Throwable t) {
 
-                // 🔵 HIDE LOADER ON FAILURE TOO
                 LoaderOverlay.hide(LoginUsernameActivity.this);
 
                 showTopRightToast("Network Error!");

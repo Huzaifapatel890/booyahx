@@ -11,6 +11,9 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
+import com.booyahx.settings.AboutActivity;
+import com.booyahx.settings.ActivityChangePassword;
+
 public class SettingsFragment extends Fragment {
 
     @Nullable
@@ -31,7 +34,7 @@ public class SettingsFragment extends Fragment {
 
         view.findViewById(R.id.btnChangePassword).setOnClickListener(v -> {
             // TODO: Open Change Password Activity
-            // startActivity(new Intent(requireContext(), ChangePasswordActivity.class));
+             startActivity(new Intent(requireContext(), ActivityChangePassword.ChangePasswordActivity.class));
         });
 
         view.findViewById(R.id.btnWinningHistory).setOnClickListener(v -> {
@@ -45,7 +48,7 @@ public class SettingsFragment extends Fragment {
         });
 
         view.findViewById(R.id.btnAboutUs).setOnClickListener(v -> {
-            startActivity(new Intent(requireContext(), AboutUsActivity.class));
+            startActivity(new Intent(requireContext(), AboutActivity.AboutUsActivity.class));
         });
 
         view.findViewById(R.id.btnSupport).setOnClickListener(v -> {
