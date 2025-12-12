@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:background="@drawable/neon_blue_border"
+    android:padding="14dp"
+    android:gravity="center_vertical"
+    android:layout_marginBottom="10dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+<ImageView
+android:src="@drawable/champ"
+android:layout_width="40dp"
+android:layout_height="40dp" />
+
+<LinearLayout
+android:orientation="vertical"
+android:layout_marginLeft="14dp"
+android:layout_width="match_parent"
+android:layout_height="wrap_content">
+
+<TextView
+    android:id="@+id/txtAmount"
+    android:text="+500 GC"
+    android:textSize="20sp"
+    android:textColor="#16DF00"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content" />
+
+<TextView
+    android:id="@+id/txtDescription"
+    android:text="Won Tournament - Solo Match"
+    android:textColor="#B0B0B0"
+    android:textSize="14sp"
+    android:layout_marginTop="2dp"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content" />
+
+<TextView
+    android:id="@+id/txtDate"
+    android:text="12 Dec 2025 • 5:32 PM"
+    android:textColor="#666666"
+    android:textSize="12sp"
+    android:layout_marginTop="4dp"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content" />
+</LinearLayout>
+    <include layout="@layout/loader_overlay"/>
+    </LinearLayout>

@@ -63,6 +63,10 @@
             android:name=".settings.EditProfileActivity"
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar" />
+        <activity
+            android:name=".settings.WinningHistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
     </application>
 
 </manifest>

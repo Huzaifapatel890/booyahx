@@ -18,7 +18,9 @@ import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.settings.AboutActivity;
 import com.booyahx.settings.ChangePasswordActivity;
 import com.booyahx.settings.EditProfileActivity;
+import com.booyahx.settings.WinningHistoryActivity;   // ⭐ ADDED
 import android.view.Gravity;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -43,7 +45,7 @@ public class SettingsFragment extends Fragment {
         // LOAD USER DATA FROM API
         fetchUserProfile();
 
-        // BUTTON HANDLERS (unchanged)
+        // BUTTON HANDLERS
         view.findViewById(R.id.btnEditProfile).setOnClickListener(v ->
                 startActivity(new Intent(requireContext(), EditProfileActivity.class)));
 
@@ -54,6 +56,10 @@ public class SettingsFragment extends Fragment {
                 startActivity(new Intent(requireContext(), AboutActivity.AboutUsActivity.class)));
 
         view.findViewById(R.id.btnLogout).setOnClickListener(v -> showLogoutDialog());
+
+        // ⭐⭐⭐ NEW — WINNING HISTORY BUTTON ⭐⭐⭐
+        view.findViewById(R.id.btnWinningHistory).setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), WinningHistoryActivity.class)));
     }
 
     // ------------------------------------------------------------------
@@ -72,7 +78,6 @@ public class SettingsFragment extends Fragment {
 
                     ProfileResponse.Data data = response.body().data;
 
-                    // SET NAME & EMAIL FROM BACKEND
                     txtUserName.setText(data.name != null ? data.name : "Unknown User");
                     txtEmail.setText(data.email != null ? data.email : "No Email");
 
@@ -110,7 +115,7 @@ public class SettingsFragment extends Fragment {
     }
 
     // ------------------------------------------------------------------
-    // 🔵 Neon toast (same style as your app)
+    // 🔵 Neon toast
     // ------------------------------------------------------------------
     private void showToast(String msg) {
         android.widget.Toast toast = android.widget.Toast.makeText(requireContext(), msg, android.widget.Toast.LENGTH_SHORT);

@@ -116,7 +116,15 @@ public class EditProfileActivity extends AppCompatActivity {
                     setSpinnerSelection(spinnerPaymentMethod, d.paymentMethod);
 
                 } else {
-                    showTopRightToast("Failed to load profile!");
+
+                    // ⭐ Try to read server-provided message
+                    String serverMsg = null;
+                    try { serverMsg = response.errorBody().string(); } catch (Exception ignored) {}
+
+                    if (serverMsg != null && !serverMsg.isEmpty())
+                        showTopRightToast(serverMsg);
+                    else
+                        showTopRightToast("Failed to load profile!");
                 }
             }
 
@@ -195,7 +203,7 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     // ---------------------------------------------------------
-    // BUTTONS (PUT API ADDED)
+    // BUTTONS (PUT API)
     // ---------------------------------------------------------
     private void setupButtons() {
 
@@ -210,32 +218,30 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     // ---------------------------------------------------------
-    // ⭐ PUT UPDATE PROFILE API (fixed gender + upi only)
+    // ⭐ PUT UPDATE PROFILE API
     // ---------------------------------------------------------
     private void updateProfile() {
 
-        LoaderOverlay.show(this);
+        LoaderOverlay.show(this);   // SHOW BEFORE CSRF CALL
 
         String token = TokenManager.getAccessToken(this);
 
-        // ⭐ ONLY FIX #1 – gender must be lowercase
         String genderFixed = spinnerGender.getSelectedItem().toString().toLowerCase();
-
-        // ⭐ ONLY FIX #2 – clean UPI (remove spaces & hyphens)
         String upiClean = etUpiId.getText().toString().trim().replace("-", "").replace(" ", "");
 
         UpdateProfileRequest req = new UpdateProfileRequest(
                 etName.getText().toString().trim(),
                 etGameName.getText().toString().trim(),
-                genderFixed,          // ✔ FIXED
+                genderFixed,
                 Integer.parseInt(etAge.getText().toString().trim()),
                 etPhone.getText().toString().trim(),
-                upiClean,             // ✔ FIXED
+                upiClean,
                 spinnerPaymentMethod.getSelectedItem().toString()
         );
 
-        // Get CSRF first
+        // ⭐ FETCH CSRF TOKEN FIRST
         CSRFHelper.fetchToken(this, new CSRFHelper.CSRFCallback() {
+
             @Override
             public void onSuccess(String csrf) {
 
@@ -253,7 +259,14 @@ public class EditProfileActivity extends AppCompatActivity {
                             showTopRightToast(response.body().getMessage());
                             finish();
                         } else {
-                            showTopRightToast("Update failed!");
+
+                            String serverMsg = null;
+                            try { serverMsg = response.errorBody().string(); } catch (Exception ignored) {}
+
+                            if (serverMsg != null && !serverMsg.isEmpty())
+                                showTopRightToast(serverMsg);
+                            else
+                                showTopRightToast("Update failed!");
                         }
                     }
 
@@ -268,7 +281,7 @@ public class EditProfileActivity extends AppCompatActivity {
             @Override
             public void onFailure(String error) {
                 LoaderOverlay.hide(EditProfileActivity.this);
-                showTopRightToast("Security error! Try again.");
+                showTopRightToast(error != null ? error : "Security error! Try again.");
             }
         });
     }

@@ -9,6 +9,7 @@ import retrofit2.http.Header;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
+import retrofit2.http.Query;
 
 public interface ApiService {
 
@@ -60,5 +61,11 @@ public interface ApiService {
             @Header("Authorization") String token,
             @Header("X-CSRF-Token") String csrfToken,
             @Body UpdateProfileRequest request
+    );
+    @GET("/api/wallet/history")
+    Call<WalletHistoryResponse> getWalletHistory(
+            @Header("Authorization") String token,
+            @Query("limit") int limit,
+            @Query("skip") int skip
     );
 }
