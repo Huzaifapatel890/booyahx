@@ -11,7 +11,7 @@ public class ProfileResponse {
         public String userId;
         public String email;
         public String name;
-        public String IGN;
+        public String ign;
         public String phoneNumber;
         public String gender;
         public int age;

@@ -17,6 +17,9 @@ import com.booyahx.LoaderOverlay;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ProfileResponse;
+import com.booyahx.network.models.UpdateProfileRequest;
+import com.booyahx.network.models.SimpleResponse;
+import com.booyahx.utils.CSRFHelper;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -100,11 +103,10 @@ public class EditProfileActivity extends AppCompatActivity {
 
                     etName.setText(d.name);
                     etEmail.setText(d.email);
-                    etGameName.setText(d.IGN);
+                    etGameName.setText(d.ign);
                     etPhone.setText(d.phoneNumber);
                     etUpiId.setText(d.paymentUPI);
 
-                    // ⭐ DEFAULT AGE HANDLING (18 if null/empty/0)
                     int age = (d.age <= 0) ? 18 : d.age;
                     etAge.setText(String.valueOf(age));
 
@@ -193,7 +195,7 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     // ---------------------------------------------------------
-    // BUTTONS
+    // BUTTONS (PUT API ADDED)
     // ---------------------------------------------------------
     private void setupButtons() {
 
@@ -203,7 +205,71 @@ public class EditProfileActivity extends AppCompatActivity {
 
             if (!validateInputs()) return;
 
-            showTopRightToast("Profile Updated Successfully!");
+            updateProfile(); // ⭐ REAL UPDATE
+        });
+    }
+
+    // ---------------------------------------------------------
+    // ⭐ PUT UPDATE PROFILE API (fixed gender + upi only)
+    // ---------------------------------------------------------
+    private void updateProfile() {
+
+        LoaderOverlay.show(this);
+
+        String token = TokenManager.getAccessToken(this);
+
+        // ⭐ ONLY FIX #1 – gender must be lowercase
+        String genderFixed = spinnerGender.getSelectedItem().toString().toLowerCase();
+
+        // ⭐ ONLY FIX #2 – clean UPI (remove spaces & hyphens)
+        String upiClean = etUpiId.getText().toString().trim().replace("-", "").replace(" ", "");
+
+        UpdateProfileRequest req = new UpdateProfileRequest(
+                etName.getText().toString().trim(),
+                etGameName.getText().toString().trim(),
+                genderFixed,          // ✔ FIXED
+                Integer.parseInt(etAge.getText().toString().trim()),
+                etPhone.getText().toString().trim(),
+                upiClean,             // ✔ FIXED
+                spinnerPaymentMethod.getSelectedItem().toString()
+        );
+
+        // Get CSRF first
+        CSRFHelper.fetchToken(this, new CSRFHelper.CSRFCallback() {
+            @Override
+            public void onSuccess(String csrf) {
+
+                api.updateProfile(
+                        "Bearer " + token,
+                        csrf,
+                        req
+                ).enqueue(new Callback<SimpleResponse>() {
+                    @Override
+                    public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
+
+                        LoaderOverlay.hide(EditProfileActivity.this);
+
+                        if (response.isSuccessful() && response.body() != null) {
+                            showTopRightToast(response.body().getMessage());
+                            finish();
+                        } else {
+                            showTopRightToast("Update failed!");
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<SimpleResponse> call, Throwable t) {
+                        LoaderOverlay.hide(EditProfileActivity.this);
+                        showTopRightToast("Error updating profile!");
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                LoaderOverlay.hide(EditProfileActivity.this);
+                showTopRightToast("Security error! Try again.");
+            }
         });
     }
 

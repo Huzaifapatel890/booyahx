@@ -53,5 +53,12 @@ public interface ApiService {
     @GET("/api/profile")
     Call<ProfileResponse> getProfile(
             @Header("Authorization") String token
+
+    );
+    @PUT("/api/profile")
+    Call<SimpleResponse> updateProfile(
+            @Header("Authorization") String token,
+            @Header("X-CSRF-Token") String csrfToken,
+            @Body UpdateProfileRequest request
     );
 }
