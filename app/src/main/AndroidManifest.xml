@@ -52,14 +52,17 @@
             android:parentActivityName=".DashboardActivity"
             android:theme="@style/Theme.BooyahX.NoActionBar" />
         <activity
-            android:name=".settings.ActivityChangePassword$ChangePasswordActivity"
+            android:name=".settings.ChangePasswordActivity"
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar" />
         <!-- MAIN DASHBOARD (now contains all fragments) -->
         <activity
             android:name="com.booyahx.DashboardActivity"
             android:exported="true" />
-
+        <activity
+            android:name=".settings.EditProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
     </application>
 
 </manifest>

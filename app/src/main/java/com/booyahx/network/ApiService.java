@@ -2,17 +2,16 @@ package com.booyahx.network;
 
 import com.booyahx.network.models.*;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
-import retrofit2.http.POST;
-import retrofit2.http.PUT;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
-import retrofit2.http.Body;
-public interface ApiService {
+import retrofit2.http.PUT;
 
+public interface ApiService {
 
     // 🟢 REGISTER (sends OTP to email)
     @POST("/api/auth/register")
@@ -25,6 +24,7 @@ public interface ApiService {
     // 🟠 LOGIN
     @POST("/api/auth/login")
     Call<AuthResponse> loginUser(@Body LoginRequest request);
+
     @Headers("Content-Type: application/json")
     @POST("/api/auth/forgot-password")
     Call<SimpleResponse> forgotPassword(@Body ForgotPasswordRequest request);
@@ -38,6 +38,17 @@ public interface ApiService {
 
     @POST("/api/auth/refresh-token")
     Call<RefreshResponse> refreshToken(@Body RefreshRequest request);
-    @GET("api/auth/csrf-token")
+
+    @GET("/api/auth/csrf-token")
     Call<CsrfResponse> getCsrfToken();
+
+
+    // 🔥🔥 ADD THIS (CHANGE PASSWORD API)
+    @PUT("/api/auth/change-password")
+    Call<SimpleResponse> changePassword(
+            @Header("Authorization") String token,
+            @Header("X-CSRF-Token") String csrfToken,
+            @Body ChangePasswordRequest request
+    );
+
 }

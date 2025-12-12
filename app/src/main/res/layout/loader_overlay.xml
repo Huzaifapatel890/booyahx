@@ -4,10 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:visibility="gone"
-    android:background="#AA001133"
     android:clickable="true"
     android:focusable="true">
 
+    <!-- Blur/Dimming Layer (separate + behind loader) -->
+    <View
+        android:id="@+id/blurLayer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:background="#00000000" />
+
+    <!-- Loader Content -->
     <FrameLayout
         android:layout_width="140dp"
         android:layout_height="140dp"

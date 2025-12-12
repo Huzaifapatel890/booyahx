@@ -1,7 +1,6 @@
 package com.booyahx;
 
 import android.os.Bundle;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -12,7 +11,6 @@ import androidx.fragment.app.FragmentTransaction;
 public class DashboardActivity extends AppCompatActivity {
 
     private LinearLayout navHome, navParticipated, navWallet, navSettings;
-    private ImageView icNavHome, icNavParticipated, icNavWallet, icNavSettings;
     private TextView tvNavHome, tvNavParticipated, tvNavWallet, tvNavProfile;
 
     @Override
@@ -20,76 +18,82 @@ public class DashboardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dashboard);
 
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().hide();
-        }
+        if (getSupportActionBar() != null) getSupportActionBar().hide();
 
-        // Initialize bottom nav views
         navHome = findViewById(R.id.navHome);
         navParticipated = findViewById(R.id.navParticipated);
         navWallet = findViewById(R.id.navWallet);
         navSettings = findViewById(R.id.NavSettings);
-
-        icNavHome = findViewById(R.id.icNavHome);
-        icNavParticipated = findViewById(R.id.icNavParticipated);
-        icNavWallet = findViewById(R.id.icNavWallet);
-        icNavSettings = findViewById(R.id.icNavsettings);
 
         tvNavHome = findViewById(R.id.tvNavHome);
         tvNavParticipated = findViewById(R.id.tvNavParticipated);
         tvNavWallet = findViewById(R.id.tvNavWallet);
         tvNavProfile = findViewById(R.id.tvNavProfile);
 
-        // Load default fragment (Home)
+        // Default → Home
         if (savedInstanceState == null) {
-            loadFragment(new HomeFragment());
-            setActiveNav(navHome, icNavHome, tvNavHome);
+            loadFragment(new HomeFragment(), 0, false);
+            setActive(tvNavHome);
         }
 
-        // Bottom Navigation Click Listeners
         navHome.setOnClickListener(v -> {
-            loadFragment(new HomeFragment());
-            setActiveNav(navHome, icNavHome, tvNavHome);
+            loadFragment(new HomeFragment(), 0, true);
+            setActive(tvNavHome);
         });
 
         navParticipated.setOnClickListener(v -> {
-            loadFragment(new ParticipatedFragment());
-            setActiveNav(navParticipated, icNavParticipated, tvNavParticipated);
+            loadFragment(new ParticipatedFragment(), 1, true);
+            setActive(tvNavParticipated);
         });
 
         navWallet.setOnClickListener(v -> {
-            loadFragment(new WalletFragment());
-            setActiveNav(navWallet, icNavWallet, tvNavWallet);
+            loadFragment(new WalletFragment(), 2, true);
+            setActive(tvNavWallet);
         });
 
         navSettings.setOnClickListener(v -> {
-            loadFragment(new SettingsFragment());
-            setActiveNav(navSettings, icNavSettings, tvNavProfile);
+            loadFragment(new SettingsFragment(), 3, true);
+            setActive(tvNavProfile);
         });
     }
 
-    private void loadFragment(Fragment fragment) {
-        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-        transaction.setCustomAnimations(
-                android.R.anim.fade_in,
-                android.R.anim.fade_out
-        );
-        transaction.replace(R.id.fragment_container, fragment);
-        transaction.commit();
+    private int currentIndex = 0;
+
+    private void loadFragment(Fragment fragment, int newIndex, boolean animate) {
+        FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+
+        if (animate) {
+            if (newIndex > currentIndex) {
+                // Forward → slide in from right
+                ft.setCustomAnimations(
+                        R.anim.slide_in_right,
+                        0
+                );
+            } else if (newIndex < currentIndex) {
+                // Backward → slide in from left
+                ft.setCustomAnimations(
+                        R.anim.slide_in_left,
+                        0
+                );
+            }
+        }
+
+        currentIndex = newIndex;
+
+        ft.replace(R.id.fragment_container, fragment);
+        ft.commit();
     }
 
-    private void setActiveNav(LinearLayout activeNav, ImageView activeIcon, TextView activeText) {
-        // Reset all
-        resetNavItem(navHome, tvNavHome);
-        resetNavItem(navParticipated, tvNavParticipated);
-        resetNavItem(navWallet, tvNavWallet);
-        resetNavItem(navSettings, tvNavProfile);
+    private void setActive(TextView active) {
+        reset(tvNavHome);
+        reset(tvNavParticipated);
+        reset(tvNavWallet);
+        reset(tvNavProfile);
 
-        // Highlight active
-        activeText.setTextColor(0xFF00C3FF); // Cyan color
+        active.setTextColor(0xFF00C3FF);
     }
 
-    private void resetNavItem(LinearLayout nav, TextView text) {
-        text.setTextColor(0xFFAAAAAA); // Gray color
+    private void reset(TextView tv) {
+        tv.setTextColor(0xFFAAAAAA);
     }
 }

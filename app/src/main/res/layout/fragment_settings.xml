@@ -57,14 +57,7 @@
                 android:textSize="13sp"
                 android:layout_marginTop="3dp" />
 
-            <TextView
-                android:id="@+id/txtUniqueId"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Unique ID: HZZPV599"
-                android:textColor="#6FE0FF"
-                android:textSize="12sp"
-                android:layout_marginTop="2dp" />
+
         </LinearLayout>
 
         <!-- MENU ITEMS -->

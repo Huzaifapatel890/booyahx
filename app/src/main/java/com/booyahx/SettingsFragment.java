@@ -12,7 +12,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.booyahx.settings.AboutActivity;
-import com.booyahx.settings.ActivityChangePassword;
+import com.booyahx.settings.ChangePasswordActivity;
+import com.booyahx.settings.EditProfileActivity;
 
 public class SettingsFragment extends Fragment {
 
@@ -29,12 +30,12 @@ public class SettingsFragment extends Fragment {
         // Setup click listeners
         view.findViewById(R.id.btnEditProfile).setOnClickListener(v -> {
             // TODO: Open Edit Profile Activity
-            // startActivity(new Intent(requireContext(), EditProfileActivity.class));
+             startActivity(new Intent(requireContext(), EditProfileActivity.class));
         });
 
         view.findViewById(R.id.btnChangePassword).setOnClickListener(v -> {
             // TODO: Open Change Password Activity
-             startActivity(new Intent(requireContext(), ActivityChangePassword.ChangePasswordActivity.class));
+             startActivity(new Intent(requireContext(), ChangePasswordActivity.class));
         });
 
         view.findViewById(R.id.btnWinningHistory).setOnClickListener(v -> {

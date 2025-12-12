@@ -23,6 +23,7 @@ import com.booyahx.network.models.LoginRequest;
 import com.booyahx.network.models.AuthResponse;
 import com.booyahx.utils.CSRFHelper;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import retrofit2.Call;
@@ -57,7 +58,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
         txtCreateAccount = findViewById(R.id.txtCreateAccount);
         txtForgotPassword = findViewById(R.id.txtForgotPassword);
         eyeLogin = findViewById(R.id.eyeLogin);
-
         loginLoader = findViewById(R.id.loginLoader);
         txtLoginBtnText = findViewById(R.id.txtLoginBtnText);
 
@@ -87,7 +87,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
             CSRFHelper.fetchToken(LoginUsernameActivity.this, new CSRFHelper.CSRFCallback() {
                 @Override
                 public void onSuccess(String token) {
-                    // Now perform login
                     loginUser(email, pass);
                 }
 
@@ -118,7 +117,6 @@ public class LoginUsernameActivity extends AppCompatActivity {
         Toast toast = new Toast(getApplicationContext());
         toast.setView(tv);
         toast.setDuration(Toast.LENGTH_SHORT);
-
         toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
 
         AlphaAnimation fade = new AlphaAnimation(0f, 1f);
@@ -143,34 +141,56 @@ public class LoginUsernameActivity extends AppCompatActivity {
 
                 LoaderOverlay.hide(LoginUsernameActivity.this);
 
-                if (response.isSuccessful() && response.body() != null && response.body().success) {
+                if (response.isSuccessful() && response.body() != null) {
 
-                    TokenManager.saveTokens(
-                            LoginUsernameActivity.this,
-                            response.body().data.accessToken,
-                            response.body().data.refreshToken
-                    );
+                    AuthResponse resp = response.body();
 
-                    String msg = response.body().message;
-                    showTopRightToast(msg != null ? msg : "Login successful");
+                    // 🔥 ALWAYS SHOW BACKEND MESSAGE
+                    String backendMsg = resp.message != null ? resp.message : "Success";
+                    showTopRightToast(backendMsg);
 
-                    Intent intent = new Intent(LoginUsernameActivity.this, DashboardActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    finish();
+                    // 🔥 If login successful → redirect
+                    if (resp.success && resp.data != null) {
+
+                        TokenManager.saveTokens(
+                                LoginUsernameActivity.this,
+                                resp.data.accessToken,
+                                resp.data.refreshToken
+                        );
+
+                        Intent intent = new Intent(LoginUsernameActivity.this, DashboardActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                        startActivity(intent);
+                        finish();
+                    }
 
                 } else {
 
                     try {
-                        String err = response.errorBody() != null ? response.errorBody().string() : null;
+                        String raw = response.errorBody() != null ? response.errorBody().string() : null;
 
-                        if (err != null) {
-                            JSONObject obj = new JSONObject(err);
-                            String msg = obj.optString("message", "Invalid Credentials!");
-                            showTopRightToast(msg);
-                        } else {
-                            showTopRightToast("Invalid Credentials!");
+                        if (raw != null) {
+                            JSONObject obj = new JSONObject(raw);
+
+                            // 1️⃣ Direct "message"
+                            if (obj.has("message")) {
+                                showTopRightToast(obj.getString("message"));
+                                return;
+                            }
+
+                            // 2️⃣ Validation errors[]
+                            if (obj.has("errors")) {
+                                JSONArray arr = obj.getJSONArray("errors");
+                                if (arr.length() > 0) {
+                                    String msg = arr.getJSONObject(0)
+                                            .optString("message", "Invalid Credentials!");
+                                    showTopRightToast(msg);
+                                    return;
+                                }
+                            }
                         }
+
+                        showTopRightToast("Invalid Credentials!");
 
                     } catch (Exception e) {
                         showTopRightToast("Invalid Credentials!");

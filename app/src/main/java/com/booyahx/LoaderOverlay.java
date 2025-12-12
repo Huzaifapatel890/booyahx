@@ -3,7 +3,6 @@ package com.booyahx;
 import android.app.Activity;
 import android.os.Build;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
@@ -12,45 +11,37 @@ import android.widget.ImageView;
 
 public class LoaderOverlay {
 
-    private static View blurTargetView = null;
-
     public static void show(Activity activity) {
 
         View loader = activity.findViewById(R.id.fullLoader);
-        if (loader == null) return;
+        View blurLayer = activity.findViewById(R.id.blurLayer);
 
-        ViewGroup root = activity.findViewById(android.R.id.content);
+        if (loader == null || blurLayer == null) return;
 
-        // Get child 0 - this is your activity content
-        if (root.getChildCount() > 0) {
-            blurTargetView = root.getChildAt(0);
-        }
+        // SHOW BLUR + DIM
+        blurLayer.setVisibility(View.VISIBLE);
+        blurLayer.setBackgroundColor(0xCC000000); // <-- 80% black dim layer
 
-        // Blur ONLY the background content
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (blurTargetView != null) {
-                blurTargetView.setRenderEffect(
-                        android.graphics.RenderEffect.createBlurEffect(
-                                25f, 25f,
-                                android.graphics.Shader.TileMode.CLAMP
-                        )
-                );
-            }
+            blurLayer.setRenderEffect(
+                    android.graphics.RenderEffect.createBlurEffect(
+                            28f, 28f,
+                            android.graphics.Shader.TileMode.CLAMP
+                    )
+            );
         } else {
-            // Older devices - just dim
-            if (blurTargetView != null) {
-                blurTargetView.setAlpha(0.5f);
-            }
+            blurLayer.setAlpha(0.5f); // fallback dim for old devices
         }
 
-        // Show loader
+        // SHOW LOADER ABOVE EVERYTHING
         loader.setVisibility(View.VISIBLE);
         loader.bringToFront();
+        loader.setClickable(true);
 
         ImageView ring = loader.findViewById(R.id.loaderRing);
         ImageView glow = loader.findViewById(R.id.loaderGlow);
 
-        // Rotate animation
+        // ROTATE RING
         RotateAnimation rotate = new RotateAnimation(
                 0, 360,
                 Animation.RELATIVE_TO_SELF, 0.5f,
@@ -61,7 +52,7 @@ public class LoaderOverlay {
         rotate.setInterpolator(new LinearInterpolator());
         ring.startAnimation(rotate);
 
-        // Glow pulse
+        // GLOW PULSE
         ScaleAnimation pulse = new ScaleAnimation(
                 1f, 1.25f,
                 1f, 1.25f,
@@ -74,25 +65,27 @@ public class LoaderOverlay {
         glow.startAnimation(pulse);
     }
 
+
     public static void hide(Activity activity) {
 
         View loader = activity.findViewById(R.id.fullLoader);
-        if (loader == null) return;
+        View blurLayer = activity.findViewById(R.id.blurLayer);
+
+        if (loader == null || blurLayer == null) return;
+
+        loader.setVisibility(View.GONE);
 
         ImageView ring = loader.findViewById(R.id.loaderRing);
         ImageView glow = loader.findViewById(R.id.loaderGlow);
-
-        loader.setVisibility(View.GONE);
         ring.clearAnimation();
         glow.clearAnimation();
 
-        // Remove blur
-        if (blurTargetView != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                blurTargetView.setRenderEffect(null);
-            } else {
-                blurTargetView.setAlpha(1f);
-            }
+        // REMOVE BLUR + DIM
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            blurLayer.setRenderEffect(null);
         }
+
+        blurLayer.setVisibility(View.GONE);
+        blurLayer.setAlpha(1f);
     }
 }
