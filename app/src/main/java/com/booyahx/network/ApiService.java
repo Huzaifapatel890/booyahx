@@ -2,7 +2,6 @@ package com.booyahx.network;
 
 import com.booyahx.network.models.*;
 
-import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -13,15 +12,15 @@ import retrofit2.http.PUT;
 
 public interface ApiService {
 
-    // 🟢 REGISTER (sends OTP to email)
+    // REGISTER
     @POST("/api/auth/register")
     Call<RegisterResponse> registerUser(@Body RegisterRequest request);
 
-    // 🟢 VERIFY OTP & set password
+    // VERIFY OTP
     @POST("/api/auth/verify-otp")
     Call<AuthResponse> verifyOtp(@Body VerifyOtpRequest request);
 
-    // 🟠 LOGIN
+    // LOGIN
     @POST("/api/auth/login")
     Call<AuthResponse> loginUser(@Body LoginRequest request);
 
@@ -42,8 +41,7 @@ public interface ApiService {
     @GET("/api/auth/csrf-token")
     Call<CsrfResponse> getCsrfToken();
 
-
-    // 🔥🔥 ADD THIS (CHANGE PASSWORD API)
+    // CHANGE PASSWORD
     @PUT("/api/auth/change-password")
     Call<SimpleResponse> changePassword(
             @Header("Authorization") String token,
@@ -51,4 +49,9 @@ public interface ApiService {
             @Body ChangePasswordRequest request
     );
 
+    // GET PROFILE
+    @GET("/api/profile")
+    Call<ProfileResponse> getProfile(
+            @Header("Authorization") String token
+    );
 }

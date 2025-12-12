@@ -12,6 +12,15 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.booyahx.R;
+import com.booyahx.TokenManager;
+import com.booyahx.LoaderOverlay;
+import com.booyahx.network.ApiClient;
+import com.booyahx.network.ApiService;
+import com.booyahx.network.models.ProfileResponse;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class EditProfileActivity extends AppCompatActivity {
 
@@ -22,6 +31,8 @@ public class EditProfileActivity extends AppCompatActivity {
 
     Spinner spinnerGender, spinnerPaymentMethod;
 
+    ApiService api;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -30,11 +41,15 @@ public class EditProfileActivity extends AppCompatActivity {
         if (getSupportActionBar() != null)
             getSupportActionBar().hide();
 
+        api = ApiClient.getClient(this).create(ApiService.class);
+
         initViews();
         setupGenderSpinner();
         setupPaymentMethodSpinner();
         setupAgeButtons();
         setupButtons();
+
+        loadProfile();   // ⭐ Load data from server
     }
 
     private void initViews() {
@@ -64,8 +79,62 @@ public class EditProfileActivity extends AppCompatActivity {
         btnBack.setOnClickListener(v -> finish());
     }
 
+    // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+    // ⭐ GET PROFILE & LOAD VALUES
+    // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+    private void loadProfile() {
+
+        LoaderOverlay.show(this);
+
+        String token = TokenManager.getAccessToken(this);
+
+        api.getProfile("Bearer " + token).enqueue(new Callback<ProfileResponse>() {
+            @Override
+            public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
+
+                LoaderOverlay.hide(EditProfileActivity.this);
+
+                if (response.isSuccessful() && response.body() != null && response.body().success) {
+
+                    ProfileResponse.Data d = response.body().data;
+
+                    etName.setText(d.name);
+                    etEmail.setText(d.email);
+                    etGameName.setText(d.IGN);
+                    etPhone.setText(d.phoneNumber);
+                    etUpiId.setText(d.paymentUPI);
+
+                    // ⭐ DEFAULT AGE HANDLING (18 if null/empty/0)
+                    int age = (d.age <= 0) ? 18 : d.age;
+                    etAge.setText(String.valueOf(age));
+
+                    etRole.setText("User");
+
+                    setSpinnerSelection(spinnerGender, d.gender);
+                    setSpinnerSelection(spinnerPaymentMethod, d.paymentMethod);
+
+                } else {
+                    showTopRightToast("Failed to load profile!");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ProfileResponse> call, Throwable t) {
+                LoaderOverlay.hide(EditProfileActivity.this);
+                showTopRightToast("Error loading profile!");
+            }
+        });
+    }
+
+    private void setSpinnerSelection(Spinner spinner, String value) {
+        ArrayAdapter adapter = (ArrayAdapter) spinner.getAdapter();
+        if (adapter == null) return;
+        int pos = adapter.getPosition(value);
+        if (pos >= 0) spinner.setSelection(pos);
+    }
+
     // ---------------------------------------------------------
-    // DEFAULT SPINNER ADAPTER (NO CUSTOM LAYOUTS)
+    // DEFAULT SPINNERS
     // ---------------------------------------------------------
     private void setupGenderSpinner() {
         String[] genders = {"Male", "Female", "Other", "Prefer not to say"};
@@ -164,22 +233,10 @@ public class EditProfileActivity extends AppCompatActivity {
             return false;
         }
 
-        // -------- PHONE VALIDATION --------
-        if (phone.isEmpty()) {
-            showTopRightToast("Phone number required");
+        if (phone.isEmpty() || phone.length() != 10 || !phone.matches("\\d{10}")) {
+            showTopRightToast("Invalid phone number");
             return false;
         }
-
-        if (phone.length() != 10) {
-            showTopRightToast("Phone number must be exactly 10 digits");
-            return false;
-        }
-
-        if (!phone.matches("\\d{10}")) {
-            showTopRightToast("Invalid phone number format");
-            return false;
-        }
-        // ----------------------------------
 
         if (upi.isEmpty()) {
             showTopRightToast("UPI ID required");
