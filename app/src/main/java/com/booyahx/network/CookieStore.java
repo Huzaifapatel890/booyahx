@@ -12,41 +12,39 @@ import okhttp3.HttpUrl;
 
 public class CookieStore implements CookieJar {
 
-    private final CookieManager cookieManager;
+    private static final CookieStore INSTANCE = new CookieStore();
+    private final CookieManager manager;
 
-    public CookieStore() {
-        cookieManager = new CookieManager();
-        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+    private CookieStore() {
+        manager = new CookieManager();
+        manager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+    }
+
+    public static CookieStore getInstance() {
+        return INSTANCE;
     }
 
     @Override
     public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-        for (Cookie cookie : cookies) {
-            try {
-                HttpCookie httpCookie = new HttpCookie(cookie.name(), cookie.value());
-                httpCookie.setPath(cookie.path());
-                httpCookie.setDomain(cookie.domain());
-                cookieManager.getCookieStore().add(url.uri(), httpCookie);
-            } catch (Exception ignored) {}
+        for (Cookie c : cookies) {
+            manager.getCookieStore()
+                    .add(url.uri(), new HttpCookie(c.name(), c.value()));
         }
     }
 
     @Override
     public List<Cookie> loadForRequest(HttpUrl url) {
-        List<HttpCookie> stored = cookieManager.getCookieStore().get(url.uri());
-        List<Cookie> cookies = new ArrayList<>();
+        List<HttpCookie> stored = manager.getCookieStore().get(url.uri());
+        List<Cookie> out = new ArrayList<>();
 
-        if (stored != null) {
-            for (HttpCookie httpCookie : stored) {
-                cookies.add(new Cookie.Builder()
-                        .name(httpCookie.getName())
-                        .value(httpCookie.getValue())
-                        .domain(url.host())
-                        .path("/")
-                        .build());
-            }
+        for (HttpCookie hc : stored) {
+            out.add(new Cookie.Builder()
+                    .name(hc.getName())
+                    .value(hc.getValue())
+                    .domain(url.host())
+                    .path("/")
+                    .build());
         }
-
-        return cookies;
+        return out;
     }
 }

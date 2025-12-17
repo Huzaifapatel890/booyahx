@@ -91,7 +91,7 @@ public class EditProfileActivity extends AppCompatActivity {
 
         String token = TokenManager.getAccessToken(this);
 
-        api.getProfile("Bearer " + token).enqueue(new Callback<ProfileResponse>() {
+        api.getProfile().enqueue(new Callback<ProfileResponse>() {
             @Override
             public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
 

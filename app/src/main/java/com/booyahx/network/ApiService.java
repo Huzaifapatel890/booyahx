@@ -52,10 +52,7 @@ public interface ApiService {
 
     // GET PROFILE
     @GET("/api/profile")
-    Call<ProfileResponse> getProfile(
-            @Header("Authorization") String token
-
-    );
+    Call<ProfileResponse> getProfile();
     @PUT("/api/profile")
     Call<SimpleResponse> updateProfile(
             @Header("Authorization") String token,
