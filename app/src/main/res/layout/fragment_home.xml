@@ -29,11 +29,11 @@
 
                 <ImageView
                     android:id="@+id/imgAvatar"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
+                    android:layout_width="70dp"
+                    android:layout_height="70dp"
                     android:scaleType="centerCrop"
                     android:src="@drawable/sample_avatar"
-                    android:contentDescription="User avatar"
+                    android:contentDescription=""
                     android:background="@drawable/neon_circle" />
             </RelativeLayout>
 
@@ -49,7 +49,7 @@
                     android:id="@+id/txtUsername"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Huzaifa VP7"
+                    android:text=""
                     android:textColor="#00C3FF"
                     android:textSize="18sp"
                     android:textStyle="bold" />
@@ -58,7 +58,7 @@
                     android:id="@+id/txtEmail"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="huzaifa@example.com"
+                    android:text=""
                     android:textColor="#78A8C7"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -75,7 +75,7 @@
                     android:id="@+id/txtWalletBalance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text=" 150.00 GC"
+                    android:text=""
                     android:textColor="#00FFB7"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -106,8 +106,8 @@
 
                 <ImageView
                     android:id="@+id/icBermuda"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:src="@drawable/img_bermuda"
                     android:scaleType="centerCrop"
                     android:contentDescription="bermuda mode" />
@@ -137,8 +137,8 @@
 
                 <ImageView
                     android:id="@+id/icClashSquad"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
                     android:src="@drawable/img_clash"
                     android:scaleType="centerCrop"
                     android:contentDescription="clash squad mode" />

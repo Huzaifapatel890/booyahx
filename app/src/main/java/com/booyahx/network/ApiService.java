@@ -65,4 +65,11 @@ public interface ApiService {
             @Query("limit") int limit,
             @Query("skip") int skip
     );
+    @GET("/api/tournament/list")
+    Call<TournamentResponse> getTournaments(
+            @Query("status") String status,
+            @Query("mode") String mode
+    );
+    @GET("/api/wallet/balance")
+    Call<WalletBalanceResponse> getWalletBalance();
 }

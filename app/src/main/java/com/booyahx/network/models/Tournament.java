@@ -1,44 +1,97 @@
 package com.booyahx.network.models;
 
+import com.google.gson.annotations.SerializedName;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 public class Tournament {
-    private String title;
-    private int expectedPP;      // Expected Prize Pool in GC
-    private int currentPP;       // Current Prize Pool in GC
-    private int entryFee;
-    private int currentSlots;
-    private int totalSlots;
-    private String dateTime;
+
+    @SerializedName("_id")
+    private String id;
+
+    @SerializedName("game")
+    private String game;
+
+    @SerializedName("mode")
     private String mode;
 
-    public Tournament(String title, int expectedPP, int currentPP, int entryFee,
-                      int currentSlots, int totalSlots, String dateTime, String mode) {
-        this.title = title;
-        this.expectedPP = expectedPP;
-        this.currentPP = currentPP;
-        this.entryFee = entryFee;
-        this.currentSlots = currentSlots;
-        this.totalSlots = totalSlots;
-        this.dateTime = dateTime;
-        this.mode = mode;
+    @SerializedName("subMode")
+    private String subMode;
+
+    @SerializedName("entryFee")
+    private int entryFee;
+
+    @SerializedName("maxPlayers")
+    private int maxPlayers;
+
+    @SerializedName("joinedCount")
+    private int joinedCount;
+
+    @SerializedName("prizePool")
+    private int prizePool;
+
+    @SerializedName("date")
+    private String date;
+
+    @SerializedName("startTime")
+    private String startTime;
+
+    @SerializedName("lobbyName")
+    private String lobbyName;
+
+    /* ================= DISPLAY HELPERS ================= */
+
+    public String getTitle() {
+        return lobbyName != null && !lobbyName.isEmpty()
+                ? lobbyName
+                : game + " " + subMode;
     }
 
-    // Getters
-    public String getTitle() { return title; }
-    public int getExpectedPP() { return expectedPP; }
-    public int getCurrentPP() { return currentPP; }
-    public int getEntryFee() { return entryFee; }
-    public int getCurrentSlots() { return currentSlots; }
-    public int getTotalSlots() { return totalSlots; }
-    public String getDateTime() { return dateTime; }
-    public String getMode() { return mode; }
+    // 🔥 WEBSITE LOGIC
+    public int getExpectedPP() {
+        return prizePool;
+    }
 
-    // Setters
-    public void setTitle(String title) { this.title = title; }
-    public void setExpectedPP(int expectedPP) { this.expectedPP = expectedPP; }
-    public void setCurrentPP(int currentPP) { this.currentPP = currentPP; }
-    public void setEntryFee(int entryFee) { this.entryFee = entryFee; }
-    public void setCurrentSlots(int currentSlots) { this.currentSlots = currentSlots; }
-    public void setTotalSlots(int totalSlots) { this.totalSlots = totalSlots; }
-    public void setDateTime(String dateTime) { this.dateTime = dateTime; }
-    public void setMode(String mode) { this.mode = mode; }
+    public int getCurrentPP() {
+        return joinedCount * entryFee;
+    }
+
+    /* ================= SLOT LOGIC ================= */
+
+    private int getPlayersPerTeam() {
+        if ("squad".equalsIgnoreCase(subMode)) return 4;
+        if ("duo".equalsIgnoreCase(subMode)) return 2;
+        return 1; // solo / 1v1
+    }
+
+    public int getTotalSlots() {
+        return maxPlayers / getPlayersPerTeam();
+    }
+
+    public int getUsedSlots() {
+        return joinedCount / getPlayersPerTeam();
+    }
+
+    public int getEntryFee() {
+        return entryFee;
+    }
+
+    public String getDisplayMode() {
+        return mode + " " + subMode;
+    }
+
+    public String getFormattedDateTime() {
+        try {
+            SimpleDateFormat api =
+                    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+            SimpleDateFormat ui =
+                    new SimpleDateFormat("dd MMM yyyy", Locale.US);
+
+            Date d = api.parse(date);
+            return ui.format(d) + " • " + startTime;
+        } catch (Exception e) {
+            return startTime;
+        }
+    }
 }
