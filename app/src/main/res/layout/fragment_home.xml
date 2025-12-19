@@ -70,18 +70,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content">
 
-                <ImageView
-                    android:id="@+id/icRupee"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_rupee"
-                    android:contentDescription="rupee icon" />
 
                 <TextView
                     android:id="@+id/txtWalletBalance"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text=" ₹150.00"
+                    android:text=" 150.00 GC"
                     android:textColor="#00FFB7"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -90,17 +84,17 @@
 
         </LinearLayout>
 
-        <!-- QUICK ACTIONS ROW -->
+        <!-- GAME MODE TABS -->
         <LinearLayout
-            android:id="@+id/quickActionsRow"
+            android:id="@+id/gameModeRow"
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="90dp"
             android:layout_marginTop="20dp">
 
-            <!-- Tournaments -->
+            <!-- Bermuda -->
             <LinearLayout
-                android:id="@+id/btnTournaments"
+                android:id="@+id/btnBermuda"
                 android:gravity="center"
                 android:orientation="vertical"
                 android:layout_weight="1"
@@ -111,25 +105,26 @@
                 android:layout_marginEnd="8dp">
 
                 <ImageView
-                    android:id="@+id/icTrophy"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_trophy"
-                    android:contentDescription="tournaments" />
+                    android:id="@+id/icBermuda"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/img_bermuda"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="bermuda mode" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Tournaments"
+                    android:text="Bermuda"
                     android:textColor="#00C3FF"
                     android:textStyle="bold"
                     android:textSize="12sp"
                     android:layout_marginTop="6dp" />
             </LinearLayout>
 
-            <!-- Participated -->
+            <!-- Clash Squad -->
             <LinearLayout
-                android:id="@+id/btnParticipated"
+                android:id="@+id/btnClashSquad"
                 android:gravity="center"
                 android:orientation="vertical"
                 android:layout_weight="1"
@@ -141,25 +136,26 @@
                 android:layout_marginEnd="3dp">
 
                 <ImageView
-                    android:id="@+id/icParticipated"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_participated"
-                    android:contentDescription="participated" />
+                    android:id="@+id/icClashSquad"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/img_clash"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="clash squad mode" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Participated"
+                    android:text="Clash Squad"
                     android:textColor="#00C3FF"
                     android:textStyle="bold"
                     android:textSize="12sp"
                     android:layout_marginTop="6dp" />
             </LinearLayout>
 
-            <!-- Wallet -->
+            <!-- Special -->
             <LinearLayout
-                android:id="@+id/btnWallet"
+                android:id="@+id/btnSpecial"
                 android:gravity="center"
                 android:orientation="vertical"
                 android:layout_weight="1"
@@ -170,16 +166,17 @@
                 android:layout_marginStart="8dp">
 
                 <ImageView
-                    android:id="@+id/icWallet"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:src="@drawable/ic_wallet"
-                    android:contentDescription="wallet" />
+                    android:id="@+id/icSpecial"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_trophy"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="special mode" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Wallet"
+                    android:text="Special"
                     android:textColor="#00C3FF"
                     android:textStyle="bold"
                     android:textSize="12sp"
@@ -198,74 +195,16 @@
             android:textStyle="bold"
             android:layout_marginTop="26dp" />
 
-        <!-- TOURNAMENT CARD (example) -->
+        <!-- DYNAMIC TOURNAMENT CONTAINER -->
         <LinearLayout
-            android:id="@+id/cardTournament1"
+            android:id="@+id/tournamentsContainer"
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="16dp"
-            android:background="@drawable/neon_card"
             android:layout_marginTop="12dp">
 
-            <TextView
-                android:id="@+id/txtT1Title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Free Fire Solo - ₹2000"
-                android:textColor="#00C3FF"
-                android:textStyle="bold"
-                android:textSize="15sp" />
+            <!-- Tournament cards will be added dynamically here -->
 
-            <TextView
-                android:id="@+id/txtT1Sub"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Entry ₹30 • Slots 32 / 100"
-                android:textColor="#88B8D9"
-                android:textSize="12sp"
-                android:layout_marginTop="4dp" />
-
-            <TextView
-                android:id="@+id/txtT1Time"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Today • 7:30 PM"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:layout_marginTop="6dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="10dp">
-
-                <TextView
-                    android:id="@+id/txtT1Mode"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Mode: SOLO"
-                    android:textColor="#88B8D9"
-                    android:textSize="11sp" />
-
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
-                <TextView
-                    android:id="@+id/btnT1Join"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:gravity="center"
-                    android:paddingLeft="20dp"
-                    android:paddingRight="20dp"
-                    android:text="Join"
-                    android:textColor="#00C3FF"
-                    android:textStyle="bold"
-                    android:background="@drawable/neon_button" />
-            </LinearLayout>
         </LinearLayout>
 
         <!-- Bottom spacing -->
@@ -273,4 +212,5 @@
             android:layout_width="match_parent"
             android:layout_height="20dp" />
     </LinearLayout>
+
 </ScrollView>
