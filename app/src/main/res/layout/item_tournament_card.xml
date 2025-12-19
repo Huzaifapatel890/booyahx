@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="16dp"
+    android:background="@drawable/neon_card"
+    android:layout_marginBottom="12dp">
+
+    <!-- Tournament Title -->
+    <TextView
+        android:id="@+id/txtT1Title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#00C3FF"
+        android:textStyle="bold"
+        android:textSize="15sp" />
+
+    <!-- Prize Pool Info Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <!-- Expected PP -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Expected PP: "
+                android:textColor="#88B8D9"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/txtExpectedPP"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#00FFB7"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Current PP -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Current: "
+                android:textColor="#88B8D9"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/txtCurrentPP"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FFA500"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Entry Fee and Slots -->
+    <TextView
+        android:id="@+id/txtT1Sub"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#88B8D9"
+        android:textSize="12sp"
+        android:layout_marginTop="4dp" />
+
+    <!-- Date and Time -->
+    <TextView
+        android:id="@+id/txtT1Time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:layout_marginTop="6dp" />
+
+    <!-- Mode and Join Button Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+
+        <TextView
+            android:id="@+id/txtT1Mode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#88B8D9"
+            android:textSize="11sp" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/btnT1Join"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:text="Join"
+            android:textColor="#00C3FF"
+            android:textStyle="bold"
+            android:background="@drawable/neon_button" />
+    </LinearLayout>
+</LinearLayout>

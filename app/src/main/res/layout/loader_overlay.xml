@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fullLoader"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Blur/Dimming Layer (separate + behind loader) -->
+    <View
+        android:id="@+id/blurLayer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:background="#00000000" />
+
+    <!-- Loader Content -->
+    <FrameLayout
+        android:layout_width="140dp"
+        android:layout_height="140dp"
+        android:layout_gravity="center">
+
+        <ImageView
+            android:id="@+id/loaderRing"
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:src="@drawable/neon_loader_ring"
+            android:scaleType="fitXY" />
+
+        <ImageView
+            android:id="@+id/loaderGlow"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_gravity="center"
+            android:src="@drawable/neon_loader_glow" />
+
+    </FrameLayout>
+
+</FrameLayout>

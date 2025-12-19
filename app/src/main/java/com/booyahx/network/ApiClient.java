@@ -11,59 +11,46 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
 
-    private static Retrofit retrofit = null;
-    private static Retrofit refreshRetrofit = null;
+    private static Retrofit api;
+    private static Retrofit refresh;
 
-    private static final String BASE_URL = "https://api.gaminghuballday.buzz";
+    private static final String BASE_URL =
+            "https://api.gaminghuballday.buzz";
 
-    // MAIN client — uses AuthInterceptor (automatically attaches tokens + handles refresh)
-    public static Retrofit getClient(Context context) {
+    public static Retrofit getClient(Context ctx) {
 
-        if (retrofit == null) {
+        if (api == null) {
 
-            // Logging interceptor
-            HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+            HttpLoggingInterceptor log = new HttpLoggingInterceptor();
+            log.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-            // Main client with AuthInterceptor
             OkHttpClient client = new OkHttpClient.Builder()
-                    .addInterceptor(new AuthInterceptor(context))   // 🔥 ADD THIS LINE
-                    .addInterceptor(logging)                        // logging AFTER auth
+                    .cookieJar(CookieStore.getInstance())
+                    .addInterceptor(new AuthInterceptor(ctx))
+                    .addInterceptor(new TokenRefreshInterceptor(ctx))
+                    .addInterceptor(log)
                     .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
                     .build();
 
-            retrofit = new Retrofit.Builder()
+            api = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
                     .client(client)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();
         }
-
-        return retrofit;
+        return api;
     }
 
-    // SECOND client — used ONLY for /refresh-token (NO AuthInterceptor allowed)
-    public static Retrofit getRefreshInstance() {
-
-        if (refreshRetrofit == null) {
-
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
-                    .build();
-
-            refreshRetrofit = new Retrofit.Builder()
+    public static Retrofit getRefreshClient() {
+        if (refresh == null) {
+            refresh = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
-                    .client(client)
+                    .client(new OkHttpClient.Builder()
+                            .cookieJar(CookieStore.getInstance())
+                            .build())
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();
         }
-
-        return refreshRetrofit;
+        return refresh;
     }
 }

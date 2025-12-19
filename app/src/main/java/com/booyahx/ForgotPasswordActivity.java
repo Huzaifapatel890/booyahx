@@ -25,6 +25,7 @@ import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ForgotPasswordRequest;
 import com.booyahx.network.models.ResetPasswordRequest;
 import com.booyahx.network.models.SimpleResponse;
+import com.booyahx.utils.CSRFHelper;
 
 import org.json.JSONObject;
 
@@ -83,8 +84,35 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             startLocalBlockCountdown(blockUntil - now);
         }
 
-        btnSendOtp.setOnClickListener(v -> sendOtp());
-        btnReset.setOnClickListener(v -> resetPassword());
+        // 🔥 APPLY CSRF BEFORE SENDING OTP
+        btnSendOtp.setOnClickListener(v -> {
+            CSRFHelper.fetchToken(ForgotPasswordActivity.this, new CSRFHelper.CSRFCallback() {
+                @Override
+                public void onSuccess(String token) {
+                    sendOtp();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    showTopRightToast("Security check failed. Try again.");
+                }
+            });
+        });
+
+        // 🔥 APPLY CSRF BEFORE RESET PASSWORD
+        btnReset.setOnClickListener(v -> {
+            CSRFHelper.fetchToken(ForgotPasswordActivity.this, new CSRFHelper.CSRFCallback() {
+                @Override
+                public void onSuccess(String token) {
+                    resetPassword();
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    showTopRightToast("Security check failed. Try again.");
+                }
+            });
+        });
     }
 
     private void initViews() {
@@ -108,9 +136,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         eyeConfirm = findViewById(R.id.eyeConfirm);
     }
 
-    // ------------------------------------------------------------
-    //  Custom Fade-in Top Right Toast
-    // ------------------------------------------------------------
     private void showTopRightToast(String message) {
         TextView tv = new TextView(this);
         tv.setText(message);
@@ -122,7 +147,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         Toast toast = new Toast(getApplicationContext());
         toast.setView(tv);
         toast.setDuration(Toast.LENGTH_SHORT);
-
         toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
 
         AlphaAnimation fade = new AlphaAnimation(0f, 1f);
@@ -133,20 +157,15 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     }
 
     // ------------------------------------------------------------
-    //  SEND OTP  (NOW SHOWS BACKEND MESSAGE)
+    // SEND OTP WITH LOADER
     // ------------------------------------------------------------
     private void sendOtp() {
-        long now = System.currentTimeMillis();
-        long blockUntil = getBlockUntilMillis();
-        if (blockUntil > now) {
-            long remainingSec = (blockUntil - now + 999) / 1000;
-            showTopRightToast("Try again in " + remainingSec + "s");
-            startLocalBlockCountdown(blockUntil - now);
-            return;
-        }
+
+        LoaderOverlay.show(this);
 
         String email = etForgotEmail.getText().toString().trim();
         if (email.isEmpty()) {
+            LoaderOverlay.hide(this);
             showTopRightToast("Enter email");
             return;
         }
@@ -156,12 +175,15 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
 
+                LoaderOverlay.hide(ForgotPasswordActivity.this);
+
                 if (response.isSuccessful() && response.body() != null) {
 
-                    showTopRightToast(response.body().getMessage()); // BACKEND MESSAGE
+                    showTopRightToast(response.body().getMessage());
 
                     if (response.body().isSuccess()) {
                         otpSent = true;
+
                         otpContainer.setVisibility(View.VISIBLE);
                         passwordContainer.setVisibility(View.VISIBLE);
                         btnReset.setVisibility(View.VISIBLE);
@@ -173,32 +195,33 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                     return;
                 }
 
-                // 🔥 Extract backend error message
                 try {
                     if (response.errorBody() != null) {
-                        String error = response.errorBody().string();
-                        JSONObject obj = new JSONObject(error);
-                        String msg = obj.optString("message", "Failed");
-                        showTopRightToast(msg);
+                        JSONObject obj = new JSONObject(response.errorBody().string());
+                        showTopRightToast(obj.optString("message"));
                     }
                 } catch (Exception ignored) {
-                    showTopRightToast("Failed");
+                    showTopRightToast("Error");
                 }
             }
 
             @Override
             public void onFailure(Call<SimpleResponse> call, Throwable t) {
+                LoaderOverlay.hide(ForgotPasswordActivity.this);
                 showTopRightToast(t.getMessage());
             }
         });
     }
 
     // ------------------------------------------------------------
-    //  RESET PASSWORD (NOW SHOWS BACKEND MESSAGE)
+    // RESET PASSWORD WITH LOADER
     // ------------------------------------------------------------
     private void resetPassword() {
 
+        LoaderOverlay.show(this);
+
         if (!otpSent) {
+            LoaderOverlay.hide(this);
             showTopRightToast("Send OTP first");
             return;
         }
@@ -211,12 +234,14 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 otp6.getText().toString();
 
         if (otp.length() != 6) {
+            LoaderOverlay.hide(this);
             showTopRightToast("Enter full OTP");
             return;
         }
 
         String newPass = etNewPassword.getText().toString().trim();
         if (newPass.length() < 8) {
+            LoaderOverlay.hide(this);
             showTopRightToast("Password must be 8+ characters");
             return;
         }
@@ -232,9 +257,11 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
 
+                LoaderOverlay.hide(ForgotPasswordActivity.this);
+
                 if (response.isSuccessful() && response.body() != null) {
 
-                    showTopRightToast(response.body().getMessage()); // backend message
+                    showTopRightToast(response.body().getMessage());
 
                     if (response.body().isSuccess()) {
                         startActivity(new Intent(ForgotPasswordActivity.this, LoginUsernameActivity.class));
@@ -246,8 +273,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 try {
                     if (response.errorBody() != null) {
                         JSONObject obj = new JSONObject(response.errorBody().string());
-                        String msg = obj.optString("message", "Invalid request");
-                        showTopRightToast(msg);
+                        showTopRightToast(obj.optString("message"));
                     }
                 } catch (Exception e) {
                     showTopRightToast("Failed");
@@ -256,13 +282,14 @@ public class ForgotPasswordActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<SimpleResponse> call, Throwable t) {
+                LoaderOverlay.hide(ForgotPasswordActivity.this);
                 showTopRightToast(t.getMessage());
             }
         });
     }
 
     // ------------------------------------------------------------
-    //  OTP TIMER
+    // OTP TIMER + HELPERS
     // ------------------------------------------------------------
     private void startOtpCountdown() {
         btnSendOtp.setEnabled(false);
@@ -287,14 +314,18 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         EditText[] boxes = {otp1, otp2, otp3, otp4, otp5, otp6};
 
         for (int i = 0; i < boxes.length; i++) {
-            final int index = i;
+            int index = i;
+
             boxes[i].addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
                 @Override public void afterTextChanged(Editable s) {}
+
                 @Override
                 public void onTextChanged(CharSequence s, int start, int before, int count) {
+
                     if (s.length() == 1 && index < boxes.length - 1)
                         boxes[index + 1].requestFocus();
+
                     else if (s.length() == 0 && index > 0)
                         boxes[index - 1].requestFocus();
                 }
@@ -303,30 +334,26 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     }
 
     private void clearOtpBoxes() {
-        otp1.setText("");
-        otp2.setText("");
-        otp3.setText("");
-        otp4.setText("");
-        otp5.setText("");
-        otp6.setText("");
+        otp1.setText(""); otp2.setText(""); otp3.setText("");
+        otp4.setText(""); otp5.setText(""); otp6.setText("");
         otp1.requestFocus();
     }
 
     private void setupEyeButtons() {
         eyeNew.setOnClickListener(v -> {
             showPassNew = !showPassNew;
+
             if (showPassNew) {
                 etNewPassword.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-                eyeNew.setImageDrawable(ContextCompat.getDrawable(ForgotPasswordActivity.this, R.drawable.ic_eye_on));
+                eyeNew.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_eye_on));
+
             } else {
                 etNewPassword.setTransformationMethod(PasswordTransformationMethod.getInstance());
-                eyeNew.setImageDrawable(ContextCompat.getDrawable(ForgotPasswordActivity.this, R.drawable.ic_eye_off));
+                eyeNew.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_eye_off));
             }
+
             etNewPassword.setSelection(etNewPassword.getText().length());
         });
-
-        eyeConfirm.setVisibility(View.GONE);
-        etConfirmPassword.setVisibility(View.GONE);
     }
 
     private void hideConfirmPasswordRow() {
@@ -339,11 +366,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
     private long getBlockUntilMillis() {
         SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         return prefs.getLong(KEY_OTP_BLOCK_UNTIL, 0L);
-    }
-
-    private void setBlockUntilMillis(long millis) {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        prefs.edit().putLong(KEY_OTP_BLOCK_UNTIL, millis).apply();
     }
 
     private void startLocalBlockCountdown(long millis) {
@@ -363,11 +385,7 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             public void onFinish() {
                 btnSendOtp.setEnabled(true);
                 btnSendOtp.setText("Send OTP");
-                setBlockUntilMillis(0L);
             }
         }.start();
     }
-
-    private void startLoading(TextView btn) {}
-    private void stopLoading(TextView btn, String label) {}
 }

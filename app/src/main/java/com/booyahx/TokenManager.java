@@ -15,17 +15,22 @@ public class TokenManager {
     }
 
     public static String getAccessToken(Context ctx) {
-        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("access", null);
+        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .getString("access", null);
     }
 
     public static String getRefreshToken(Context ctx) {
-        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getString("refresh", null);
+        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .getString("refresh", null);
     }
 
-    // 🔥 NEW — LOGOUT FUNCTION
-    public static void logout(Context ctx) {
+    public static void clearTokens(Context ctx) {
         SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
-        editor.clear(); // clears access + refresh
+        editor.clear();
         editor.apply();
+    }
+
+    public static void logout(Context ctx) {
+        clearTokens(ctx);
     }
 }

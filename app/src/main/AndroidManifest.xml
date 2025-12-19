@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.booyahx">
 
@@ -43,15 +43,30 @@
             android:name="com.booyahx.ForgotPasswordActivity"
             android:exported="false" />
 
-        <!-- 🌟 ADD THIS (missing earlier, causes crash) -->
-        <activity
+        <!-- ❌ REMOVE THIS LINE - SettingsActivity no longer exists -->
+        <!-- <activity
             android:name="com.booyahx.SettingsActivity"
-            android:exported="false" />
-
+            android:exported="false" /> -->
+        <activity
+            android:name=".settings.AboutActivity$AboutUsActivity"
+            android:parentActivityName=".DashboardActivity"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
+        <activity
+            android:name=".settings.ChangePasswordActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
+        <!-- MAIN DASHBOARD (now contains all fragments) -->
         <activity
             android:name="com.booyahx.DashboardActivity"
             android:exported="true" />
-
+        <activity
+            android:name=".settings.EditProfileActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
+        <activity
+            android:name=".settings.WinningHistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
     </application>
 
 </manifest>

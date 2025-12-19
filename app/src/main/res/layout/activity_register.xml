@@ -1,211 +1,219 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:background="@drawable/bg_dark_gradient">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <!-- TITLE -->
-        <TextView
-            android:id="@+id/txtTitle"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Create Account"
-            android:textColor="#00C3FF"
-            android:textSize="32sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginTop="40dp" />
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:background="@drawable/bg_dark_gradient">
 
-        <TextView
-            android:id="@+id/txtSubtitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Register with your details"
-            android:textColor="#A0CAD8"
-            android:textSize="16sp"
-            android:gravity="center"
-            android:layout_marginTop="8dp" />
-
-        <!-- USERNAME -->
-        <EditText
-            android:id="@+id/etRegUsername"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="30dp"
-            android:hint="Username"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#7FA9C1"
-            android:background="@drawable/btn_neon_blue"
-            android:padding="16dp" />
-
-        <!-- EMAIL -->
-        <EditText
-            android:id="@+id/etRegEmail"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="16dp"
-            android:hint="Email"
-            android:inputType="textEmailAddress"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#7FA9C1"
-            android:background="@drawable/btn_neon_blue"
-            android:padding="16dp" />
-
-        <!-- SEND OTP BUTTON -->
-        <RelativeLayout
-            android:id="@+id/btnSendOtp"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:background="@drawable/btn_neon_blue"
-            android:gravity="center"
-            android:layout_marginTop="20dp">
+            <!-- TITLE -->
+            <TextView
+                android:id="@+id/txtTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Create Account"
+                android:textColor="#00C3FF"
+                android:textSize="32sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginTop="40dp" />
 
             <TextView
-                android:id="@+id/txtSendOtp"
+                android:id="@+id/txtSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Register with your details"
+                android:textColor="#A0CAD8"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:layout_marginTop="8dp" />
+
+            <!-- USERNAME -->
+            <EditText
+                android:id="@+id/etRegUsername"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="30dp"
+                android:hint="Username"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#7FA9C1"
+                android:background="@drawable/btn_neon_blue"
+                android:padding="16dp" />
+
+            <!-- EMAIL -->
+            <EditText
+                android:id="@+id/etRegEmail"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="16dp"
+                android:hint="Email"
+                android:inputType="textEmailAddress"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#7FA9C1"
+                android:background="@drawable/btn_neon_blue"
+                android:padding="16dp" />
+
+            <!-- SEND OTP BUTTON -->
+            <RelativeLayout
+                android:id="@+id/btnSendOtp"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/btn_neon_blue"
+                android:gravity="center"
+                android:layout_marginTop="20dp">
+
+                <TextView
+                    android:id="@+id/txtSendOtp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Send OTP"
+                    android:textColor="#00C3FF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+            </RelativeLayout>
+
+            <!-- OTP BOXES -->
+            <LinearLayout
+                android:id="@+id/otpContainer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Send OTP"
-                android:textColor="#00C3FF"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:layout_marginTop="20dp"
+                android:visibility="gone">
 
+                <EditText
+                    android:id="@+id/otp1"
+                    android:layout_width="40dp"
+                    android:layout_height="56dp"
+                    android:background="@drawable/btn_neon_blue"
+                    android:inputType="number"
+                    android:maxLength="1"
+                    android:gravity="center"
+                    android:textColor="#00C3FF"
+                    android:textSize="20sp" />
 
-        </RelativeLayout>
+                <EditText
+                    android:id="@+id/otp2"
+                    android:layout_width="40dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/btn_neon_blue"
+                    android:inputType="number"
+                    android:maxLength="1"
+                    android:gravity="center"
+                    android:textColor="#00C3FF"
+                    android:textSize="20sp" />
 
-        <!-- OTP BOXES -->
-        <LinearLayout
-            android:id="@+id/otpContainer"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_gravity="center"
-            android:layout_marginTop="20dp"
-            android:visibility="gone">
+                <EditText
+                    android:id="@+id/otp3"
+                    android:layout_width="40dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/btn_neon_blue"
+                    android:inputType="number"
+                    android:maxLength="1"
+                    android:gravity="center"
+                    android:textColor="#00C3FF"
+                    android:textSize="20sp" />
 
+                <EditText
+                    android:id="@+id/otp4"
+                    android:layout_width="40dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/btn_neon_blue"
+                    android:inputType="number"
+                    android:maxLength="1"
+                    android:gravity="center"
+                    android:textColor="#00C3FF"
+                    android:textSize="20sp" />
+
+                <EditText
+                    android:id="@+id/otp5"
+                    android:layout_width="40dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/btn_neon_blue"
+                    android:inputType="number"
+                    android:maxLength="1"
+                    android:gravity="center"
+                    android:textColor="#00C3FF"
+                    android:textSize="20sp" />
+
+                <EditText
+                    android:id="@+id/otp6"
+                    android:layout_width="40dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/btn_neon_blue"
+                    android:inputType="number"
+                    android:maxLength="1"
+                    android:gravity="center"
+                    android:textColor="#00C3FF"
+                    android:textSize="20sp" />
+
+            </LinearLayout>
+
+            <!-- PASSWORD -->
             <EditText
-                android:id="@+id/otp1"
-                android:layout_width="40dp"
+                android:id="@+id/etRegPassword"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="24dp"
+                android:hint="Password"
+                android:inputType="textPassword"
+                android:background="@drawable/btn_neon_blue"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#7FA9C1"
+                android:padding="16dp" />
+
+            <!-- REGISTER BUTTON -->
+            <RelativeLayout
+                android:id="@+id/btnRegister"
+                android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:background="@drawable/btn_neon_blue"
-                android:inputType="number"
-                android:maxLength="1"
                 android:gravity="center"
-                android:textColor="#00C3FF"
-                android:textSize="20sp" />
+                android:layout_marginTop="24dp">
 
-            <EditText
-                android:id="@+id/otp2"
-                android:layout_width="40dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/btn_neon_blue"
-                android:inputType="number"
-                android:maxLength="1"
-                android:gravity="center"
-                android:textColor="#00C3FF"
-                android:textSize="20sp" />
+                <TextView
+                    android:id="@+id/txtRegister"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Register"
+                    android:textColor="#00C3FF"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-            <EditText
-                android:id="@+id/otp3"
-                android:layout_width="40dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/btn_neon_blue"
-                android:inputType="number"
-                android:maxLength="1"
-                android:gravity="center"
-                android:textColor="#00C3FF"
-                android:textSize="20sp" />
+            </RelativeLayout>
 
-            <EditText
-                android:id="@+id/otp4"
-                android:layout_width="40dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/btn_neon_blue"
-                android:inputType="number"
-                android:maxLength="1"
+            <TextView
+                android:id="@+id/txtGoLogin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
                 android:gravity="center"
-                android:textColor="#00C3FF"
-                android:textSize="20sp" />
-
-            <EditText
-                android:id="@+id/otp5"
-                android:layout_width="40dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/btn_neon_blue"
-                android:inputType="number"
-                android:maxLength="1"
-                android:gravity="center"
-                android:textColor="#00C3FF"
-                android:textSize="20sp" />
-
-            <EditText
-                android:id="@+id/otp6"
-                android:layout_width="40dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/btn_neon_blue"
-                android:inputType="number"
-                android:maxLength="1"
-                android:gravity="center"
-                android:textColor="#00C3FF"
-                android:textSize="20sp" />
+                android:text="Already have an account? Login"
+                android:textColor="#80CFFF"
+                android:textSize="16sp" />
 
         </LinearLayout>
 
-        <!-- PASSWORD -->
-        <EditText
-            android:id="@+id/etRegPassword"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="24dp"
-            android:hint="Password"
-            android:inputType="textPassword"
-            android:background="@drawable/btn_neon_blue"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#7FA9C1"
-            android:padding="16dp" />
+    </ScrollView>
 
-        <!-- REGISTER BUTTON -->
-        <RelativeLayout
-            android:id="@+id/btnRegister"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:background="@drawable/btn_neon_blue"
-            android:gravity="center"
-            android:layout_marginTop="24dp">
+    <!-- 🔵 FULLSCREEN LOADER -->
+    <include layout="@layout/loader_overlay"/>
 
-            <TextView
-                android:id="@+id/txtRegister"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Register"
-                android:textColor="#00C3FF"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-        </RelativeLayout>
-
-        <TextView
-            android:id="@+id/txtGoLogin"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:text="Already have an account? Login"
-            android:textColor="#80CFFF"
-            android:textSize="16sp" />
-
-    </LinearLayout>
-
-</ScrollView>
+</FrameLayout>
