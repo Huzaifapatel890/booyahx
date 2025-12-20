@@ -61,10 +61,10 @@ public interface ApiService {
     );
     @GET("/api/wallet/history")
     Call<WalletHistoryResponse> getWalletHistory(
-            @Header("Authorization") String token,
             @Query("limit") int limit,
             @Query("skip") int skip
     );
+
     @GET("/api/tournament/list")
     Call<TournamentResponse> getTournaments(
             @Query("status") String status,

@@ -4,6 +4,11 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
+import android.view.animation.ScaleAnimation;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -34,7 +39,9 @@ public class HomeFragment extends Fragment {
     private String currentMode = "BR"; // BR / CS / LW
     private ApiService api;
 
-    // 🔥 LOADER STATE (FIX)
+    // 🔥 FRAGMENT LOADER
+    private View fragmentLoader;
+    private ImageView loaderRing, loaderGlow;
     private int pendingCalls = 0;
 
     /* ================= LIFECYCLE ================= */
@@ -46,7 +53,6 @@ public class HomeFragment extends Fragment {
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState
     ) {
-        // ❌ DO NOT CALL APIs HERE
         return inflater.inflate(R.layout.fragment_home, container, false);
     }
 
@@ -65,6 +71,11 @@ public class HomeFragment extends Fragment {
         btnClashSquad = view.findViewById(R.id.btnClashSquad);
         btnSpecial = view.findViewById(R.id.btnSpecial);
 
+        // 🔥 FRAGMENT LOADER SETUP
+        fragmentLoader = view.findViewById(R.id.fragmentLoaderContainer);
+        loaderRing = view.findViewById(R.id.fragmentLoaderRing);
+        loaderGlow = view.findViewById(R.id.fragmentLoaderGlow);
+
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
         // Tabs
@@ -74,7 +85,6 @@ public class HomeFragment extends Fragment {
 
         updateButtonStates(currentMode);
 
-        // 🔥 CRITICAL: wait until view is ATTACHED to window
         view.post(() -> {
             loadProfile();
             loadWalletBalance();
@@ -85,8 +95,32 @@ public class HomeFragment extends Fragment {
     /* ================= LOADER CONTROL ================= */
 
     private void showLoader() {
-        if (pendingCalls == 0 && isAdded()) {
-            LoaderOverlay.show(requireActivity());
+        if (pendingCalls == 0 && isAdded() && fragmentLoader != null) {
+            fragmentLoader.setVisibility(View.VISIBLE);
+            fragmentLoader.bringToFront();
+
+            // ROTATE RING
+            RotateAnimation rotate = new RotateAnimation(
+                    0, 360,
+                    Animation.RELATIVE_TO_SELF, 0.5f,
+                    Animation.RELATIVE_TO_SELF, 0.5f
+            );
+            rotate.setDuration(900);
+            rotate.setRepeatCount(Animation.INFINITE);
+            rotate.setInterpolator(new LinearInterpolator());
+            loaderRing.startAnimation(rotate);
+
+            // GLOW PULSE
+            ScaleAnimation pulse = new ScaleAnimation(
+                    1f, 1.25f,
+                    1f, 1.25f,
+                    Animation.RELATIVE_TO_SELF, 0.5f,
+                    Animation.RELATIVE_TO_SELF, 0.5f
+            );
+            pulse.setDuration(850);
+            pulse.setRepeatCount(Animation.INFINITE);
+            pulse.setRepeatMode(Animation.REVERSE);
+            loaderGlow.startAnimation(pulse);
         }
         pendingCalls++;
     }
@@ -95,8 +129,10 @@ public class HomeFragment extends Fragment {
         pendingCalls--;
         if (pendingCalls <= 0) {
             pendingCalls = 0;
-            if (isAdded()) {
-                LoaderOverlay.hide(requireActivity());
+            if (isAdded() && fragmentLoader != null) {
+                fragmentLoader.setVisibility(View.GONE);
+                if (loaderRing != null) loaderRing.clearAnimation();
+                if (loaderGlow != null) loaderGlow.clearAnimation();
             }
         }
     }
@@ -221,6 +257,10 @@ public class HomeFragment extends Fragment {
         TextView txtTime = card.findViewById(R.id.txtT1Time);
         TextView txtMode = card.findViewById(R.id.txtT1Mode);
 
+        // 🔥 MAP ROTATION (NEW)
+        LinearLayout mapRotationContainer = card.findViewById(R.id.mapRotationContainer);
+        TextView txtMapRotation = card.findViewById(R.id.txtMapRotation);
+
         txtTitle.setText(t.getTitle());
 
         txtExpectedPP.setText(t.getExpectedPP() + " GC");
@@ -238,6 +278,15 @@ public class HomeFragment extends Fragment {
 
         txtTime.setText(t.getFormattedDateTime());
         txtMode.setText("Mode: " + t.getDisplayMode());
+
+        // 🔥 SHOW MAP ROTATION IF AVAILABLE
+        String mapRotation = t.getMapRotationShort();
+        if (mapRotation != null && !mapRotation.isEmpty()) {
+            mapRotationContainer.setVisibility(View.VISIBLE);
+            txtMapRotation.setText(mapRotation);
+        } else {
+            mapRotationContainer.setVisibility(View.GONE);
+        }
 
         return card;
     }

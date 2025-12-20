@@ -67,6 +67,7 @@
                 android:textStyle="bold"
                 android:textSize="12sp" />
         </LinearLayout>
+
     </LinearLayout>
 
     <!-- Entry Fee and Slots -->
@@ -87,25 +88,66 @@
         android:textSize="12sp"
         android:layout_marginTop="6dp" />
 
-    <!-- Mode and Join Button Row -->
+    <!-- 🔥 MAP ROTATION -->
+    <LinearLayout
+        android:id="@+id/mapRotationContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Map Rotation: "
+            android:textColor="#88B8D9"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/txtMapRotation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#00FF00"
+            android:textStyle="bold"
+            android:textSize="11sp"
+            android:shadowColor="#00FF00"
+            android:shadowRadius="8"
+            android:shadowDx="0"
+            android:shadowDy="0" />
+    </LinearLayout>
+
+    <!-- Mode, Rules and Join Button Row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:layout_marginTop="10dp">
 
         <TextView
             android:id="@+id/txtT1Mode"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:textColor="#88B8D9"
             android:textSize="11sp" />
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+        <!-- 🔥 RULES BUTTON -->
+        <TextView
+            android:id="@+id/btnT1Rules"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:paddingLeft="18dp"
+            android:paddingRight="18dp"
+            android:text="Rules"
+            android:textColor="#FFA500"
+            android:textStyle="bold"
+            android:background="@drawable/neon_button"
+            android:layout_marginEnd="8dp" />
 
+        <!-- JOIN BUTTON -->
         <TextView
             android:id="@+id/btnT1Join"
             android:layout_width="wrap_content"
@@ -117,5 +159,7 @@
             android:textColor="#00C3FF"
             android:textStyle="bold"
             android:background="@drawable/neon_button" />
+
     </LinearLayout>
+
 </LinearLayout>

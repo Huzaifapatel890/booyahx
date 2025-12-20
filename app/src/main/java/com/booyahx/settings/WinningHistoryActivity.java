@@ -1,6 +1,7 @@
 package com.booyahx.settings;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.animation.AlphaAnimation;
 import android.widget.TextView;
@@ -11,7 +12,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.booyahx.LoaderOverlay;
 import com.booyahx.R;
-import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.WalletHistoryResponse;
@@ -32,6 +32,8 @@ public class WinningHistoryActivity extends AppCompatActivity {
     List<WinningHistoryItem> list = new ArrayList<>();
     ApiService api;
 
+    boolean isLoading = false; // 🔒 prevent duplicate calls
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,51 +51,65 @@ public class WinningHistoryActivity extends AppCompatActivity {
     }
 
     // --------------------------------------------------------------------
-    // ⭐ LOAD WINNING HISTORY FROM API (/api/wallet/history)
+    // LOAD WALLET / WINNING HISTORY
     // --------------------------------------------------------------------
     private void loadWinningHistory() {
 
+        if (isLoading) return;
+        isLoading = true;
+
         LoaderOverlay.show(this);
 
-        String token = TokenManager.getAccessToken(this);
+        // ❌ NO MANUAL TOKEN HERE
+        api.getWalletHistory(50, 0).enqueue(new Callback<WalletHistoryResponse>() {
 
-        api.getWalletHistory("Bearer " + token, 50, 0).enqueue(new Callback<WalletHistoryResponse>() {
             @Override
-            public void onResponse(Call<WalletHistoryResponse> call, Response<WalletHistoryResponse> response) {
+            public void onResponse(Call<WalletHistoryResponse> call,
+                                   Response<WalletHistoryResponse> response) {
 
+                isLoading = false;
                 LoaderOverlay.hide(WinningHistoryActivity.this);
 
-                if (response.isSuccessful() && response.body() != null && response.body().success) {
+                Log.d("WIN_HISTORY", "onResponse called");
 
-                    List<WalletHistoryResponse.HistoryItem> apiList = response.body().data.history;
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().success
+                        && response.body().data != null
+                        && response.body().data.history != null) {
+
+                    List<WalletHistoryResponse.HistoryItem> apiList =
+                            response.body().data.history;
+
+                    Log.d("WIN_HISTORY", "Items = " + apiList.size());
 
                     list.clear();
 
                     for (WalletHistoryResponse.HistoryItem h : apiList) {
-
-                        // Only show entries where "type = won" or GC added?
                         WinningHistoryItem item = new WinningHistoryItem();
                         item.amountGC = h.amountGC;
                         item.description = h.description;
                         item.date = formatDate(h.timestamp);
-
                         list.add(item);
                     }
 
                     adapter.notifyDataSetChanged();
 
                 } else {
-                    if (response.body() != null && response.body().message != null)
-                        showTopRightToast(response.body().message);
-                    else
-                        showTopRightToast("Failed to load history!");
+                    showTopRightToast("No history found");
                 }
             }
 
             @Override
             public void onFailure(Call<WalletHistoryResponse> call, Throwable t) {
+
+                isLoading = false;
                 LoaderOverlay.hide(WinningHistoryActivity.this);
-                showTopRightToast("Network error loading history");
+
+                // 🚫 Don't lie to user
+                Log.e("WIN_HISTORY", "Request failed", t);
+
+                showTopRightToast("Something went wrong. Try again.");
             }
         });
     }
@@ -103,10 +119,12 @@ public class WinningHistoryActivity extends AppCompatActivity {
     // --------------------------------------------------------------------
     private String formatDate(String isoDate) {
         try {
-            SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+            SimpleDateFormat iso =
+                    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
             Date date = iso.parse(isoDate);
 
-            SimpleDateFormat out = new SimpleDateFormat("dd MMM yyyy • hh:mm a");
+            SimpleDateFormat out =
+                    new SimpleDateFormat("dd MMM yyyy • hh:mm a");
             return out.format(date);
 
         } catch (Exception e) {

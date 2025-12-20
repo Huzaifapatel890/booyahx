@@ -22,6 +22,6 @@ public class WalletHistoryResponse {
         public double amountGC;
         public String description;
         public String timestamp;
-        public String tournamentId;
+        public Object tournamentId;
     }
 }

@@ -3,6 +3,7 @@ package com.booyahx.network.models;
 import com.google.gson.annotations.SerializedName;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 public class Tournament {
@@ -39,6 +40,9 @@ public class Tournament {
 
     @SerializedName("lobbyName")
     private String lobbyName;
+
+    @SerializedName("rules")
+    private TournamentRules rules;
 
     /* ================= DISPLAY HELPERS ================= */
 
@@ -93,5 +97,44 @@ public class Tournament {
         } catch (Exception e) {
             return startTime;
         }
+    }
+
+    /* ================= MAP ROTATION ================= */
+
+    public String getMapRotationShort() {
+        if (rules == null || rules.mapRotation == null || rules.mapRotation.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder rotation = new StringBuilder();
+        for (int i = 0; i < rules.mapRotation.size(); i++) {
+            String map = rules.mapRotation.get(i);
+            rotation.append(getMapInitial(map));
+            if (i < rules.mapRotation.size() - 1) {
+                rotation.append("/");
+            }
+        }
+        return rotation.toString();
+    }
+
+    private String getMapInitial(String mapName) {
+        if (mapName == null) return "";
+
+        String lower = mapName.toLowerCase();
+        if (lower.contains("bermuda")) return "B";
+        if (lower.contains("purgatory")) return "P";
+        if (lower.contains("alpine")) return "A";
+        if (lower.contains("nexterra")) return "N";
+        if (lower.contains("kalahari")) return "K";
+        if (lower.contains("solarag")) return "S";
+
+        return mapName.substring(0, 1).toUpperCase();
+    }
+
+    /* ================= INNER CLASS FOR RULES ================= */
+
+    public static class TournamentRules {
+        @SerializedName("mapRotation")
+        public List<String> mapRotation;
     }
 }
