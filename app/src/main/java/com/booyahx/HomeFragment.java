@@ -34,6 +34,11 @@ public class HomeFragment extends Fragment {
     private String currentMode = "BR"; // BR / CS / LW
     private ApiService api;
 
+    // 🔥 LOADER STATE (FIX)
+    private int pendingCalls = 0;
+
+    /* ================= LIFECYCLE ================= */
+
     @Nullable
     @Override
     public View onCreateView(
@@ -41,8 +46,13 @@ public class HomeFragment extends Fragment {
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState
     ) {
+        // ❌ DO NOT CALL APIs HERE
+        return inflater.inflate(R.layout.fragment_home, container, false);
+    }
 
-        View view = inflater.inflate(R.layout.fragment_home, container, false);
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
 
         // Profile views
         txtUsername = view.findViewById(R.id.txtUsername);
@@ -62,24 +72,48 @@ public class HomeFragment extends Fragment {
         btnClashSquad.setOnClickListener(v -> switchMode("CS"));
         btnSpecial.setOnClickListener(v -> switchMode("LW"));
 
-        // Initial load
         updateButtonStates(currentMode);
-        loadProfile();
-        loadWalletBalance();
-        loadTournaments();
 
-        return view;
+        // 🔥 CRITICAL: wait until view is ATTACHED to window
+        view.post(() -> {
+            loadProfile();
+            loadWalletBalance();
+            loadTournaments();
+        });
+    }
+
+    /* ================= LOADER CONTROL ================= */
+
+    private void showLoader() {
+        if (pendingCalls == 0 && isAdded()) {
+            LoaderOverlay.show(requireActivity());
+        }
+        pendingCalls++;
+    }
+
+    private void hideLoader() {
+        pendingCalls--;
+        if (pendingCalls <= 0) {
+            pendingCalls = 0;
+            if (isAdded()) {
+                LoaderOverlay.hide(requireActivity());
+            }
+        }
     }
 
     /* ================= PROFILE ================= */
 
     private void loadProfile() {
+        showLoader();
+
         api.getProfile().enqueue(new Callback<ProfileResponse>() {
             @Override
             public void onResponse(
                     Call<ProfileResponse> call,
                     Response<ProfileResponse> response
             ) {
+                hideLoader();
+
                 if (response.isSuccessful()
                         && response.body() != null
                         && response.body().data != null) {
@@ -91,18 +125,22 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onFailure(Call<ProfileResponse> call, Throwable t) {
-                // keep existing UI
+                hideLoader();
             }
         });
     }
 
     private void loadWalletBalance() {
+        showLoader();
+
         api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
             @Override
             public void onResponse(
                     Call<WalletBalanceResponse> call,
                     Response<WalletBalanceResponse> response
             ) {
+                hideLoader();
+
                 if (response.isSuccessful()
                         && response.body() != null
                         && response.body().data != null) {
@@ -115,7 +153,7 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onFailure(Call<WalletBalanceResponse> call, Throwable t) {
-                // silent fail
+                hideLoader();
             }
         });
     }
@@ -142,6 +180,7 @@ public class HomeFragment extends Fragment {
 
     private void loadTournaments() {
         tournamentsContainer.removeAllViews();
+        showLoader();
 
         api.getTournaments("upcoming", currentMode)
                 .enqueue(new Callback<TournamentResponse>() {
@@ -150,6 +189,8 @@ public class HomeFragment extends Fragment {
                             Call<TournamentResponse> call,
                             Response<TournamentResponse> response
                     ) {
+                        hideLoader();
+
                         if (response.isSuccessful()
                                 && response.body() != null
                                 && response.body().data != null
@@ -163,7 +204,7 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onFailure(Call<TournamentResponse> call, Throwable t) {
-                        // showTopRightToast("Failed to load tournaments");
+                        hideLoader();
                     }
                 });
     }
@@ -182,7 +223,6 @@ public class HomeFragment extends Fragment {
 
         txtTitle.setText(t.getTitle());
 
-        // Numbers only (labels already in XML)
         txtExpectedPP.setText(t.getExpectedPP() + " GC");
         txtCurrentPP.setText(
                 "(" + t.getCurrentPP() + "/" + t.getExpectedPP() + ") GC"

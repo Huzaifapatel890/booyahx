@@ -206,7 +206,7 @@
             <!-- Tournament cards will be added dynamically here -->
 
         </LinearLayout>
-
+        <include layout="@layout/loader_fragment"/>
         <!-- Bottom spacing -->
         <View
             android:layout_width="match_parent"

@@ -3,6 +3,7 @@ package com.booyahx;
 import android.app.Activity;
 import android.os.Build;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
@@ -10,6 +11,9 @@ import android.view.animation.ScaleAnimation;
 import android.widget.ImageView;
 
 public class LoaderOverlay {
+
+    private static View fragmentLoaderView;
+    private static View fragmentBlurView;
 
     public static void show(Activity activity) {
 
@@ -87,5 +91,22 @@ public class LoaderOverlay {
 
         blurLayer.setVisibility(View.GONE);
         blurLayer.setAlpha(1f);
+    }
+
+    // 🔥 NEW METHODS FOR FRAGMENT USAGE
+    public static void showInView(ViewGroup decorView) {
+        // 🔥 The key fix: Find the Activity from decorView context
+        Activity activity = (Activity) decorView.getContext();
+
+        // Now use the regular show() method which works correctly
+        show(activity);
+    }
+
+    public static void hideFromView(ViewGroup decorView) {
+        // 🔥 The key fix: Find the Activity from decorView context
+        Activity activity = (Activity) decorView.getContext();
+
+        // Now use the regular hide() method which works correctly
+        hide(activity);
     }
 }

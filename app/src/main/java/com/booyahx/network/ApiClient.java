@@ -29,7 +29,12 @@ public class ApiClient {
                     .addInterceptor(new AuthInterceptor(ctx))
                     .addInterceptor(new TokenRefreshInterceptor(ctx))
                     .addInterceptor(log)
+
+                    // 🔥 FIX: ALL TIMEOUTS
                     .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS)
+
                     .build();
 
             api = new Retrofit.Builder()
@@ -42,12 +47,19 @@ public class ApiClient {
     }
 
     public static Retrofit getRefreshClient() {
+
         if (refresh == null) {
+
+            OkHttpClient refreshClient = new OkHttpClient.Builder()
+                    .cookieJar(CookieStore.getInstance())
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS)
+                    .build();
+
             refresh = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
-                    .client(new OkHttpClient.Builder()
-                            .cookieJar(CookieStore.getInstance())
-                            .build())
+                    .client(refreshClient)
                     .addConverterFactory(GsonConverterFactory.create())
                     .build();
         }
