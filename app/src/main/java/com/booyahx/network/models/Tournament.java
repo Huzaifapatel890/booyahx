@@ -1,12 +1,17 @@
 package com.booyahx.network.models;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import com.google.gson.annotations.SerializedName;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-public class Tournament {
+public class Tournament implements Parcelable {
 
     @SerializedName("_id")
     private String id;
@@ -44,6 +49,16 @@ public class Tournament {
     @SerializedName("rules")
     private TournamentRules rules;
 
+    /* ================= GETTERS ================= */
+
+    public TournamentRules getRules() {
+        return rules;
+    }
+
+    public int getEntryFee() {
+        return entryFee;
+    }
+
     /* ================= DISPLAY HELPERS ================= */
 
     public String getTitle() {
@@ -52,7 +67,6 @@ public class Tournament {
                 : game + " " + subMode;
     }
 
-    // 🔥 WEBSITE LOGIC
     public int getExpectedPP() {
         return prizePool;
     }
@@ -66,7 +80,7 @@ public class Tournament {
     private int getPlayersPerTeam() {
         if ("squad".equalsIgnoreCase(subMode)) return 4;
         if ("duo".equalsIgnoreCase(subMode)) return 2;
-        return 1; // solo / 1v1
+        return 1;
     }
 
     public int getTotalSlots() {
@@ -75,10 +89,6 @@ public class Tournament {
 
     public int getUsedSlots() {
         return joinedCount / getPlayersPerTeam();
-    }
-
-    public int getEntryFee() {
-        return entryFee;
     }
 
     public String getDisplayMode() {
@@ -109,32 +119,122 @@ public class Tournament {
         StringBuilder rotation = new StringBuilder();
         for (int i = 0; i < rules.mapRotation.size(); i++) {
             String map = rules.mapRotation.get(i);
-            rotation.append(getMapInitial(map));
-            if (i < rules.mapRotation.size() - 1) {
-                rotation.append("/");
-            }
+            rotation.append(map.substring(0, 1).toUpperCase());
+            if (i < rules.mapRotation.size() - 1) rotation.append("/");
         }
         return rotation.toString();
     }
 
-    private String getMapInitial(String mapName) {
-        if (mapName == null) return "";
+    /* ================= PARCELABLE ================= */
 
-        String lower = mapName.toLowerCase();
-        if (lower.contains("bermuda")) return "B";
-        if (lower.contains("purgatory")) return "P";
-        if (lower.contains("alpine")) return "A";
-        if (lower.contains("nexterra")) return "N";
-        if (lower.contains("kalahari")) return "K";
-        if (lower.contains("solarag")) return "S";
-
-        return mapName.substring(0, 1).toUpperCase();
+    protected Tournament(Parcel in) {
+        id = in.readString();
+        game = in.readString();
+        mode = in.readString();
+        subMode = in.readString();
+        entryFee = in.readInt();
+        maxPlayers = in.readInt();
+        joinedCount = in.readInt();
+        prizePool = in.readInt();
+        date = in.readString();
+        startTime = in.readString();
+        lobbyName = in.readString();
+        rules = in.readParcelable(TournamentRules.class.getClassLoader());
     }
 
-    /* ================= INNER CLASS FOR RULES ================= */
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(id);
+        dest.writeString(game);
+        dest.writeString(mode);
+        dest.writeString(subMode);
+        dest.writeInt(entryFee);
+        dest.writeInt(maxPlayers);
+        dest.writeInt(joinedCount);
+        dest.writeInt(prizePool);
+        dest.writeString(date);
+        dest.writeString(startTime);
+        dest.writeString(lobbyName);
+        dest.writeParcelable(rules, flags);
+    }
 
-    public static class TournamentRules {
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    public static final Creator<Tournament> CREATOR = new Creator<Tournament>() {
+        @Override
+        public Tournament createFromParcel(Parcel in) {
+            return new Tournament(in);
+        }
+
+        @Override
+        public Tournament[] newArray(int size) {
+            return new Tournament[size];
+        }
+    };
+
+    /* ================= INNER RULES ================= */
+
+    public static class TournamentRules implements Parcelable {
+
         @SerializedName("mapRotation")
         public List<String> mapRotation;
+
+        @SerializedName("rules")
+        public List<String> rules;
+
+        @SerializedName("generalRules")
+        public List<String> generalRules;
+
+        @SerializedName("positionPoints")
+        public Map<String, Integer> positionPoints;
+
+        @SerializedName("numberOfMatches")
+        public int numberOfMatches;
+
+        @SerializedName("maxPlayers")
+        public int maxPlayers;
+
+        @SerializedName("minTeamsToStart")
+        public int minTeamsToStart;
+
+        protected TournamentRules(Parcel in) {
+            mapRotation = in.createStringArrayList();
+            rules = in.createStringArrayList();
+            generalRules = in.createStringArrayList();
+            numberOfMatches = in.readInt();
+            maxPlayers = in.readInt();
+            minTeamsToStart = in.readInt();
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeStringList(mapRotation);
+            dest.writeStringList(rules);
+            dest.writeStringList(generalRules);
+            dest.writeInt(numberOfMatches);
+            dest.writeInt(maxPlayers);
+            dest.writeInt(minTeamsToStart);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        public static final Creator<TournamentRules> CREATOR =
+                new Creator<TournamentRules>() {
+                    @Override
+                    public TournamentRules createFromParcel(Parcel in) {
+                        return new TournamentRules(in);
+                    }
+
+                    @Override
+                    public TournamentRules[] newArray(int size) {
+                        return new TournamentRules[size];
+                    }
+                };
     }
 }

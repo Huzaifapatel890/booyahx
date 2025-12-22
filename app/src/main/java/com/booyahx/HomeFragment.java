@@ -22,6 +22,7 @@ import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.network.models.Tournament;
 import com.booyahx.network.models.TournamentResponse;
 import com.booyahx.network.models.WalletBalanceResponse;
+import com.booyahx.tournament.RulesBottomSheet; // 🔥 ADDED
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -99,7 +100,6 @@ public class HomeFragment extends Fragment {
             fragmentLoader.setVisibility(View.VISIBLE);
             fragmentLoader.bringToFront();
 
-            // ROTATE RING
             RotateAnimation rotate = new RotateAnimation(
                     0, 360,
                     Animation.RELATIVE_TO_SELF, 0.5f,
@@ -110,7 +110,6 @@ public class HomeFragment extends Fragment {
             rotate.setInterpolator(new LinearInterpolator());
             loaderRing.startAnimation(rotate);
 
-            // GLOW PULSE
             ScaleAnimation pulse = new ScaleAnimation(
                     1f, 1.25f,
                     1f, 1.25f,
@@ -257,16 +256,15 @@ public class HomeFragment extends Fragment {
         TextView txtTime = card.findViewById(R.id.txtT1Time);
         TextView txtMode = card.findViewById(R.id.txtT1Mode);
 
-        // 🔥 MAP ROTATION (NEW)
         LinearLayout mapRotationContainer = card.findViewById(R.id.mapRotationContainer);
         TextView txtMapRotation = card.findViewById(R.id.txtMapRotation);
 
-        txtTitle.setText(t.getTitle());
+        // 🔥 RULES BUTTON
+        View btnRules = card.findViewById(R.id.btnT1Rules);
 
+        txtTitle.setText(t.getTitle());
         txtExpectedPP.setText(t.getExpectedPP() + " GC");
-        txtCurrentPP.setText(
-                "(" + t.getCurrentPP() + "/" + t.getExpectedPP() + ") GC"
-        );
+        txtCurrentPP.setText("(" + t.getCurrentPP() + "/" + t.getExpectedPP() + ") GC");
 
         txtSub.setText(
                 "Entry GC " + t.getEntryFee()
@@ -279,13 +277,20 @@ public class HomeFragment extends Fragment {
         txtTime.setText(t.getFormattedDateTime());
         txtMode.setText("Mode: " + t.getDisplayMode());
 
-        // 🔥 SHOW MAP ROTATION IF AVAILABLE
         String mapRotation = t.getMapRotationShort();
         if (mapRotation != null && !mapRotation.isEmpty()) {
             mapRotationContainer.setVisibility(View.VISIBLE);
             txtMapRotation.setText(mapRotation);
         } else {
             mapRotationContainer.setVisibility(View.GONE);
+        }
+
+        // 🔥 OPEN RULES BOTTOM SHEET
+        if (btnRules != null) {
+            btnRules.setOnClickListener(v -> {
+                RulesBottomSheet sheet = RulesBottomSheet.newInstance(t);
+                sheet.show(getParentFragmentManager(), "RulesBottomSheet");
+            });
         }
 
         return card;
