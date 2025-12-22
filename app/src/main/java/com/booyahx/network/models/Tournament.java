@@ -49,6 +49,12 @@ public class Tournament implements Parcelable {
     @SerializedName("rules")
     private TournamentRules rules;
 
+    /* ================= REQUIRED FOR JOIN ================= */
+
+    public String getId() {
+        return id;
+    }
+
     /* ================= GETTERS ================= */
 
     public TournamentRules getRules() {

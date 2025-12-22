@@ -1,8 +1,11 @@
 package com.booyahx;
 
 import android.os.Bundle;
+import android.view.Gravity;
+import android.view.animation.AlphaAnimation;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -59,27 +62,18 @@ public class DashboardActivity extends AppCompatActivity {
 
     private int currentIndex = 0;
 
-    private void loadFragment(Fragment fragment, int newIndex, boolean animate) {
+    private void loadFragment(Fragment fragment, int newIndex, Boolean animate) {
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
 
         if (animate) {
             if (newIndex > currentIndex) {
-                // Forward → slide in from right
-                ft.setCustomAnimations(
-                        R.anim.slide_in_right,
-                        0
-                );
+                ft.setCustomAnimations(R.anim.slide_in_right, 0);
             } else if (newIndex < currentIndex) {
-                // Backward → slide in from left
-                ft.setCustomAnimations(
-                        R.anim.slide_in_left,
-                        0
-                );
+                ft.setCustomAnimations(R.anim.slide_in_left, 0);
             }
         }
 
         currentIndex = newIndex;
-
         ft.replace(R.id.fragment_container, fragment);
         ft.commit();
     }
@@ -89,11 +83,34 @@ public class DashboardActivity extends AppCompatActivity {
         reset(tvNavParticipated);
         reset(tvNavWallet);
         reset(tvNavProfile);
-
         active.setTextColor(0xFF00C3FF);
     }
 
     private void reset(TextView tv) {
         tv.setTextColor(0xFFAAAAAA);
+    }
+
+    // ----------------------------------------------------
+    // ✅ CUSTOM NEON TOAST (ADDED — NOTHING ELSE TOUCHED)
+    // ----------------------------------------------------
+    public void showTopRightToast(String message) {
+
+        TextView tv = new TextView(this);
+        tv.setText(message);
+        tv.setPadding(40, 25, 40, 25);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setBackgroundResource(R.drawable.toast_bg);
+        tv.setTextSize(14);
+
+        Toast toast = new Toast(getApplicationContext());
+        toast.setView(tv);
+        toast.setDuration(Toast.LENGTH_SHORT);
+        toast.setGravity(Gravity.TOP | Gravity.END, 40, 120);
+
+        AlphaAnimation fade = new AlphaAnimation(0f, 1f);
+        fade.setDuration(350);
+        tv.startAnimation(fade);
+
+        toast.show();
     }
 }

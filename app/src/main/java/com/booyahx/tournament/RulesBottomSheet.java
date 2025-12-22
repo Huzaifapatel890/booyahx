@@ -4,7 +4,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -32,7 +31,7 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
     private RecyclerView pointsGrid;
     private LinearLayout additionalRulesContainer;
 
-    private Button btnGotIt, btnJoinNow;
+    private TextView btnGotIt, btnJoinNow;
     private ImageView btnCloseSheet;
 
     private Tournament tournament;
@@ -40,7 +39,7 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
     public static RulesBottomSheet newInstance(Tournament tournament) {
         RulesBottomSheet sheet = new RulesBottomSheet();
         Bundle b = new Bundle();
-        b.putParcelable(ARG_TOURNAMENT, tournament); // ✅ Parcelable
+        b.putParcelable(ARG_TOURNAMENT, tournament);
         sheet.setArguments(b);
         return sheet;
     }
@@ -54,8 +53,9 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
     ) {
         View view = inflater.inflate(R.layout.bottom_sheet_rules, container, false);
 
-        // ✅ FIXED LINE (THIS WAS THE CRASH)
-        tournament = getArguments().getParcelable(ARG_TOURNAMENT);
+        tournament = getArguments() != null
+                ? getArguments().getParcelable(ARG_TOURNAMENT)
+                : null;
 
         initViews(view);
         setupListeners();
@@ -79,7 +79,18 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
     private void setupListeners() {
         btnCloseSheet.setOnClickListener(v -> dismiss());
         btnGotIt.setOnClickListener(v -> dismiss());
-        btnJoinNow.setOnClickListener(v -> dismiss());
+
+        btnJoinNow.setOnClickListener(v -> {
+            if (tournament == null || getParentFragmentManager() == null) return;
+
+            // 🔥 OPEN JOIN DIALOG (NO API HERE)
+            JoinTournamentDialog dialog =
+                    JoinTournamentDialog.newInstance(tournament);
+
+            dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
+
+            dismiss(); // close rules sheet
+        });
     }
 
     private void populateUI() {
@@ -87,23 +98,26 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
 
         Tournament.TournamentRules r = tournament.getRules();
 
-        // 🔹 LOBBY INFO
         addInfoRow(lobbyInfoContainer, "Mode", tournament.getDisplayMode());
         addInfoRow(lobbyInfoContainer, "Matches", r.numberOfMatches + " matches");
         addInfoRow(lobbyInfoContainer, "Max Players", r.maxPlayers + " players");
         addInfoRow(lobbyInfoContainer, "Min Teams to Start", r.minTeamsToStart + " teams");
 
-        // 🔹 GAME RULES
         if (r.rules != null) {
             for (String rule : r.rules) {
+                String lower = rule.toLowerCase();
+                if (lower.contains("kill point")
+                        || lower.contains("kill points")
+                        || lower.contains("position point")
+                        || lower.contains("position points")) {
+                    continue;
+                }
                 addRuleItem(generalRulesContainer, rule);
             }
         }
 
-        // 🔹 KILL POINTS
         addInfoRow(killPointsRow, "Kill Points", "1 point per kill per team");
 
-        // 🔹 POSITION POINTS
         List<PositionPoint> list = new ArrayList<>();
         if (r.positionPoints != null) {
             for (Map.Entry<String, Integer> e : r.positionPoints.entrySet()) {
@@ -114,7 +128,6 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
         pointsGrid.setLayoutManager(new GridLayoutManager(getContext(), 2));
         pointsGrid.setAdapter(new PointsAdapter(list));
 
-        // 🔹 ADDITIONAL RULES
         if (r.generalRules != null) {
             for (String rule : r.generalRules) {
                 addRuleItem(additionalRulesContainer, rule);

@@ -72,4 +72,9 @@ public interface ApiService {
     );
     @GET("/api/wallet/balance")
     Call<WalletBalanceResponse> getWalletBalance();
+
+    @POST("/api/tournament/join")
+    Call<JoinTournamentResponse> joinTournament(
+            @Body JoinTournamentRequest request
+    );
 }

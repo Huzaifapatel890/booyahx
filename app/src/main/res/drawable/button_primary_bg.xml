@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="#6600C3FF">
+    android:color="#3300C3FF"> <!-- Neon blue ripple -->
+
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#3300C3FF" />
+            <!-- Dark black background -->
+            <solid android:color="#0B0B0B" />
+
+            <!-- Rounded corners -->
             <corners android:radius="24dp" />
+
+            <!-- Neon blue border -->
             <stroke
                 android:width="2dp"
                 android:color="#00C3FF" />
         </shape>
     </item>
+
 </ripple>

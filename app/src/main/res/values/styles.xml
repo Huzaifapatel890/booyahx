@@ -68,6 +68,15 @@
         <style name="BottomSheetStyle" parent="Widget.Design.BottomSheet.Modal">
             <item name="android:background">@android:color/transparent</item>
         </style>
-
+    ‎<style name="JoinOptionalInput">
+    ‎    <item name="android:layout_width">match_parent</item>
+    ‎    <item name="android:layout_height">48dp</item>
+    ‎    <item name="android:layout_marginTop">12dp</item>
+    ‎    <item name="android:textColor">#FFFFFF</item>
+    ‎    <item name="android:textColorHint">#6688B8D9</item>
+    ‎    <item name="android:background">@drawable/neon_card</item>
+    ‎    <item name="android:padding">12dp</item>
+    ‎    <item name="android:maxLength">20</item>
+    ‎</style>
 
 </resources>
