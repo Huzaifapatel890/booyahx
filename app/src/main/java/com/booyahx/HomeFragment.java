@@ -22,7 +22,8 @@ import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.network.models.Tournament;
 import com.booyahx.network.models.TournamentResponse;
 import com.booyahx.network.models.WalletBalanceResponse;
-import com.booyahx.tournament.RulesBottomSheet; // 🔥 ADDED
+import com.booyahx.tournament.RulesBottomSheet;
+import com.booyahx.tournament.JoinTournamentDialog; // ✅ ADDED
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -45,8 +46,6 @@ public class HomeFragment extends Fragment {
     private ImageView loaderRing, loaderGlow;
     private int pendingCalls = 0;
 
-    /* ================= LIFECYCLE ================= */
-
     @Nullable
     @Override
     public View onCreateView(
@@ -61,25 +60,21 @@ public class HomeFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Profile views
         txtUsername = view.findViewById(R.id.txtUsername);
         txtEmail = view.findViewById(R.id.txtEmail);
         txtWalletBalance = view.findViewById(R.id.txtWalletBalance);
 
-        // Tournament views
         tournamentsContainer = view.findViewById(R.id.tournamentsContainer);
         btnBermuda = view.findViewById(R.id.btnBermuda);
         btnClashSquad = view.findViewById(R.id.btnClashSquad);
         btnSpecial = view.findViewById(R.id.btnSpecial);
 
-        // 🔥 FRAGMENT LOADER SETUP
         fragmentLoader = view.findViewById(R.id.fragmentLoaderContainer);
         loaderRing = view.findViewById(R.id.fragmentLoaderRing);
         loaderGlow = view.findViewById(R.id.fragmentLoaderGlow);
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
-        // Tabs
         btnBermuda.setOnClickListener(v -> switchMode("BR"));
         btnClashSquad.setOnClickListener(v -> switchMode("CS"));
         btnSpecial.setOnClickListener(v -> switchMode("LW"));
@@ -130,8 +125,8 @@ public class HomeFragment extends Fragment {
             pendingCalls = 0;
             if (isAdded() && fragmentLoader != null) {
                 fragmentLoader.setVisibility(View.GONE);
-                if (loaderRing != null) loaderRing.clearAnimation();
-                if (loaderGlow != null) loaderGlow.clearAnimation();
+                loaderRing.clearAnimation();
+                loaderGlow.clearAnimation();
             }
         }
     }
@@ -140,19 +135,11 @@ public class HomeFragment extends Fragment {
 
     private void loadProfile() {
         showLoader();
-
         api.getProfile().enqueue(new Callback<ProfileResponse>() {
             @Override
-            public void onResponse(
-                    Call<ProfileResponse> call,
-                    Response<ProfileResponse> response
-            ) {
+            public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
                 hideLoader();
-
-                if (response.isSuccessful()
-                        && response.body() != null
-                        && response.body().data != null) {
-
+                if (response.isSuccessful() && response.body() != null && response.body().data != null) {
                     txtUsername.setText(response.body().data.name);
                     txtEmail.setText(response.body().data.email);
                 }
@@ -167,22 +154,12 @@ public class HomeFragment extends Fragment {
 
     private void loadWalletBalance() {
         showLoader();
-
         api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
             @Override
-            public void onResponse(
-                    Call<WalletBalanceResponse> call,
-                    Response<WalletBalanceResponse> response
-            ) {
+            public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> response) {
                 hideLoader();
-
-                if (response.isSuccessful()
-                        && response.body() != null
-                        && response.body().data != null) {
-
-                    txtWalletBalance.setText(
-                            String.format("%.2f GC", response.body().data.balanceGC)
-                    );
+                if (response.isSuccessful() && response.body() != null && response.body().data != null) {
+                    txtWalletBalance.setText(String.format("%.2f GC", response.body().data.balanceGC));
                 }
             }
 
@@ -220,12 +197,8 @@ public class HomeFragment extends Fragment {
         api.getTournaments("upcoming", currentMode)
                 .enqueue(new Callback<TournamentResponse>() {
                     @Override
-                    public void onResponse(
-                            Call<TournamentResponse> call,
-                            Response<TournamentResponse> response
-                    ) {
+                    public void onResponse(Call<TournamentResponse> call, Response<TournamentResponse> response) {
                         hideLoader();
-
                         if (response.isSuccessful()
                                 && response.body() != null
                                 && response.body().data != null
@@ -259,20 +232,15 @@ public class HomeFragment extends Fragment {
         LinearLayout mapRotationContainer = card.findViewById(R.id.mapRotationContainer);
         TextView txtMapRotation = card.findViewById(R.id.txtMapRotation);
 
-        // 🔥 RULES BUTTON
         View btnRules = card.findViewById(R.id.btnT1Rules);
+        View btnJoin = card.findViewById(R.id.btnT1Join); // ✅ ADDED
 
         txtTitle.setText(t.getTitle());
         txtExpectedPP.setText(t.getExpectedPP() + " GC");
         txtCurrentPP.setText("(" + t.getCurrentPP() + "/" + t.getExpectedPP() + ") GC");
 
-        txtSub.setText(
-                "Entry GC " + t.getEntryFee()
-                        + " • Slots "
-                        + t.getUsedSlots()
-                        + " / "
-                        + t.getTotalSlots()
-        );
+        txtSub.setText("Entry GC " + t.getEntryFee()
+                + " • Slots " + t.getUsedSlots() + " / " + t.getTotalSlots());
 
         txtTime.setText(t.getFormattedDateTime());
         txtMode.setText("Mode: " + t.getDisplayMode());
@@ -285,11 +253,18 @@ public class HomeFragment extends Fragment {
             mapRotationContainer.setVisibility(View.GONE);
         }
 
-        // 🔥 OPEN RULES BOTTOM SHEET
         if (btnRules != null) {
             btnRules.setOnClickListener(v -> {
                 RulesBottomSheet sheet = RulesBottomSheet.newInstance(t);
                 sheet.show(getParentFragmentManager(), "RulesBottomSheet");
+            });
+        }
+
+        // ✅ OPEN JOIN DIALOG
+        if (btnJoin != null) {
+            btnJoin.setOnClickListener(v -> {
+                JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
+                dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
             });
         }
 
