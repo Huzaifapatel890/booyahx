@@ -23,7 +23,7 @@ import com.booyahx.network.models.Tournament;
 import com.booyahx.network.models.TournamentResponse;
 import com.booyahx.network.models.WalletBalanceResponse;
 import com.booyahx.tournament.RulesBottomSheet;
-import com.booyahx.tournament.JoinTournamentDialog; // ✅ ADDED
+import com.booyahx.tournament.JoinTournamentDialog;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -74,6 +74,17 @@ public class HomeFragment extends Fragment {
         loaderGlow = view.findViewById(R.id.fragmentLoaderGlow);
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
+
+        // ✅ ADDED — LISTEN FOR JOIN SUCCESS (NOTHING ELSE CHANGED)
+        getParentFragmentManager().setFragmentResultListener(
+                "join_success",
+                this,
+                (requestKey, bundle) -> {
+                    if (isAdded()) {
+                        loadWalletBalance();
+                    }
+                }
+        );
 
         btnBermuda.setOnClickListener(v -> switchMode("BR"));
         btnClashSquad.setOnClickListener(v -> switchMode("CS"));
@@ -233,7 +244,7 @@ public class HomeFragment extends Fragment {
         TextView txtMapRotation = card.findViewById(R.id.txtMapRotation);
 
         View btnRules = card.findViewById(R.id.btnT1Rules);
-        View btnJoin = card.findViewById(R.id.btnT1Join); // ✅ ADDED
+        View btnJoin = card.findViewById(R.id.btnT1Join);
 
         txtTitle.setText(t.getTitle());
         txtExpectedPP.setText(t.getExpectedPP() + " GC");
@@ -260,7 +271,6 @@ public class HomeFragment extends Fragment {
             });
         }
 
-        // ✅ OPEN JOIN DIALOG
         if (btnJoin != null) {
             btnJoin.setOnClickListener(v -> {
                 JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);

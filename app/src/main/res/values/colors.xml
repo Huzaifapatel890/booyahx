@@ -9,4 +9,18 @@
     <color name="white">#FFFFFFFF</color>
     <color name="neon_cyan">#00E5FF</color>
     <color name="neon_cyan_alpha_30">#4D00E5FF</color> <!-- 30% glow -->
+    -- Neon Blue Wallet Theme Colors -->
+    <!-- Main Colors - SIMPLE -->
+    <color name="background_dark">#000000</color>
+    <color name="cyan">#00D4FF</color>
+    <color name="purple">#B794F6</color>
+
+    <!-- Text Colors -->
+
+    <color name="gray">#8B8B9E</color>
+    <color name="light_gray">#B0B0C0</color>
+
+    <!-- Amount Colors -->
+    <color name="green">#00FF88</color>
+    <color name="red">#FF4444</color>
 </resources>

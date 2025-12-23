@@ -151,6 +151,13 @@ public class JoinTournamentDialog extends DialogFragment {
                         && response.body().success) {
 
                     showToast(response.body().message);
+
+                    // ✅✅✅ ADDED — NOTIFY HOME FRAGMENT (WALLET REFRESH)
+                    getParentFragmentManager().setFragmentResult(
+                            "join_success",
+                            new Bundle()
+                    );
+
                     dismiss();
 
                 } else {

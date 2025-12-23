@@ -5,8 +5,8 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.animation.AlphaAnimation;
 import android.widget.TextView;
-
 import androidx.appcompat.app.AppCompatActivity;
+
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -50,9 +50,6 @@ public class WinningHistoryActivity extends AppCompatActivity {
         loadWinningHistory();
     }
 
-    // --------------------------------------------------------------------
-    // LOAD WALLET / WINNING HISTORY
-    // --------------------------------------------------------------------
     private void loadWinningHistory() {
 
         if (isLoading) return;
@@ -60,7 +57,6 @@ public class WinningHistoryActivity extends AppCompatActivity {
 
         LoaderOverlay.show(this);
 
-        // ❌ NO MANUAL TOKEN HERE
         api.getWalletHistory(50, 0).enqueue(new Callback<WalletHistoryResponse>() {
 
             @Override
@@ -90,6 +86,7 @@ public class WinningHistoryActivity extends AppCompatActivity {
                         item.amountGC = h.amountGC;
                         item.description = h.description;
                         item.date = formatDate(h.timestamp);
+                        item.type = h.type; // ✅ ADDED (ONLY THIS)
                         list.add(item);
                     }
 
@@ -106,17 +103,12 @@ public class WinningHistoryActivity extends AppCompatActivity {
                 isLoading = false;
                 LoaderOverlay.hide(WinningHistoryActivity.this);
 
-                // 🚫 Don't lie to user
                 Log.e("WIN_HISTORY", "Request failed", t);
-
                 showTopRightToast("Something went wrong. Try again.");
             }
         });
     }
 
-    // --------------------------------------------------------------------
-    // FORMAT DATE
-    // --------------------------------------------------------------------
     private String formatDate(String isoDate) {
         try {
             SimpleDateFormat iso =
@@ -132,9 +124,6 @@ public class WinningHistoryActivity extends AppCompatActivity {
         }
     }
 
-    // --------------------------------------------------------------------
-    // NEON TOAST
-    // --------------------------------------------------------------------
     private void showTopRightToast(String message) {
 
         TextView tv = new TextView(this);

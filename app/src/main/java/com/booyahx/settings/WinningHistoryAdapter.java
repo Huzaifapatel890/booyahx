@@ -1,5 +1,6 @@
 package com.booyahx.settings;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,7 +31,14 @@ public class WinningHistoryAdapter extends RecyclerView.Adapter<WinningHistoryAd
     public void onBindViewHolder(ViewHolder h, int pos) {
         WinningHistoryItem item = list.get(pos);
 
-        h.txtAmount.setText("+" + item.amountGC + " GC");
+        if ("join".equals(item.type)) {
+            h.txtAmount.setText("-" + item.amountGC + " GC");
+            h.txtAmount.setTextColor(Color.parseColor("#FF6B6B"));
+        } else {
+            h.txtAmount.setText("+" + item.amountGC + " GC");
+            h.txtAmount.setTextColor(Color.parseColor("#2EFF7A"));
+        }
+
         h.txtDescription.setText(item.description);
         h.txtDate.setText(item.date);
     }
@@ -41,6 +49,7 @@ public class WinningHistoryAdapter extends RecyclerView.Adapter<WinningHistoryAd
     }
 
     class ViewHolder extends RecyclerView.ViewHolder {
+
         TextView txtAmount, txtDescription, txtDate;
 
         ViewHolder(View v) {
