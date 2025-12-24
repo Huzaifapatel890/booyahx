@@ -77,4 +77,7 @@ public interface ApiService {
     Call<JoinTournamentResponse> joinTournament(
             @Body JoinTournamentRequest request
     );
+
+    @GET("/api/tournament/joined")
+    Call<JoinedTournamentResponse> getJoinedTournaments();
 }

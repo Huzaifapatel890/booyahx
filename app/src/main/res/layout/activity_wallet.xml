@@ -73,6 +73,16 @@
                         android:layout_marginStart="4dp"
                         android:textStyle="bold"/>
                 </LinearLayout>
+
+                <!-- GC to INR Info (FIXED POSITION) -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1 GC = 1 INR"
+                    android:textSize="12sp"
+                    android:textColor="#6FBFD8"
+                    android:layout_marginTop="6dp"
+                    android:letterSpacing="0.04"/>
             </LinearLayout>
         </LinearLayout>
 
@@ -107,8 +117,8 @@
                 android:gravity="center"
                 android:text="💸  WITHDRAW"
                 android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="#00D4FF"
+
+                android:textColor="#00FF00"
                 android:includeFontPadding="false"
                 android:layout_marginStart="8dp"/>
         </LinearLayout>

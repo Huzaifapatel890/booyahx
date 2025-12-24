@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- res/drawable/card_header_bg.xml -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Base black -->
     <solid android:color="#000000"/>
+
     <corners android:radius="20dp"/>
+
+    <!-- Main neon border -->
     <stroke
-        android:width="3dp"
+        android:width="2dp"
         android:color="#00D4FF"/>
+
+    <!-- Subtle inner glow using padding illusion -->
+    <padding
+        android:left="1dp"
+        android:top="1dp"
+        android:right="1dp"
+        android:bottom="1dp"/>
+
 </shape>
