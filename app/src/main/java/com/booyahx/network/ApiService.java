@@ -75,6 +75,8 @@ public interface ApiService {
 
     @POST("/api/tournament/join")
     Call<JoinTournamentResponse> joinTournament(
+            @Header("Authorization") String auth,
+            @Header("X-CSRF-Token") String csrf,
             @Body JoinTournamentRequest request
     );
 

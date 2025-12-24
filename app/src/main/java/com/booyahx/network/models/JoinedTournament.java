@@ -1,9 +1,11 @@
 package com.booyahx.network.models;
 
 import com.google.gson.annotations.SerializedName;
+import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
-public class JoinedTournament {
+public class JoinedTournament implements Serializable {
 
     @SerializedName("_id")
     private String id;
@@ -30,6 +32,10 @@ public class JoinedTournament {
     private Room room;
     private int prizePool;
     private String status;
+
+    // ✅ ADDED — rules from joined tournaments API
+    @SerializedName("rules")
+    private JoinedRules rules;
 
     /* ================= DERIVED / SAFE ================= */
 
@@ -67,9 +73,12 @@ public class JoinedTournament {
     public int getPrizePool() { return prizePool; }
     public String getStatus() { return status; }
 
+    // ✅ NEW — rules getter
+    public JoinedRules getRules() { return rules; }
+
     /* ================= INNER MODELS ================= */
 
-    public static class Host {
+    public static class Host implements Serializable {
         @SerializedName("_id")
         private String id;
         private String name;
@@ -80,11 +89,36 @@ public class JoinedTournament {
         public String getIgn() { return ign; }
     }
 
-    public static class Room {
+    public static class Room implements Serializable {
         private String roomId;
         private String password;
 
         public String getRoomId() { return roomId; }
         public String getPassword() { return password; }
+    }
+
+    /* ================= RULES MODEL (JOINED) ================= */
+
+    public static class JoinedRules implements Serializable {
+
+        public String title;
+        public String description;
+
+        @SerializedName("rules")
+        public List<String> rules;
+
+        public List<String> generalRules;
+        public List<String> mapRotation;
+
+        public int numberOfMatches;
+        public int maxPlayers;
+        public int minTeamsToStart;
+
+        public int playersPerTeam;
+        public int minPlayersPerTeam;
+        public int maxPlayersPerTeam;
+        public int maxTeams;
+
+        public Map<String, Integer> positionPoints;
     }
 }

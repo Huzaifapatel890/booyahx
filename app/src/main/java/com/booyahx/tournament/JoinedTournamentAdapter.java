@@ -66,6 +66,9 @@ public class JoinedTournamentAdapter
                 tvPlayers, tvTime, tvSlot,
                 tvRoomId, tvPassword;
 
+        // ✅ OPTIONAL — RULES BUTTON (SAFE)
+        TextView btnRules;
+
         CountDownTimer timer;
 
         public TournamentViewHolder(@NonNull View itemView) {
@@ -80,6 +83,9 @@ public class JoinedTournamentAdapter
             tvSlot     = itemView.findViewById(R.id.tvSlot);
             tvRoomId   = itemView.findViewById(R.id.tvRoomId);
             tvPassword = itemView.findViewById(R.id.tvPassword);
+
+            // 🔥 SAFE FIND — if not present, stays null
+            btnRules   = itemView.findViewById(R.id.btnRules);
         }
 
         public void bind(JoinedTournament t) {
@@ -87,15 +93,34 @@ public class JoinedTournamentAdapter
             tvTitle.setText(t.getGame());
             tvSubtitle.setText(t.getMode() + " - " + t.getSubMode());
 
-            tvEntry.setText(t.getEntryFee() + "GC");
-            tvPrize.setText(t.getPrizePool() + "GC");
+            tvEntry.setText(t.getEntryFee() + " GC");
+            tvPrize.setText(t.getPrizePool() + " GC");
 
             int teams = calculateTeams(t);
             tvPlayers.setText(teams + "/" + calculateMaxTeams(t));
-            tvSlot.setText("#" + teams);
+            tvSlot.setText("#" + t.getParticipantCount());
 
             handleCountdown(t);
             handleRoomAndPassword(t);
+
+            // ================= RULES INTEGRATION =================
+            if (btnRules != null && t.getRules() != null) {
+                btnRules.setVisibility(View.VISIBLE);
+                btnRules.setOnClickListener(v -> {
+
+                    if (!(v.getContext() instanceof androidx.fragment.app.FragmentActivity))
+                        return;
+
+                    JoinedRulesBottomSheet sheet =
+                            JoinedRulesBottomSheet.newInstance(t);
+
+                    sheet.show(
+                            ((androidx.fragment.app.FragmentActivity) v.getContext())
+                                    .getSupportFragmentManager(),
+                            "JoinedRulesBottomSheet"
+                    );
+                });
+            }
         }
 
         /* ================= TIME FIX ================= */

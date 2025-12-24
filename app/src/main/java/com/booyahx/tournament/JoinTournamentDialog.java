@@ -15,12 +15,14 @@ import androidx.fragment.app.DialogFragment;
 
 import com.booyahx.DashboardActivity;
 import com.booyahx.R;
+import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.JoinTournamentRequest;
 import com.booyahx.network.models.JoinTournamentResponse;
 import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.network.models.Tournament;
+import com.booyahx.utils.CSRFHelper;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -123,7 +125,7 @@ public class JoinTournamentDialog extends DialogFragment {
     }
 
     // --------------------------------------------------
-    // JOIN TOURNAMENT
+    // JOIN TOURNAMENT (CSRF APPLIED — NO LOGIC REMOVED)
     // --------------------------------------------------
     private void submitJoin() {
 
@@ -139,37 +141,56 @@ public class JoinTournamentDialog extends DialogFragment {
                         teamName
                 );
 
-        api.joinTournament(req).enqueue(new Callback<JoinTournamentResponse>() {
+        String token = TokenManager.getAccessToken(requireContext());
+
+        CSRFHelper.fetchToken(requireContext(), new CSRFHelper.CSRFCallback() {
+
             @Override
-            public void onResponse(
-                    Call<JoinTournamentResponse> call,
-                    Response<JoinTournamentResponse> response
-            ) {
+            public void onSuccess(String csrf) {
 
-                if (response.isSuccessful()
-                        && response.body() != null
-                        && response.body().success) {
+                api.joinTournament(
+                        "Bearer " + token,
+                        csrf,
+                        req
+                ).enqueue(new Callback<JoinTournamentResponse>() {
 
-                    showToast(response.body().message);
+                    @Override
+                    public void onResponse(
+                            Call<JoinTournamentResponse> call,
+                            Response<JoinTournamentResponse> response
+                    ) {
 
-                    // ✅✅✅ ADDED — NOTIFY HOME FRAGMENT (WALLET REFRESH)
-                    getParentFragmentManager().setFragmentResult(
-                            "join_success",
-                            new Bundle()
-                    );
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().success) {
 
-                    dismiss();
+                            showToast(response.body().message);
 
-                } else {
-                    showToast(parseErrorMessage(response));
-                    setUiEnabled(true); // 🔓 RE-ENABLE ON FAILURE
-                }
+                            getParentFragmentManager().setFragmentResult(
+                                    "join_success",
+                                    new Bundle()
+                            );
+
+                            dismiss();
+
+                        } else {
+                            showToast(parseErrorMessage(response));
+                            setUiEnabled(true);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<JoinTournamentResponse> call, Throwable t) {
+                        showToast("Network error");
+                        setUiEnabled(true);
+                    }
+                });
             }
 
             @Override
-            public void onFailure(Call<JoinTournamentResponse> call, Throwable t) {
-                showToast("Network error");
-                setUiEnabled(true); // 🔓 RE-ENABLE
+            public void onFailure(String error) {
+                showToast(error != null ? error : "Security error! Try again.");
+                setUiEnabled(true);
             }
         });
     }
