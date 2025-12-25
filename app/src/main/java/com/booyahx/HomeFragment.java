@@ -1,5 +1,6 @@
 package com.booyahx;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,6 +26,7 @@ import com.booyahx.network.models.WalletBalanceResponse;
 import com.booyahx.tournament.RulesBottomSheet;
 import com.booyahx.tournament.JoinTournamentDialog;
 import com.booyahx.utils.NotificationPref;
+import com.booyahx.notifications.NotificationActivity;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -82,6 +84,9 @@ public class HomeFragment extends Fragment {
         btnNotification.setOnClickListener(v -> {
             NotificationPref.setUnread(requireContext(), false);
             updateNotificationIcon();
+
+            Intent intent = new Intent(requireContext(), NotificationActivity.class);
+            startActivity(intent);
         });
 
         getParentFragmentManager().setFragmentResultListener(
@@ -177,7 +182,6 @@ public class HomeFragment extends Fragment {
 
                     txtUsername.setText(data.name);
 
-                    // ✅ USER ID SAVED — NOTHING ELSE TOUCHED
                     if (data.userId != null && !data.userId.isEmpty()) {
                         TokenManager.saveUserId(requireContext(), data.userId);
                     }

@@ -115,7 +115,7 @@
                 android:id="@+id/icNavsettings"
                 android:layout_width="22dp"
                 android:layout_height="22dp"
-                android:src="@drawable/ic_settings"
+                android:src="@drawable/ic_settings_notification"
                 android:contentDescription="settings" />
 
             <TextView

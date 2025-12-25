@@ -67,6 +67,10 @@
             android:name=".settings.WinningHistoryActivity"
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar" />
+        <activity
+            android:name=".notifications.NotificationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar"/>
     </application>
 
 </manifest>
