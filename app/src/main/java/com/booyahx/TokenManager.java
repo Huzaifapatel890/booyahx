@@ -7,6 +7,8 @@ public class TokenManager {
 
     private static final String PREF = "booyahx_user";
 
+    /* ================= TOKENS ================= */
+
     public static void saveTokens(Context ctx, String access, String refresh) {
         SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
         editor.putString("access", access);
@@ -23,6 +25,21 @@ public class TokenManager {
         return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
                 .getString("refresh", null);
     }
+
+    /* ================= USER ID ================= */
+
+    public static void saveUserId(Context ctx, String userId) {
+        SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
+        editor.putString("user_id", userId);
+        editor.apply();
+    }
+
+    public static String getUserId(Context ctx) {
+        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .getString("user_id", null);
+    }
+
+    /* ================= CLEAR ================= */
 
     public static void clearTokens(Context ctx) {
         SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();

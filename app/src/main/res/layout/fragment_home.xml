@@ -40,27 +40,31 @@
             <TextView
                 android:id="@+id/txtUsername"
                 android:textColor="#00C3FF"
-                android:textSize="18sp"
+                android:textSize="22sp"
                 android:textStyle="bold"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
+            <!-- GC MOVED HERE (EMAIL POSITION) -->
             <TextView
-                android:id="@+id/txtEmail"
-                android:textColor="#78A8C7"
-                android:textSize="13sp"
+                android:id="@+id/txtWalletBalance"
+                android:textColor="#00FFB7"
+                android:textSize="20sp"
+                android:textStyle="bold"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/txtWalletBalance"
-            android:textColor="#00FFB7"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+        <!-- 🔔 NOTIFICATION BELL (GC OLD POSITION) -->
+        <ImageView
+            android:id="@+id/btnNotification"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
+            android:src="@drawable/ic_notification" />
     </LinearLayout>
+
+    <!-- REST OF YOUR FILE IS 100% UNTOUCHED -->
+
 
     <!-- ================= GAME MODE TABS (FIXED) ================= -->
     <LinearLayout

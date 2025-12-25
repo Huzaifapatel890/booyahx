@@ -24,6 +24,7 @@ import com.booyahx.network.models.TournamentResponse;
 import com.booyahx.network.models.WalletBalanceResponse;
 import com.booyahx.tournament.RulesBottomSheet;
 import com.booyahx.tournament.JoinTournamentDialog;
+import com.booyahx.utils.NotificationPref;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -32,16 +33,17 @@ import retrofit2.Response;
 public class HomeFragment extends Fragment {
 
     // Profile
-    private TextView txtUsername, txtEmail, txtWalletBalance;
+    private TextView txtUsername, txtWalletBalance;
+    private ImageView btnNotification;
 
     // Tabs + tournaments
     private LinearLayout tournamentsContainer;
     private LinearLayout btnBermuda, btnClashSquad, btnSpecial;
 
-    private String currentMode = "BR"; // BR / CS / LW
+    private String currentMode = "BR";
     private ApiService api;
 
-    // 🔥 FRAGMENT LOADER
+    // Loader
     private View fragmentLoader;
     private ImageView loaderRing, loaderGlow;
     private int pendingCalls = 0;
@@ -61,8 +63,8 @@ public class HomeFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         txtUsername = view.findViewById(R.id.txtUsername);
-        txtEmail = view.findViewById(R.id.txtEmail);
         txtWalletBalance = view.findViewById(R.id.txtWalletBalance);
+        btnNotification = view.findViewById(R.id.btnNotification);
 
         tournamentsContainer = view.findViewById(R.id.tournamentsContainer);
         btnBermuda = view.findViewById(R.id.btnBermuda);
@@ -75,7 +77,22 @@ public class HomeFragment extends Fragment {
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
-        // ✅ ADDED — LISTEN FOR JOIN SUCCESS (NOTHING ELSE CHANGED)
+        updateNotificationIcon();
+
+        btnNotification.setOnClickListener(v -> {
+            NotificationPref.setUnread(requireContext(), false);
+            updateNotificationIcon();
+        });
+
+        getParentFragmentManager().setFragmentResultListener(
+                "joined_refresh",
+                this,
+                (key, bundle) -> {
+                    NotificationPref.setUnread(requireContext(), true);
+                    updateNotificationIcon();
+                }
+        );
+
         getParentFragmentManager().setFragmentResultListener(
                 "join_success",
                 this,
@@ -99,7 +116,13 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    /* ================= LOADER CONTROL ================= */
+    private void updateNotificationIcon() {
+        if (NotificationPref.hasUnread(requireContext())) {
+            btnNotification.setImageResource(R.drawable.ic_notification_red);
+        } else {
+            btnNotification.setImageResource(R.drawable.ic_notification);
+        }
+    }
 
     private void showLoader() {
         if (pendingCalls == 0 && isAdded() && fragmentLoader != null) {
@@ -142,8 +165,6 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    /* ================= PROFILE ================= */
-
     private void loadProfile() {
         showLoader();
         api.getProfile().enqueue(new Callback<ProfileResponse>() {
@@ -151,8 +172,15 @@ public class HomeFragment extends Fragment {
             public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
                 hideLoader();
                 if (response.isSuccessful() && response.body() != null && response.body().data != null) {
-                    txtUsername.setText(response.body().data.name);
-                    txtEmail.setText(response.body().data.email);
+
+                    ProfileResponse.Data data = response.body().data;
+
+                    txtUsername.setText(data.name);
+
+                    // ✅ USER ID SAVED — NOTHING ELSE TOUCHED
+                    if (data.userId != null && !data.userId.isEmpty()) {
+                        TokenManager.saveUserId(requireContext(), data.userId);
+                    }
                 }
             }
 
@@ -181,8 +209,6 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    /* ================= GAME MODE ================= */
-
     private void switchMode(String mode) {
         currentMode = mode;
         updateButtonStates(mode);
@@ -198,8 +224,6 @@ public class HomeFragment extends Fragment {
         if ("CS".equals(mode)) btnClashSquad.setAlpha(1f);
         if ("LW".equals(mode)) btnSpecial.setAlpha(1f);
     }
-
-    /* ================= TOURNAMENTS ================= */
 
     private void loadTournaments() {
         tournamentsContainer.removeAllViews();

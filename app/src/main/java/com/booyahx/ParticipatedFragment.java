@@ -56,9 +56,17 @@ public class ParticipatedFragment extends Fragment {
         rvTournaments.setAdapter(adapter);
         Log.d(TAG, "Adapter set");
 
-        // Check RecyclerView height after layout
         rvTournaments.post(() ->
                 Log.d(TAG, "RecyclerView height = " + rvTournaments.getHeight())
+        );
+
+        getParentFragmentManager().setFragmentResultListener(
+                "joined_refresh",
+                this,
+                (key, bundle) -> {
+                    Log.d(TAG, "🔥 FragmentResult received → joined_refresh");
+                    fetchJoinedTournaments();
+                }
         );
 
         fetchJoinedTournaments();
@@ -95,8 +103,7 @@ public class ParticipatedFragment extends Fragment {
                     return;
                 }
 
-                Log.d(
-                        TAG,
+                Log.d(TAG,
                         "Tournament list size = "
                                 + response.body().getData().getTournaments().size()
                 );

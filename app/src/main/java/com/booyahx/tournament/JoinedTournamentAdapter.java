@@ -66,7 +66,6 @@ public class JoinedTournamentAdapter
                 tvPlayers, tvTime, tvSlot,
                 tvRoomId, tvPassword;
 
-        // ✅ OPTIONAL — RULES BUTTON (SAFE)
         TextView btnRules;
 
         CountDownTimer timer;
@@ -84,7 +83,6 @@ public class JoinedTournamentAdapter
             tvRoomId   = itemView.findViewById(R.id.tvRoomId);
             tvPassword = itemView.findViewById(R.id.tvPassword);
 
-            // 🔥 SAFE FIND — if not present, stays null
             btnRules   = itemView.findViewById(R.id.btnRules);
         }
 
@@ -103,7 +101,6 @@ public class JoinedTournamentAdapter
             handleCountdown(t);
             handleRoomAndPassword(t);
 
-            // ================= RULES INTEGRATION =================
             if (btnRules != null && t.getRules() != null) {
                 btnRules.setVisibility(View.VISIBLE);
                 btnRules.setOnClickListener(v -> {
@@ -122,8 +119,6 @@ public class JoinedTournamentAdapter
                 });
             }
         }
-
-        /* ================= TIME FIX ================= */
 
         private void handleCountdown(JoinedTournament t) {
             try {
@@ -178,8 +173,6 @@ public class JoinedTournamentAdapter
             }
         }
 
-        /* ================= TEAMS LOGIC ================= */
-
         private int calculateTeams(JoinedTournament t) {
             int players = t.getParticipantCount();
             String mode = t.getSubMode().toLowerCase(Locale.getDefault());
@@ -207,9 +200,19 @@ public class JoinedTournamentAdapter
             return t.getMaxPlayers();
         }
 
-        /* ================= ROOM LOGIC ================= */
+        /* ================= ROOM LOGIC (FIXED ORDER ONLY) ================= */
 
         private void handleRoomAndPassword(JoinedTournament t) {
+
+            // ✅ SHOW ROOM IF HOST PROVIDED IT (EVEN BEFORE MATCH TIME)
+            if (t.getRoom() != null && t.getRoom().getRoomId() != null) {
+                tvRoomId.setText(t.getRoom().getRoomId());
+                tvPassword.setText(t.getRoom().getPassword());
+
+                enableCopy(tvRoomId, "Room ID copied");
+                enableCopy(tvPassword, "Password copied");
+                return;
+            }
 
             Boolean started = isMatchStarted(t);
 
@@ -222,20 +225,11 @@ public class JoinedTournamentAdapter
                 return;
             }
 
-            if (t.getRoom() == null || t.getRoom().getRoomId() == null) {
-                tvRoomId.setText(" U P D A");
-                tvPassword.setText("T I N G");
+            tvRoomId.setText(" U P D A");
+            tvPassword.setText("T I N G");
 
-                disableCopy(tvRoomId, "Host is updating room details");
-                disableCopy(tvPassword, "Host is updating room details");
-                return;
-            }
-
-            tvRoomId.setText(t.getRoom().getRoomId());
-            tvPassword.setText(t.getRoom().getPassword());
-
-            enableCopy(tvRoomId, "Room ID copied");
-            enableCopy(tvPassword, "Password copied");
+            disableCopy(tvRoomId, "Host is updating room details");
+            disableCopy(tvPassword, "Host is updating room details");
         }
 
         private Boolean isMatchStarted(JoinedTournament t) {

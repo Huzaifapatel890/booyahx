@@ -6,15 +6,22 @@ import android.view.animation.AlphaAnimation;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.booyahx.socket.SocketManager;
+
+import io.socket.client.Socket;
+
 public class DashboardActivity extends AppCompatActivity {
 
     private LinearLayout navHome, navParticipated, navWallet, navSettings;
     private TextView tvNavHome, tvNavParticipated, tvNavWallet, tvNavProfile;
+
+    private Socket socket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,6 +29,8 @@ public class DashboardActivity extends AppCompatActivity {
         setContentView(R.layout.activity_dashboard);
 
         if (getSupportActionBar() != null) getSupportActionBar().hide();
+
+        Log.d("SOCKET_FLOW", "Dashboard onCreate");
 
         navHome = findViewById(R.id.navHome);
         navParticipated = findViewById(R.id.navParticipated);
@@ -33,30 +42,62 @@ public class DashboardActivity extends AppCompatActivity {
         tvNavWallet = findViewById(R.id.tvNavWallet);
         tvNavProfile = findViewById(R.id.tvNavProfile);
 
-        // Default → Home
         if (savedInstanceState == null) {
             loadFragment(new HomeFragment(), 0, false);
             setActive(tvNavHome);
         }
 
         navHome.setOnClickListener(v -> {
+            Log.d("SOCKET_FLOW", "Home clicked");
             loadFragment(new HomeFragment(), 0, true);
             setActive(tvNavHome);
         });
 
         navParticipated.setOnClickListener(v -> {
+            Log.d("SOCKET_FLOW", "Joined clicked");
             loadFragment(new ParticipatedFragment(), 1, true);
             setActive(tvNavParticipated);
         });
 
         navWallet.setOnClickListener(v -> {
+            Log.d("SOCKET_FLOW", "Wallet clicked");
             loadFragment(new WalletFragment(), 2, true);
             setActive(tvNavWallet);
         });
 
         navSettings.setOnClickListener(v -> {
+            Log.d("SOCKET_FLOW", "Settings clicked");
             loadFragment(new SettingsFragment(), 3, true);
             setActive(tvNavProfile);
+        });
+
+        String token = TokenManager.getAccessToken(this);
+        Log.d("SOCKET_FLOW", "Requesting socket with token");
+
+        socket = SocketManager.getSocket(token);
+        SocketManager.connect();
+
+        // 🔥 ADDITION START — USER TOURNAMENT SUBSCRIPTION (ONLY THIS)
+        socket.on(Socket.EVENT_CONNECT, args -> {
+            String userId = TokenManager.getUserId(DashboardActivity.this);
+            Log.d("SOCKET_FLOW", "✅ Socket connected, subscribing user: " + userId);
+
+            if (userId != null && !userId.isEmpty()) {
+                socket.emit("subscribe:user-tournaments", userId);
+            }
+        });
+        // 🔥 ADDITION END
+
+        socket.on("tournament:room-updated", args -> {
+            Log.d("SOCKET_FLOW", "🔥 tournament:room-updated EVENT RECEIVED");
+            Log.d("SOCKET_FLOW", "Payload = " + (args.length > 0 ? args[0] : "null"));
+
+            runOnUiThread(() ->
+                    getSupportFragmentManager().setFragmentResult(
+                            "joined_refresh",
+                            new Bundle()
+                    )
+            );
         });
     }
 
@@ -90,9 +131,6 @@ public class DashboardActivity extends AppCompatActivity {
         tv.setTextColor(0xFFAAAAAA);
     }
 
-    // ----------------------------------------------------
-    // ✅ CUSTOM NEON TOAST (ADDED — NOTHING ELSE TOUCHED)
-    // ----------------------------------------------------
     public void showTopRightToast(String message) {
 
         TextView tv = new TextView(this);
