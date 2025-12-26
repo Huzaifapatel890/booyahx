@@ -9,14 +9,17 @@ import android.view.animation.Animation;
 import android.view.animation.LinearInterpolator;
 import android.view.animation.RotateAnimation;
 import android.view.animation.ScaleAnimation;
+import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.booyahx.adapters.TournamentStatusAdapter;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ProfileResponse;
@@ -27,6 +30,9 @@ import com.booyahx.tournament.RulesBottomSheet;
 import com.booyahx.tournament.JoinTournamentDialog;
 import com.booyahx.utils.NotificationPref;
 import com.booyahx.notifications.NotificationActivity;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -42,7 +48,12 @@ public class HomeFragment extends Fragment {
     private LinearLayout tournamentsContainer;
     private LinearLayout btnBermuda, btnClashSquad, btnSpecial;
 
+    // Tournament Status Spinner
+    private Spinner spinnerTournamentStatus;
+    private TournamentStatusAdapter statusAdapter;
+
     private String currentMode = "BR";
+    private String currentStatus = "upcoming";
     private ApiService api;
 
     // Loader
@@ -73,12 +84,15 @@ public class HomeFragment extends Fragment {
         btnClashSquad = view.findViewById(R.id.btnClashSquad);
         btnSpecial = view.findViewById(R.id.btnSpecial);
 
+        spinnerTournamentStatus = view.findViewById(R.id.spinnerTournamentStatus);
+
         fragmentLoader = view.findViewById(R.id.fragmentLoaderContainer);
         loaderRing = view.findViewById(R.id.fragmentLoaderRing);
         loaderGlow = view.findViewById(R.id.fragmentLoaderGlow);
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
+        setupStatusSpinner();
         updateNotificationIcon();
 
         btnNotification.setOnClickListener(v -> {
@@ -104,6 +118,25 @@ public class HomeFragment extends Fragment {
                 (requestKey, bundle) -> {
                     if (isAdded()) {
                         loadWalletBalance();
+                        String tournamentId = bundle.getString("tournament_id");
+                        if (tournamentId != null) {
+                            markTournamentAsJoined(tournamentId);
+                        }
+                    }
+                }
+        );
+
+        getParentFragmentManager().setFragmentResultListener(
+                "tournament_status_changed",
+                this,
+                (requestKey, bundle) -> {
+                    if (isAdded()) {
+                        String tournamentId = bundle.getString("tournament_id");
+                        String newStatus = bundle.getString("new_status");
+
+                        android.util.Log.d("HomeFragment", "Status changed for tournament: " + tournamentId + " -> " + newStatus);
+
+                        loadTournaments();
                     }
                 }
         );
@@ -117,7 +150,34 @@ public class HomeFragment extends Fragment {
         view.post(() -> {
             loadProfile();
             loadWalletBalance();
-            loadTournaments();
+        });
+    }
+
+    private void setupStatusSpinner() {
+        List<TournamentStatusAdapter.StatusItem> statusItems = new ArrayList<>();
+        statusItems.add(new TournamentStatusAdapter.StatusItem("upcoming", "Upcoming Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("live", "Live Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("completed", "Completed Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("pendingResult", "Pending Result Tournaments"));
+
+        statusAdapter = new TournamentStatusAdapter(requireContext(), statusItems);
+        spinnerTournamentStatus.setAdapter(statusAdapter);
+
+        spinnerTournamentStatus.setSelection(0);
+
+        spinnerTournamentStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                TournamentStatusAdapter.StatusItem selected = statusAdapter.getItem(position);
+                if (selected != null && !selected.apiValue.equals(currentStatus)) {
+                    currentStatus = selected.apiValue;
+                    loadTournaments();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
         });
     }
 
@@ -185,8 +245,11 @@ public class HomeFragment extends Fragment {
                     if (data.userId != null && !data.userId.isEmpty()) {
                         TokenManager.saveUserId(requireContext(), data.userId);
                     }
+
+                    loadTournaments();
                 }
             }
+
 
             @Override
             public void onFailure(Call<ProfileResponse> call, Throwable t) {
@@ -233,7 +296,7 @@ public class HomeFragment extends Fragment {
         tournamentsContainer.removeAllViews();
         showLoader();
 
-        api.getTournaments("upcoming", currentMode)
+        api.getTournaments(currentStatus, currentMode)
                 .enqueue(new Callback<TournamentResponse>() {
                     @Override
                     public void onResponse(Call<TournamentResponse> call, Response<TournamentResponse> response) {
@@ -254,6 +317,19 @@ public class HomeFragment extends Fragment {
                         hideLoader();
                     }
                 });
+    }
+
+    private void markTournamentAsJoined(String tournamentId) {
+        for (int i = 0; i < tournamentsContainer.getChildCount(); i++) {
+            View card = tournamentsContainer.getChildAt(i);
+            View btnJoin = card.findViewById(R.id.btnT1Join);
+            if (btnJoin != null && btnJoin.getTag() != null && btnJoin.getTag().equals(tournamentId)) {
+                btnJoin.setEnabled(false);
+                btnJoin.setAlpha(0.5f);
+                ((TextView) btnJoin).setText("Joined");
+                break;
+            }
+        }
     }
 
     private View createTournamentCard(Tournament t) {
@@ -300,10 +376,23 @@ public class HomeFragment extends Fragment {
         }
 
         if (btnJoin != null) {
+            btnJoin.setTag(t.getId());
+
             btnJoin.setOnClickListener(v -> {
                 JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
                 dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
             });
+
+            // ================= DERIVED JOIN STATE =================
+            String userId = TokenManager.getUserId(requireContext());
+
+            if (!"upcoming".equalsIgnoreCase(t.getStatus())) {
+                btnJoin.setVisibility(View.GONE);
+            } else if (t.isJoinedDerived(userId)) {
+                btnJoin.setEnabled(false);
+                btnJoin.setAlpha(0.5f);
+                ((TextView) btnJoin).setText("Joined");
+            }
         }
 
         return card;

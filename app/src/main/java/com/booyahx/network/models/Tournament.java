@@ -49,6 +49,35 @@ public class Tournament implements Parcelable {
     @SerializedName("rules")
     private TournamentRules rules;
 
+    /* ================= STATUS ================= */
+
+    @SerializedName("status")
+    private String status;
+
+    public String getStatus() {
+        return status;
+    }
+
+    /* ================= TEAMS (DERIVED JOIN LOGIC) ================= */
+
+    @SerializedName("teams")
+    private List<Team> teams;
+
+    public boolean isJoinedDerived(String userId) {
+        if (teams == null || userId == null) return false;
+        for (Team team : teams) {
+            if (userId.equals(team.leaderUserId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static class Team {
+        @SerializedName("leaderUserId")
+        public String leaderUserId;
+    }
+
     /* ================= REQUIRED FOR JOIN ================= */
 
     public String getId() {
@@ -146,6 +175,7 @@ public class Tournament implements Parcelable {
         startTime = in.readString();
         lobbyName = in.readString();
         rules = in.readParcelable(TournamentRules.class.getClassLoader());
+        status = in.readString();
     }
 
     @Override
@@ -162,6 +192,7 @@ public class Tournament implements Parcelable {
         dest.writeString(startTime);
         dest.writeString(lobbyName);
         dest.writeParcelable(rules, flags);
+        dest.writeString(status);
     }
 
     @Override

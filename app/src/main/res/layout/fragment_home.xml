@@ -152,17 +152,15 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ================= UPCOMING TITLE (FIXED) ================= -->
-    <TextView
-        android:id="@+id/txtUpcomingTitle"
-        android:text="Upcoming Tournaments"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="6dp"
+    <!-- ================= TOURNAMENT STATUS SPINNER (REPLACES TITLE) ================= -->
+    <Spinner
+        android:id="@+id/spinnerTournamentStatus"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="6dp"
+        android:spinnerMode="dropdown" />
 
     <!-- ================= ONLY TOURNAMENTS SCROLL ================= -->
     <ScrollView

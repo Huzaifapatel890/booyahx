@@ -166,9 +166,11 @@ public class JoinTournamentDialog extends DialogFragment {
 
                             showToast(response.body().message);
 
+                            Bundle result = new Bundle();
+                            result.putString("tournament_id", tournament.getId());
                             getParentFragmentManager().setFragmentResult(
                                     "join_success",
-                                    new Bundle()
+                                    result
                             );
 
                             dismiss();

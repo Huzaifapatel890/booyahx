@@ -14,6 +14,8 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.booyahx.socket.SocketManager;
 
+import org.json.JSONObject;
+
 import io.socket.client.Socket;
 
 public class DashboardActivity extends AppCompatActivity {
@@ -77,7 +79,6 @@ public class DashboardActivity extends AppCompatActivity {
         socket = SocketManager.getSocket(token);
         SocketManager.connect();
 
-        // 🔥 ADDITION START — USER TOURNAMENT SUBSCRIPTION (ONLY THIS)
         socket.on(Socket.EVENT_CONNECT, args -> {
             String userId = TokenManager.getUserId(DashboardActivity.this);
             Log.d("SOCKET_FLOW", "✅ Socket connected, subscribing user: " + userId);
@@ -86,7 +87,6 @@ public class DashboardActivity extends AppCompatActivity {
                 socket.emit("subscribe:user-tournaments", userId);
             }
         });
-        // 🔥 ADDITION END
 
         socket.on("tournament:room-updated", args -> {
             Log.d("SOCKET_FLOW", "🔥 tournament:room-updated EVENT RECEIVED");
@@ -98,6 +98,40 @@ public class DashboardActivity extends AppCompatActivity {
                             new Bundle()
                     )
             );
+        });
+
+        socket.on("tournament:status-updated", args -> {
+            Log.d("SOCKET_FLOW", "🔥 tournament:status-updated EVENT RECEIVED");
+
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String tournamentId = data.optString("tournamentId", "");
+                    String newStatus = data.optString("status", "");
+
+                    Log.d("SOCKET_FLOW", "Tournament ID: " + tournamentId);
+                    Log.d("SOCKET_FLOW", "New Status: " + newStatus);
+
+                    runOnUiThread(() -> {
+                        Bundle bundle = new Bundle();
+                        bundle.putString("tournament_id", tournamentId);
+                        bundle.putString("new_status", newStatus);
+
+                        getSupportFragmentManager().setFragmentResult(
+                                "tournament_status_changed",
+                                bundle
+                        );
+
+                        getSupportFragmentManager().setFragmentResult(
+                                "joined_refresh",
+                                new Bundle()
+                        );
+                    });
+
+                } catch (Exception e) {
+                    Log.e("SOCKET_FLOW", "Error parsing status update", e);
+                }
+            }
         });
     }
 
