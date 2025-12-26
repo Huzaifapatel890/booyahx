@@ -159,6 +159,7 @@ public class HomeFragment extends Fragment {
         statusItems.add(new TournamentStatusAdapter.StatusItem("live", "Live Tournaments"));
         statusItems.add(new TournamentStatusAdapter.StatusItem("completed", "Completed Tournaments"));
         statusItems.add(new TournamentStatusAdapter.StatusItem("pendingResult", "Pending Result Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("cancelled", "Cancelled Tournaments"));
 
         statusAdapter = new TournamentStatusAdapter(requireContext(), statusItems);
         spinnerTournamentStatus.setAdapter(statusAdapter);

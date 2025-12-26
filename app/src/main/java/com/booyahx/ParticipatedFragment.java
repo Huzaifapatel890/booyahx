@@ -5,6 +5,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -12,10 +14,18 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.booyahx.adapters.TournamentStatusAdapter;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
+import com.booyahx.network.models.JoinedTournament;
 import com.booyahx.network.models.JoinedTournamentResponse;
 import com.booyahx.tournament.JoinedTournamentAdapter;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -28,6 +38,14 @@ public class ParticipatedFragment extends Fragment {
     RecyclerView rvTournaments;
     JoinedTournamentAdapter adapter;
 
+    private Spinner spinnerTournamentStatus;
+    private TournamentStatusAdapter statusAdapter;
+
+    // ✅ LIVE IS DEFAULT (DERIVED LOCALLY)
+    private String currentStatus = "live";
+
+    private List<JoinedTournament> allTournaments = new ArrayList<>();
+
     @Nullable
     @Override
     public View onCreateView(
@@ -35,7 +53,6 @@ public class ParticipatedFragment extends Fragment {
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState
     ) {
-        Log.d(TAG, "onCreateView()");
         return inflater.inflate(R.layout.fragment_joined_tournaments, container, false);
     }
 
@@ -44,37 +61,48 @@ public class ParticipatedFragment extends Fragment {
             @NonNull View view,
             @Nullable Bundle savedInstanceState
     ) {
-        Log.d(TAG, "onViewCreated()");
-
         rvTournaments = view.findViewById(R.id.rvTournaments);
-        Log.d(TAG, "RecyclerView found = " + (rvTournaments != null));
+        spinnerTournamentStatus = view.findViewById(R.id.spinnerTournamentStatus);
 
         rvTournaments.setLayoutManager(new LinearLayoutManager(requireContext()));
-        Log.d(TAG, "LayoutManager set");
-
         adapter = new JoinedTournamentAdapter(null);
         rvTournaments.setAdapter(adapter);
-        Log.d(TAG, "Adapter set");
 
-        rvTournaments.post(() ->
-                Log.d(TAG, "RecyclerView height = " + rvTournaments.getHeight())
-        );
-
-        getParentFragmentManager().setFragmentResultListener(
-                "joined_refresh",
-                this,
-                (key, bundle) -> {
-                    Log.d(TAG, "🔥 FragmentResult received → joined_refresh");
-                    fetchJoinedTournaments();
-                }
-        );
-
+        setupStatusSpinner();
         fetchJoinedTournaments();
     }
 
-    private void fetchJoinedTournaments() {
+    private void setupStatusSpinner() {
 
-        Log.d(TAG, "fetchJoinedTournaments() called");
+        List<TournamentStatusAdapter.StatusItem> statusItems = new ArrayList<>();
+        statusItems.add(new TournamentStatusAdapter.StatusItem("live", "Live Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("upcoming", "Upcoming Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("completed", "Completed Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("pending", "Pending Result Tournaments"));
+        statusItems.add(new TournamentStatusAdapter.StatusItem("cancelled", "Cancelled Tournaments"));
+
+        statusAdapter = new TournamentStatusAdapter(requireContext(), statusItems);
+        spinnerTournamentStatus.setAdapter(statusAdapter);
+
+        // ✅ LIVE DEFAULT
+        spinnerTournamentStatus.setSelection(0);
+
+        spinnerTournamentStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                TournamentStatusAdapter.StatusItem selected = statusAdapter.getItem(position);
+                if (selected != null && !selected.apiValue.equals(currentStatus)) {
+                    currentStatus = selected.apiValue;
+                    filterTournaments();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+    }
+
+    private void fetchJoinedTournaments() {
 
         ApiService api = ApiClient.getClient(requireContext())
                 .create(ApiService.class);
@@ -85,32 +113,14 @@ public class ParticipatedFragment extends Fragment {
                     @NonNull Call<JoinedTournamentResponse> call,
                     @NonNull Response<JoinedTournamentResponse> response
             ) {
-                Log.d(TAG, "API onResponse()");
-                Log.d(TAG, "HTTP code = " + response.code());
-
-                if (response.body() == null) {
-                    Log.e(TAG, "Response body is NULL");
+                if (response.body() == null
+                        || response.body().getData() == null
+                        || response.body().getData().getTournaments() == null) {
                     return;
                 }
 
-                if (response.body().getData() == null) {
-                    Log.e(TAG, "Response data is NULL");
-                    return;
-                }
-
-                if (response.body().getData().getTournaments() == null) {
-                    Log.e(TAG, "Tournament list is NULL");
-                    return;
-                }
-
-                Log.d(TAG,
-                        "Tournament list size = "
-                                + response.body().getData().getTournaments().size()
-                );
-
-                adapter.updateData(
-                        response.body().getData().getTournaments()
-                );
+                allTournaments = response.body().getData().getTournaments();
+                filterTournaments();
             }
 
             @Override
@@ -121,5 +131,52 @@ public class ParticipatedFragment extends Fragment {
                 Log.e(TAG, "API FAILED", t);
             }
         });
+    }
+
+    private void filterTournaments() {
+
+        List<JoinedTournament> filtered = new ArrayList<>();
+
+        for (JoinedTournament t : allTournaments) {
+            String status = t.getStatus();
+            if (status == null) continue;
+
+            // ✅ LIVE = upcoming + started
+            if (currentStatus.equals("live")) {
+                if (status.equalsIgnoreCase("upcoming") && hasStarted(t)) {
+                    filtered.add(t);
+                }
+                continue;
+            }
+
+            // ✅ UPCOMING = upcoming BUT NOT started (🔥 FIX)
+            if (currentStatus.equals("upcoming")) {
+                if (status.equalsIgnoreCase("upcoming") && !hasStarted(t)) {
+                    filtered.add(t);
+                }
+                continue;
+            }
+
+            // ✅ NORMAL STATUS MATCH
+            if (status.equalsIgnoreCase(currentStatus)) {
+                filtered.add(t);
+            }
+        }
+
+        Log.d(TAG, "Filtered = " + filtered.size() + " | status = " + currentStatus);
+        adapter.updateData(filtered);
+    }
+
+    // ✅ SAFE TIME CHECK
+    private boolean hasStarted(JoinedTournament t) {
+        try {
+            String dateTime = t.getDate() + " " + t.getStartTime();
+            SimpleDateFormat sdf =
+                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
+            Date start = sdf.parse(dateTime);
+            return System.currentTimeMillis() >= start.getTime();
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

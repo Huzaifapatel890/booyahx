@@ -121,6 +121,28 @@ public class JoinedTournamentAdapter
         }
 
         private void handleCountdown(JoinedTournament t) {
+
+            // ================= STATUS OVERRIDE (ONLY THIS LOGIC ADDED) =================
+            if (t.getStatus() != null) {
+                String status = t.getStatus().toLowerCase(Locale.getDefault());
+
+                if (status.contains("completed")) {
+                    tvTime.setText("COMPLETED");
+                    return;
+                }
+
+                if (status.contains("pending")) {
+                    tvTime.setText("PENDING");
+                    return;
+                }
+
+                if (status.contains("cancel")) {
+                    tvTime.setText("CANCEL");
+                    return;
+                }
+            }
+            // ===========================================================================
+
             try {
                 String dateTime = t.getDate() + " " + t.getStartTime();
                 SimpleDateFormat sdf =
@@ -204,7 +226,6 @@ public class JoinedTournamentAdapter
 
         private void handleRoomAndPassword(JoinedTournament t) {
 
-            // ✅ SHOW ROOM IF HOST PROVIDED IT (EVEN BEFORE MATCH TIME)
             if (t.getRoom() != null && t.getRoom().getRoomId() != null) {
                 tvRoomId.setText(t.getRoom().getRoomId());
                 tvPassword.setText(t.getRoom().getPassword());
@@ -217,8 +238,8 @@ public class JoinedTournamentAdapter
             Boolean started = isMatchStarted(t);
 
             if (!started) {
-                tvRoomId.setText("W  A");
-                tvPassword.setText("I  T");
+                tvRoomId.setText("U P C O");
+                tvPassword.setText("M I N G");
 
                 disableCopy(tvRoomId, "Room will be available at match time");
                 disableCopy(tvPassword, "Room will be available at match time");

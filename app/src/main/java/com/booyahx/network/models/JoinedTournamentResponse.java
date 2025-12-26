@@ -1,24 +1,24 @@
-package com.booyahx.network.models;
+    package com.booyahx.network.models;
 
-import com.booyahx.network.models.JoinedTournament;
-import java.util.List;
+    import com.booyahx.network.models.JoinedTournament;
+    import java.util.List;
 
-public class JoinedTournamentResponse {
+    public class JoinedTournamentResponse {
 
-    private int status;
-    private boolean success;
-    private String message;
-    private Data data;
+        private int status;
+        private boolean success;
+        private String message;
+        private Data data;
 
-    public Data getData() {
-        return data;
-    }
+        public Data getData() {
+            return data;
+        }
 
-    public static class Data {
-        private List<JoinedTournament> tournaments;
+        public static class Data {
+            private List<JoinedTournament> tournaments;
 
-        public List<JoinedTournament> getTournaments() {
-            return tournaments;
+            public List<JoinedTournament> getTournaments() {
+                return tournaments;
+            }
         }
     }
-}
