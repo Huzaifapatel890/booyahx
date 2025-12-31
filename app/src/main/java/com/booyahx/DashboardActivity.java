@@ -79,12 +79,19 @@ public class DashboardActivity extends AppCompatActivity {
         socket = SocketManager.getSocket(token);
         SocketManager.connect();
 
-        socket.on(Socket.EVENT_CONNECT, args -> {
-            String userId = TokenManager.getUserId(DashboardActivity.this);
-            Log.d("SOCKET_FLOW", "✅ Socket connected, subscribing user: " + userId);
+        // 🔥 FIX: SUBSCRIBE IF SOCKET IS ALREADY CONNECTED
+        String userId = TokenManager.getUserId(DashboardActivity.this);
+        if (socket != null && socket.connected() && userId != null && !userId.isEmpty()) {
+            Log.d("SOCKET_FLOW", "🔔 Socket already connected, subscribing immediately: " + userId);
+            socket.emit("subscribe:user-tournaments", userId);
+        }
 
-            if (userId != null && !userId.isEmpty()) {
-                socket.emit("subscribe:user-tournaments", userId);
+        socket.on(Socket.EVENT_CONNECT, args -> {
+            String uid = TokenManager.getUserId(DashboardActivity.this);
+            Log.d("SOCKET_FLOW", "✅ Socket connected, subscribing user: " + uid);
+
+            if (uid != null && !uid.isEmpty()) {
+                socket.emit("subscribe:user-tournaments", uid);
             }
         });
 

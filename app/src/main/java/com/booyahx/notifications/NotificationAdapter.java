@@ -1,11 +1,5 @@
 package com.booyahx.notifications;
 
-import com.booyahx.notifications.NotificationActivity;
-import com.booyahx.notifications.NotificationType;
-import com.booyahx.notifications.NotificationAdapter;
-import com.booyahx.notifications.NotificationItem;
-import com.booyahx.R;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,12 +9,14 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.booyahx.R;
+
 import java.util.List;
 
 public class NotificationAdapter
         extends RecyclerView.Adapter<NotificationAdapter.ViewHolder> {
 
-    private final List<NotificationItem> notifications;
+    private List<NotificationItem> notifications;
     private final OnItemRemoveListener removeListener;
 
     public interface OnItemRemoveListener {
@@ -33,6 +29,11 @@ public class NotificationAdapter
     ) {
         this.notifications = notifications;
         this.removeListener = listener;
+    }
+
+    public void updateNotifications(List<NotificationItem> newNotifications) {
+        this.notifications = newNotifications;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -55,7 +56,7 @@ public class NotificationAdapter
 
         holder.title.setText(item.getTitle());
         holder.message.setText(item.getMessage());
-        holder.time.setText(item.getTime());
+        holder.time.setText(item.getTimeAgo());
         holder.icon.setImageResource(item.getType().getIconResource());
 
         holder.closeButton.setOnClickListener(v -> {

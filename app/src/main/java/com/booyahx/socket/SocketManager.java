@@ -1,8 +1,10 @@
 package com.booyahx.socket;
 
 import android.util.Log;
-import com.booyahx.TokenManager;
+
 import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.HashMap;
 
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -14,31 +16,29 @@ public class SocketManager {
 
     public static Socket getSocket(String token) {
 
-        if (socket != null && socket.connected()) {
-            Log.d(TAG, "Socket already connected");
+        if (socket != null) {
             return socket;
         }
 
         try {
             IO.Options options = new IO.Options();
             options.transports = new String[]{"websocket", "polling"};
-            options.forceNew = true;
             options.reconnection = true;
             options.reconnectionAttempts = Integer.MAX_VALUE;
             options.reconnectionDelay = 2000;
 
-            options.extraHeaders = new java.util.HashMap<>();
+            options.extraHeaders = new HashMap<>();
             options.extraHeaders.put(
                     "Authorization",
-                    java.util.Collections.singletonList("Bearer " + token)
+                    Collections.singletonList("Bearer " + token)
             );
 
             Log.d(TAG, "Creating socket instance");
             socket = IO.socket("wss://api.gaminghuballday.buzz", options);
 
-            socket.on(Socket.EVENT_CONNECT, args -> {
-                Log.d(TAG, "✅ SOCKET CONNECTED");
-            });
+            socket.on(Socket.EVENT_CONNECT, args ->
+                    Log.d(TAG, "✅ SOCKET CONNECTED")
+            );
 
             socket.on(Socket.EVENT_DISCONNECT, args ->
                     Log.d(TAG, "⚠ SOCKET DISCONNECTED")
@@ -59,14 +59,11 @@ public class SocketManager {
         if (socket != null && !socket.connected()) {
             Log.d(TAG, "Connecting socket...");
             socket.connect();
-        } else {
-            Log.d(TAG, "Socket already connected or null");
         }
     }
 
     public static void disconnect() {
         if (socket != null) {
-            Log.d(TAG, "Disconnecting socket");
             socket.disconnect();
             socket.off();
             socket = null;

@@ -70,6 +70,14 @@ public class ParticipatedFragment extends Fragment {
 
         setupStatusSpinner();
         fetchJoinedTournaments();
+        getParentFragmentManager().setFragmentResultListener(
+                "joined_refresh",
+                this,
+                (requestKey, bundle) -> {
+                    Log.d("JoinedTrace", "🔄 joined_refresh received, refetching tournaments");
+                    fetchJoinedTournaments();
+                }
+        );
     }
 
     private void setupStatusSpinner() {
