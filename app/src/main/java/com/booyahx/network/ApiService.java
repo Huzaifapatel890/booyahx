@@ -10,7 +10,7 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Query;
-
+import java.util.List;
 public interface ApiService {
 
     // REGISTER
@@ -82,4 +82,11 @@ public interface ApiService {
 
     @GET("/api/tournament/joined")
     Call<JoinedTournamentResponse> getJoinedTournaments();
+
+    @GET("/api/support/tickets")
+    Call<TicketResponse> getTickets(
+            @Query("page") int page,
+            @Query("limit") int limit,
+            @Query("status") String status
+    );
 }

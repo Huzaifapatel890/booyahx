@@ -1,17 +1,20 @@
-package com.booyahx.helpandsupport;
+package com.booyahx.network.models;
+
+import com.google.gson.annotations.SerializedName;
 
 public class Ticket {
-    private String ticketId;
-    private String subject;
-    private String date;
-    private boolean isOpen;
 
-    public Ticket(String ticketId, String subject, String date, boolean isOpen) {
-        this.ticketId = ticketId;
-        this.subject = subject;
-        this.date = date;
-        this.isOpen = isOpen;
-    }
+    @SerializedName("id")
+    private String ticketId;
+
+    @SerializedName("subject")
+    private String subject;
+
+    @SerializedName("createdAt")
+    private String date;
+
+    @SerializedName("status")
+    private String status; // open / closed
 
     public String getTicketId() {
         return ticketId;
@@ -26,7 +29,6 @@ public class Ticket {
     }
 
     public boolean isOpen() {
-        return isOpen;
+        return "open".equalsIgnoreCase(status);
     }
 }
-

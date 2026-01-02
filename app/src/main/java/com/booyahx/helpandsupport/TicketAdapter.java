@@ -8,7 +8,7 @@ import android.widget.TextView;
 import com.booyahx.R;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
+import com.booyahx.network.models.Ticket;
 import java.util.List;
 
 public class TicketAdapter extends RecyclerView.Adapter<TicketAdapter.TicketViewHolder> {

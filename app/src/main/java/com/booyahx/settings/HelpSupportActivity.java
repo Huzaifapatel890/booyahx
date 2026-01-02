@@ -1,48 +1,62 @@
 package com.booyahx.settings;
 
-import android.app.Dialog;
 import android.graphics.Color;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.Window;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
+
 import com.booyahx.R;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.booyahx.helpandsupport.TicketAdapter;
 import com.booyahx.helpandsupport.FAQ;
-import com.booyahx.helpandsupport.Ticket;
+import com.booyahx.helpandsupport.CreateTicketDialog;
+import com.booyahx.network.ApiClient;
+import com.booyahx.network.ApiService;
+import com.booyahx.network.models.Ticket;
+import com.booyahx.network.models.TicketResponse;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class HelpSupportActivity extends AppCompatActivity {
 
     private LinearLayout faqContainer;
     private RecyclerView ticketsRecyclerView;
     private TicketAdapter ticketAdapter;
-    private List<Ticket> allTickets, openTickets, closedTickets;
+
+    private List<Ticket> allTickets = new ArrayList<>();
+    private List<Ticket> openTickets = new ArrayList<>();
+    private List<Ticket> closedTickets = new ArrayList<>();
+
     private TextView tabAllTickets, tabOpen, tabClosed;
     private CardView btnCreateTicket;
+
+    private ApiService apiService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_help_support);
 
+        apiService = ApiClient.getClient(this).create(ApiService.class);
+
         initViews();
         setupFAQs();
         setupTickets();
         setupListeners();
+
+        loadAllTickets(); // default
     }
 
     private void initViews() {
@@ -59,8 +73,9 @@ public class HelpSupportActivity extends AppCompatActivity {
         ticketsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
+    /* ---------------- FAQ LOGIC (UNCHANGED) ---------------- */
+
     private void setupFAQs() {
-        // Room & Match Category
         List<FAQ> roomMatchFAQs = new ArrayList<>();
         roomMatchFAQs.add(new FAQ("How do I join a scrim room?",
                 "Go to the 'Rooms' tab, select your desired scrim match, and click 'Join Room'. Make sure you have sufficient balance for entry fee."));
@@ -70,7 +85,6 @@ public class HelpSupportActivity extends AppCompatActivity {
                 "Winners are determined based on final placement and kills. Results are updated automatically after match completion."));
         addFAQCategory("🎮 Room & Match", roomMatchFAQs);
 
-        // Wallet & Payment Category
         List<FAQ> walletFAQs = new ArrayList<>();
         walletFAQs.add(new FAQ("How do I add money to my wallet?",
                 "Click on 'Wallet' → 'Add Money', enter the amount and select your preferred payment method. We support UPI, Cards, and Net Banking."));
@@ -80,7 +94,6 @@ public class HelpSupportActivity extends AppCompatActivity {
                 "Yes, the minimum withdrawal amount is ₹100. Maximum per transaction is ₹50,000."));
         addFAQCategory("💰 Wallet & Payment", walletFAQs);
 
-        // Prize & Winnings Category
         List<FAQ> prizeFAQs = new ArrayList<>();
         prizeFAQs.add(new FAQ("When will I receive my winnings?",
                 "Winnings are credited to your wallet within 1 hour of match result verification."));
@@ -88,7 +101,6 @@ public class HelpSupportActivity extends AppCompatActivity {
                 "Go to 'Profile' → 'Match History' to see all your past matches, winnings, and statistics."));
         addFAQCategory("🏆 Prize & Winnings", prizeFAQs);
 
-        // Account & Profile Category
         List<FAQ> accountFAQs = new ArrayList<>();
         accountFAQs.add(new FAQ("How do I link my Free Fire ID?",
                 "Go to 'Profile' → 'Game Settings' → 'Link Free Fire ID' and enter your 10-digit ID number."));
@@ -107,7 +119,6 @@ public class HelpSupportActivity extends AppCompatActivity {
 
         tvCategoryName.setText(categoryName);
 
-        // Add FAQ items
         for (FAQ faq : faqs) {
             View faqView = getLayoutInflater().inflate(R.layout.item_faq_question, faqItemsContainer, false);
             TextView tvQuestion = faqView.findViewById(R.id.tvQuestion);
@@ -117,132 +128,95 @@ public class HelpSupportActivity extends AppCompatActivity {
             tvQuestion.setText(faq.getQuestion());
             tvAnswer.setText(faq.getAnswer());
 
-            cardFaq.setOnClickListener(v -> {
-                if (tvAnswer.getVisibility() == View.GONE) {
-                    tvAnswer.setVisibility(View.VISIBLE);
-                } else {
-                    tvAnswer.setVisibility(View.GONE);
-                }
-            });
+            cardFaq.setOnClickListener(v ->
+                    tvAnswer.setVisibility(
+                            tvAnswer.getVisibility() == View.GONE ? View.VISIBLE : View.GONE
+                    )
+            );
 
             faqItemsContainer.addView(faqView);
         }
 
-        // Category expand/collapse
         categoryHeader.setOnClickListener(v -> {
-            if (faqItemsContainer.getVisibility() == View.GONE) {
-                faqItemsContainer.setVisibility(View.VISIBLE);
-                tvCategoryIcon.setRotation(180);
-            } else {
-                faqItemsContainer.setVisibility(View.GONE);
-                tvCategoryIcon.setRotation(0);
-            }
+            boolean expand = faqItemsContainer.getVisibility() == View.GONE;
+            faqItemsContainer.setVisibility(expand ? View.VISIBLE : View.GONE);
+            tvCategoryIcon.setRotation(expand ? 180 : 0);
         });
 
         faqContainer.addView(categoryView);
     }
 
+    /* ---------------- TICKETS (REAL API) ---------------- */
+
     private void setupTickets() {
-        // Sample ticket data
-        allTickets = new ArrayList<>();
-        allTickets.add(new Ticket("TKT-1247", "Payment not received", "28 Dec 2025, 3:45 PM", true));
-        allTickets.add(new Ticket("TKT-1182", "Room ID not working", "25 Dec 2025, 11:20 AM", false));
-
-        openTickets = new ArrayList<>();
-        openTickets.add(new Ticket("TKT-1247", "Payment not received", "28 Dec 2025, 3:45 PM", true));
-
-        closedTickets = new ArrayList<>();
-        closedTickets.add(new Ticket("TKT-1182", "Room ID not working", "25 Dec 2025, 11:20 AM", false));
-
         ticketAdapter = new TicketAdapter(allTickets);
         ticketsRecyclerView.setAdapter(ticketAdapter);
     }
 
     private void setupListeners() {
-        tabAllTickets.setOnClickListener(v -> switchTab(tabAllTickets, allTickets));
-        tabOpen.setOnClickListener(v -> switchTab(tabOpen, openTickets));
-        tabClosed.setOnClickListener(v -> switchTab(tabClosed, closedTickets));
-        btnCreateTicket.setOnClickListener(v -> showCreateTicketDialog());
-    }
-
-    private void switchTab(TextView selectedTab, List<Ticket> tickets) {
-        // Reset all tabs
-        tabAllTickets.setBackgroundResource(R.drawable.tab_unselected);
-        tabAllTickets.setTextColor(Color.GRAY);
-        tabOpen.setBackgroundResource(R.drawable.tab_unselected);
-        tabOpen.setTextColor(Color.GRAY);
-        tabClosed.setBackgroundResource(R.drawable.tab_unselected);
-        tabClosed.setTextColor(Color.GRAY);
-
-        // Set selected tab
-        selectedTab.setBackgroundResource(R.drawable.tab_selected);
-        selectedTab.setTextColor(Color.WHITE);
-
-        // Update RecyclerView
-        ticketAdapter.updateTickets(tickets);
-    }
-
-    private void showCreateTicketDialog() {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_create_ticket);
-        dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-
-        ImageView btnClose = dialog.findViewById(R.id.btnCloseDialog);
-        Spinner spinnerSubject = dialog.findViewById(R.id.spinnerSubject);
-        EditText etDescription = dialog.findViewById(R.id.etDescription);
-        EditText etImageUrl = dialog.findViewById(R.id.etImageUrl);
-        CardView btnSubmit = dialog.findViewById(R.id.btnSubmitTicket);
-
-        // Setup Spinner
-        String[] subjects = {"Select Subject", "Dispute", "Refund", "Top-up Limit", "Other"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, subjects) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                TextView text = (TextView) view.findViewById(android.R.id.text1);
-                text.setTextColor(Color.WHITE);
-                return view;
-            }
-
-            @Override
-            public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                View view = super.getDropDownView(position, convertView, parent);
-                TextView text = (TextView) view.findViewById(android.R.id.text1);
-                text.setTextColor(Color.WHITE);
-                text.setBackgroundColor(Color.parseColor("#1A1A1A"));
-                return view;
-            }
-        };
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerSubject.setAdapter(adapter);
-
-        btnClose.setOnClickListener(v -> dialog.dismiss());
-
-        btnSubmit.setOnClickListener(v -> {
-            String subject = spinnerSubject.getSelectedItem().toString();
-            String description = etDescription.getText().toString().trim();
-            String imageUrl = etImageUrl.getText().toString().trim();
-
-            if (subject.equals("Select Subject")) {
-                Toast.makeText(this, "Please select a subject", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (description.isEmpty()) {
-                Toast.makeText(this, "Please describe your issue", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Handle ticket creation
-            // TODO: Send data to server
-            Toast.makeText(this, "Ticket created successfully! Our support team will get back to you soon.", Toast.LENGTH_LONG).show();
-            dialog.dismiss();
+        tabAllTickets.setOnClickListener(v -> {
+            switchTab(tabAllTickets);
+            loadAllTickets();
         });
 
-        dialog.show();
+        tabOpen.setOnClickListener(v -> {
+            switchTab(tabOpen);
+            loadOpenTickets();
+        });
+
+        tabClosed.setOnClickListener(v -> {
+            switchTab(tabClosed);
+            loadClosedTickets();
+        });
+
+        btnCreateTicket.setOnClickListener(v ->
+                new CreateTicketDialog(this).show()
+        );
+    }
+
+    private void switchTab(TextView selectedTab) {
+        tabAllTickets.setBackgroundResource(R.drawable.tab_unselected);
+        tabOpen.setBackgroundResource(R.drawable.tab_unselected);
+        tabClosed.setBackgroundResource(R.drawable.tab_unselected);
+
+        tabAllTickets.setTextColor(Color.GRAY);
+        tabOpen.setTextColor(Color.GRAY);
+        tabClosed.setTextColor(Color.GRAY);
+
+        selectedTab.setBackgroundResource(R.drawable.tab_selected);
+        selectedTab.setTextColor(Color.WHITE);
+    }
+
+    private void loadAllTickets() {
+        apiService.getTickets(1, 20, null).enqueue(ticketCallback(allTickets));
+    }
+
+    private void loadOpenTickets() {
+        apiService.getTickets(1, 20, "open").enqueue(ticketCallback(openTickets));
+    }
+
+    private void loadClosedTickets() {
+        apiService.getTickets(1, 20, "closed").enqueue(ticketCallback(closedTickets));
+    }
+
+    private Callback<TicketResponse> ticketCallback(List<Ticket> targetList) {
+        return new Callback<TicketResponse>() {
+            @Override
+            public void onResponse(Call<TicketResponse> call, Response<TicketResponse> response) {
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().isSuccess()) {
+
+                    targetList.clear();
+                    targetList.addAll(response.body().getData().getTickets());
+                    ticketAdapter.updateTickets(targetList);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<TicketResponse> call, Throwable t) {
+                t.printStackTrace();
+            }
+        };
     }
 }
-
-
