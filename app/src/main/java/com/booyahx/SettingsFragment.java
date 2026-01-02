@@ -19,6 +19,7 @@ import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.settings.AboutActivity;
 import com.booyahx.settings.ChangePasswordActivity;
 import com.booyahx.settings.EditProfileActivity;
+import com.booyahx.settings.HelpSupportActivity;
 import com.booyahx.settings.WinningHistoryActivity;
 
 import retrofit2.Call;
@@ -59,12 +60,17 @@ public class SettingsFragment extends Fragment {
                 .setOnClickListener(v -> startActivity(
                         new Intent(requireContext(), AboutActivity.AboutUsActivity.class)));
 
+        view.findViewById(R.id.btnSupport)
+                .setOnClickListener(v -> startActivity(
+                        new Intent(requireContext(), HelpSupportActivity.class)));
+
         view.findViewById(R.id.btnWinningHistory)
                 .setOnClickListener(v -> startActivity(
                         new Intent(requireContext(), WinningHistoryActivity.class)));
 
         view.findViewById(R.id.btnLogout)
                 .setOnClickListener(v -> showLogoutDialog());
+
     }
 
     private void fetchUserProfile() {

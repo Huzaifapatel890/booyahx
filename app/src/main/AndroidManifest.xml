@@ -55,6 +55,10 @@
             android:name=".settings.ChangePasswordActivity"
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar" />
+        <activity
+            android:name=".settings.HelpSupportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
         <!-- MAIN DASHBOARD (now contains all fragments) -->
         <activity
             android:name="com.booyahx.DashboardActivity"

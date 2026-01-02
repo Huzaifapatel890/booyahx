@@ -14,7 +14,7 @@
     <color name="background_dark">#000000</color>
     <color name="cyan">#00D4FF</color>
     <color name="purple">#B794F6</color>
-
+    <color name="bluebg"> #1A00D9FF</color>
     <!-- Text Colors -->
 
     <color name="gray">#8B8B9E</color>
