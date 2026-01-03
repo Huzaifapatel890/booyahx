@@ -89,4 +89,11 @@ public interface ApiService {
             @Query("limit") int limit,
             @Query("status") String status
     );
-}
+
+    @POST("/api/support/tickets")
+    Call<TicketResponse> createTicket(
+            @Header("Authorization") String token,
+            @Header("X-CSRF-Token") String csrf,
+            @Body CreateTicketRequest request
+    );
+    }
