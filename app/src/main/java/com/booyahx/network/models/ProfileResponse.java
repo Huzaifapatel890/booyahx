@@ -20,5 +20,8 @@ public class ProfileResponse {
         public boolean isPaymentVerified;
         public String createdAt;
         public String updatedAt;
+
+        // ✅ ADD THIS (ONLY ADDITION)
+        public String role;
     }
 }

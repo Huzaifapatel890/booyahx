@@ -42,6 +42,7 @@ public class HomeFragment extends Fragment {
 
     // Profile
     private TextView txtUsername, txtWalletBalance;
+    private TextView txtHostBadge;
     private ImageView btnNotification;
 
     // Tabs + tournaments
@@ -76,6 +77,7 @@ public class HomeFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         txtUsername = view.findViewById(R.id.txtUsername);
+        txtHostBadge = view.findViewById(R.id.txtHostBadge);
         txtWalletBalance = view.findViewById(R.id.txtWalletBalance);
         btnNotification = view.findViewById(R.id.btnNotification);
 
@@ -247,10 +249,21 @@ public class HomeFragment extends Fragment {
                         TokenManager.saveUserId(requireContext(), data.userId);
                     }
 
+                    // ================= HOST ROLE LOGIC (ADDED ONLY) =================
+                    if (data.role != null) {
+                        TokenManager.saveRole(requireContext(), data.role);
+
+                        if ("host".equalsIgnoreCase(data.role)) {
+                            txtHostBadge.setVisibility(View.VISIBLE);
+                        } else {
+                            txtHostBadge.setVisibility(View.GONE);
+                        }
+                    }
+                    // =================================================================
+
                     loadTournaments();
                 }
             }
-
 
             @Override
             public void onFailure(Call<ProfileResponse> call, Throwable t) {
@@ -258,6 +271,7 @@ public class HomeFragment extends Fragment {
             }
         });
     }
+
 
     private void loadWalletBalance() {
         showLoader();

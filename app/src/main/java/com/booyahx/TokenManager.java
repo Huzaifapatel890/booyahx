@@ -26,6 +26,20 @@ public class TokenManager {
                 .getString("refresh", null);
     }
 
+    /* ================= ROLE ================= */
+
+    public static void saveRole(Context ctx, String role) {
+        SharedPreferences.Editor editor =
+                ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
+        editor.putString("role", role);
+        editor.apply();
+    }
+
+    public static String getRole(Context ctx) {
+        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .getString("role", null);
+    }
+
     /* ================= USER ID ================= */
 
     public static void saveUserId(Context ctx, String userId) {

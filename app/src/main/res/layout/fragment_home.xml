@@ -37,15 +37,39 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp">
 
-            <TextView
-                android:id="@+id/txtUsername"
-                android:textColor="#00C3FF"
-                android:textSize="22sp"
-                android:textStyle="bold"
+            <!-- USERNAME + HOST BADGE INLINE -->
+            <LinearLayout
+                android:orientation="horizontal"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical">
 
-            <!-- GC MOVED HERE (EMAIL POSITION) -->
+                <TextView
+                    android:id="@+id/txtUsername"
+                    android:textColor="#00C3FF"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <TextView
+                    android:id="@+id/txtHostBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="HOST"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#00FFFF"
+                    android:background="@drawable/status_closed_bg"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"
+                    android:layout_marginStart="8dp"
+                    android:visibility="gone"/>
+            </LinearLayout>
+
+            <!-- WALLET -->
             <TextView
                 android:id="@+id/txtWalletBalance"
                 android:textColor="#00FFB7"
