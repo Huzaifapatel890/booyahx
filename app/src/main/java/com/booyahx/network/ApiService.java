@@ -10,7 +10,7 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Query;
-
+import retrofit2.http.Path;
 public interface ApiService {
 
     // REGISTER
@@ -95,5 +95,12 @@ public interface ApiService {
             @Header("Authorization") String token,
             @Header("X-CSRF-Token") String csrf,
             @Body CreateTicketRequest request
+    );
+    @POST("/api/host/tournaments/{id}/apply")
+    Call<HostApplyResponse> applyForHostTournament(
+            @Header("Authorization") String token,
+            @Header("X-CSRF-Token") String csrf,
+            @Path("id") String tournamentId,
+            @Body HostApplyRequest request
     );
     }

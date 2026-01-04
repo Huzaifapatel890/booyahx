@@ -62,6 +62,20 @@ public class Tournament implements Parcelable {
 
     @SerializedName("teams")
     private List<Team> teams;
+    @SerializedName("hostId")
+    private Host hostId;
+
+    public Host getHostId() {
+        return hostId;
+    }
+
+    public static class Host {
+        @SerializedName("_id")
+        public String id;
+
+        public String name;
+        public String ign;
+    }
 
     public boolean isJoinedDerived(String userId) {
         if (teams == null || userId == null) return false;

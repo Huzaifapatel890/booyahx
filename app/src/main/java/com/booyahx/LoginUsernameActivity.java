@@ -157,6 +157,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
                                 resp.data.accessToken,
                                 resp.data.refreshToken
                         );
+                        TokenManager.saveRole(LoginUsernameActivity.this, resp.data.role);
 
                         Intent intent = new Intent(LoginUsernameActivity.this, DashboardActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

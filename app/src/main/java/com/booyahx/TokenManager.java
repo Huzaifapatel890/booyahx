@@ -10,7 +10,8 @@ public class TokenManager {
     /* ================= TOKENS ================= */
 
     public static void saveTokens(Context ctx, String access, String refresh) {
-        SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
+        SharedPreferences.Editor editor =
+                ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
         editor.putString("access", access);
         editor.putString("refresh", refresh);
         editor.apply();
@@ -43,7 +44,8 @@ public class TokenManager {
     /* ================= USER ID ================= */
 
     public static void saveUserId(Context ctx, String userId) {
-        SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
+        SharedPreferences.Editor editor =
+                ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
         editor.putString("user_id", userId);
         editor.apply();
     }
@@ -56,8 +58,15 @@ public class TokenManager {
     /* ================= CLEAR ================= */
 
     public static void clearTokens(Context ctx) {
-        SharedPreferences.Editor editor = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
-        editor.clear();
+        SharedPreferences.Editor editor =
+                ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
+
+        // Explicit clearing (safe & readable)
+        editor.remove("access");
+        editor.remove("refresh");
+        editor.remove("role");
+        editor.remove("user_id");
+
         editor.apply();
     }
 

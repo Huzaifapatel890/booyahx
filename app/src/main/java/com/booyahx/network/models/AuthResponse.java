@@ -14,6 +14,7 @@ public class AuthResponse {
         public String accessToken;
         public String refreshToken;
         public User user;
+        public String role;
     }
 
     public static class User {

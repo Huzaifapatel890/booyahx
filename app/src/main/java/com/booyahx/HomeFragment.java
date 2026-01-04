@@ -1,5 +1,7 @@
 package com.booyahx;
 
+import com.booyahx.utils.TopRightToast;
+import com.booyahx.utils.CSRFHelper;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -26,6 +28,8 @@ import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.network.models.Tournament;
 import com.booyahx.network.models.TournamentResponse;
 import com.booyahx.network.models.WalletBalanceResponse;
+import com.booyahx.network.models.HostApplyRequest;
+import com.booyahx.network.models.HostApplyResponse;
 import com.booyahx.tournament.RulesBottomSheet;
 import com.booyahx.tournament.JoinTournamentDialog;
 import com.booyahx.utils.NotificationPref;
@@ -239,39 +243,44 @@ public class HomeFragment extends Fragment {
             @Override
             public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
                 hideLoader();
-                if (response.isSuccessful() && response.body() != null && response.body().data != null) {
+
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().data != null) {
 
                     ProfileResponse.Data data = response.body().data;
 
+// Username
                     txtUsername.setText(data.name);
 
+// Save userId
                     if (data.userId != null && !data.userId.isEmpty()) {
                         TokenManager.saveUserId(requireContext(), data.userId);
                     }
 
-                    // ================= HOST ROLE LOGIC (ADDED ONLY) =================
-                    if (data.role != null) {
+// 🔥 SYNC ROLE FROM BACKEND
+                    if (data.role != null && !data.role.isEmpty()) {
                         TokenManager.saveRole(requireContext(), data.role);
-
-                        if ("host".equalsIgnoreCase(data.role)) {
-                            txtHostBadge.setVisibility(View.VISIBLE);
-                        } else {
-                            txtHostBadge.setVisibility(View.GONE);
-                        }
                     }
-                    // =================================================================
+
+// Use updated role
+                    String role = TokenManager.getRole(requireContext());
+
+                    if ("host".equalsIgnoreCase(role)) {
+                        txtHostBadge.setVisibility(View.VISIBLE);
+                    } else {
+                        txtHostBadge.setVisibility(View.GONE);
+                    }
 
                     loadTournaments();
                 }
             }
-
             @Override
             public void onFailure(Call<ProfileResponse> call, Throwable t) {
                 hideLoader();
             }
         });
     }
-
 
     private void loadWalletBalance() {
         showLoader();
@@ -393,23 +402,125 @@ public class HomeFragment extends Fragment {
         if (btnJoin != null) {
             btnJoin.setTag(t.getId());
 
-            btnJoin.setOnClickListener(v -> {
-                JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
-                dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
-            });
+            String role = TokenManager.getRole(requireContext());
 
-            // ================= DERIVED JOIN STATE =================
-            String userId = TokenManager.getUserId(requireContext());
 
-            if (!"upcoming".equalsIgnoreCase(t.getStatus())) {
-                btnJoin.setVisibility(View.GONE);
-            } else if (t.isJoinedDerived(userId)) {
-                btnJoin.setEnabled(false);
-                btnJoin.setAlpha(0.5f);
-                ((TextView) btnJoin).setText("Joined");
+            String myUserId = TokenManager.getUserId(requireContext());
+
+            if ("host".equalsIgnoreCase(role)
+                    && "upcoming".equalsIgnoreCase(t.getStatus())) {
+
+                // 🟢 I am already the host
+                if (t.getHostId() != null
+                        && myUserId != null
+                        && myUserId.equals(t.getHostId().id)) {
+
+                    ((TextView) btnJoin).setText("You are Host");
+                    btnJoin.setEnabled(false);
+                    btnJoin.setAlpha(0.5f);
+                }
+
+                // 🔴 Another host already assigned
+                else if (t.getHostId() != null) {
+                    btnJoin.setVisibility(View.GONE);
+                }
+
+                // 🟡 No host → can apply
+                else {
+                    ((TextView) btnJoin).setText("Apply");
+                    btnJoin.setEnabled(true);
+                    btnJoin.setAlpha(1f);
+                    btnJoin.setBackgroundResource(R.drawable.neon_button);
+
+                    btnJoin.setOnClickListener(v ->
+                            applyForHost(t.getId(), btnJoin)
+                    );
+                }
+
+                return card;
+            } else {
+
+                btnJoin.setOnClickListener(v -> {
+                    JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
+                    dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
+                });
+
+                String userId = TokenManager.getUserId(requireContext());
+
+                if (!"upcoming".equalsIgnoreCase(t.getStatus())) {
+                    btnJoin.setVisibility(View.GONE);
+                } else if (t.isJoinedDerived(userId)) {
+                    btnJoin.setEnabled(false);
+                    btnJoin.setAlpha(0.5f);
+                    ((TextView) btnJoin).setText("Joined");
+                }
             }
         }
 
         return card;
+    }
+
+    private void applyForHost(String tournamentId, View btnApply) {
+
+        btnApply.setEnabled(false);
+        btnApply.setAlpha(0.6f);
+
+        HostApplyRequest request = new HostApplyRequest(
+                "2+ years hosting experience",
+                "Interested in hosting this tournament",
+                "Can manage lobby and results"
+        );
+
+        String token = TokenManager.getAccessToken(requireContext());
+
+        // 🔐 FETCH CSRF FIRST (SAME PATTERN AS CREATE TICKET)
+        CSRFHelper.fetchToken(requireContext(), new CSRFHelper.CSRFCallback() {
+
+            @Override
+            public void onSuccess(String csrf) {
+
+                api.applyForHostTournament(
+                        "Bearer " + token,
+                        csrf,
+                        tournamentId,
+                        request
+                ).enqueue(new Callback<HostApplyResponse>() {
+
+                    @Override
+                    public void onResponse(
+                            Call<HostApplyResponse> call,
+                            Response<HostApplyResponse> response
+                    ) {
+
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().success) {
+
+                            ((TextView) btnApply).setText("Applied");
+                            btnApply.setAlpha(0.5f);
+
+                        } else {
+                            resetApply(btnApply);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<HostApplyResponse> call, Throwable t) {
+                        resetApply(btnApply);
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(String error) {
+                resetApply(btnApply);
+                TopRightToast.show(requireContext(), "Security error! Try again.");
+            }
+        });
+    }
+
+    private void resetApply(View btn) {
+        btn.setEnabled(true);
+        btn.setAlpha(1f);
     }
 }
