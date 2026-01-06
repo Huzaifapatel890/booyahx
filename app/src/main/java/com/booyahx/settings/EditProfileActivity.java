@@ -19,7 +19,6 @@ import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.network.models.UpdateProfileRequest;
 import com.booyahx.network.models.SimpleResponse;
-import com.booyahx.utils.CSRFHelper;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -82,9 +81,7 @@ public class EditProfileActivity extends AppCompatActivity {
         btnBack.setOnClickListener(v -> finish());
     }
 
-    // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
     // ⭐ GET PROFILE & LOAD VALUES
-    // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
     private void loadProfile() {
 
         LoaderOverlay.show(this);
@@ -117,7 +114,6 @@ public class EditProfileActivity extends AppCompatActivity {
 
                 } else {
 
-                    // ⭐ Try to read server-provided message
                     String serverMsg = null;
                     try { serverMsg = response.errorBody().string(); } catch (Exception ignored) {}
 
@@ -143,9 +139,6 @@ public class EditProfileActivity extends AppCompatActivity {
         if (pos >= 0) spinner.setSelection(pos);
     }
 
-    // ---------------------------------------------------------
-    // DEFAULT SPINNERS
-    // ---------------------------------------------------------
     private void setupGenderSpinner() {
         String[] genders = {"Male", "Female", "Other", "Prefer not to say"};
 
@@ -180,9 +173,6 @@ public class EditProfileActivity extends AppCompatActivity {
         spinnerPaymentMethod.setAdapter(adapter);
     }
 
-    // ---------------------------------------------------------
-    // AGE BUTTONS
-    // ---------------------------------------------------------
     private void setupAgeButtons() {
 
         btnAgePlus.setOnClickListener(v -> {
@@ -202,29 +192,20 @@ public class EditProfileActivity extends AppCompatActivity {
         });
     }
 
-    // ---------------------------------------------------------
-    // BUTTONS (PUT API)
-    // ---------------------------------------------------------
     private void setupButtons() {
 
         btnCancel.setOnClickListener(v -> finish());
 
         btnUpdate.setOnClickListener(v -> {
-
             if (!validateInputs()) return;
-
-            updateProfile(); // ⭐ REAL UPDATE
+            updateProfile();
         });
     }
 
-    // ---------------------------------------------------------
     // ⭐ PUT UPDATE PROFILE API
-    // ---------------------------------------------------------
     private void updateProfile() {
 
-        LoaderOverlay.show(this);   // SHOW BEFORE CSRF CALL
-
-        String token = TokenManager.getAccessToken(this);
+        LoaderOverlay.show(this);
 
         String genderFixed = spinnerGender.getSelectedItem().toString().toLowerCase();
         String upiClean = etUpiId.getText().toString().trim().replace("-", "").replace(" ", "");
@@ -239,56 +220,36 @@ public class EditProfileActivity extends AppCompatActivity {
                 spinnerPaymentMethod.getSelectedItem().toString()
         );
 
-        // ⭐ FETCH CSRF TOKEN FIRST
-        CSRFHelper.fetchToken(this, new CSRFHelper.CSRFCallback() {
+        api.updateProfile(req).enqueue(new Callback<SimpleResponse>() {
 
             @Override
-            public void onSuccess(String csrf) {
+            public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
 
-                api.updateProfile(
-                        "Bearer " + token,
-                        csrf,
-                        req
-                ).enqueue(new Callback<SimpleResponse>() {
-                    @Override
-                    public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
+                LoaderOverlay.hide(EditProfileActivity.this);
 
-                        LoaderOverlay.hide(EditProfileActivity.this);
+                if (response.isSuccessful() && response.body() != null) {
+                    showTopRightToast(response.body().getMessage());
+                    finish();
+                } else {
 
-                        if (response.isSuccessful() && response.body() != null) {
-                            showTopRightToast(response.body().getMessage());
-                            finish();
-                        } else {
+                    String serverMsg = null;
+                    try { serverMsg = response.errorBody().string(); } catch (Exception ignored) {}
 
-                            String serverMsg = null;
-                            try { serverMsg = response.errorBody().string(); } catch (Exception ignored) {}
-
-                            if (serverMsg != null && !serverMsg.isEmpty())
-                                showTopRightToast(serverMsg);
-                            else
-                                showTopRightToast("Update failed!");
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<SimpleResponse> call, Throwable t) {
-                        LoaderOverlay.hide(EditProfileActivity.this);
-                        showTopRightToast("Error updating profile!");
-                    }
-                });
+                    if (serverMsg != null && !serverMsg.isEmpty())
+                        showTopRightToast(serverMsg);
+                    else
+                        showTopRightToast("Update failed!");
+                }
             }
 
             @Override
-            public void onFailure(String error) {
+            public void onFailure(Call<SimpleResponse> call, Throwable t) {
                 LoaderOverlay.hide(EditProfileActivity.this);
-                showTopRightToast(error != null ? error : "Security error! Try again.");
+                showTopRightToast("Error updating profile!");
             }
         });
     }
 
-    // ---------------------------------------------------------
-    // VALIDATION
-    // ---------------------------------------------------------
     private boolean validateInputs() {
 
         String name = etName.getText().toString().trim();
@@ -325,9 +286,6 @@ public class EditProfileActivity extends AppCompatActivity {
         return true;
     }
 
-    // ---------------------------------------------------------
-    // CUSTOM NEON TOAST
-    // ---------------------------------------------------------
     private void showTopRightToast(String message) {
 
         TextView tv = new TextView(this);

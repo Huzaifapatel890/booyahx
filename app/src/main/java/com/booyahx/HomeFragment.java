@@ -1,7 +1,7 @@
 package com.booyahx;
 
 import com.booyahx.utils.TopRightToast;
-import com.booyahx.utils.CSRFHelper;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -471,50 +471,36 @@ public class HomeFragment extends Fragment {
                 "Can manage lobby and results"
         );
 
-        String token = TokenManager.getAccessToken(requireContext());
+        // ✅ NO TOKEN FETCH
+        // ✅ NO CSRF HELPER
+        // ✅ Auth handled by interceptor + cookies
 
-        // 🔐 FETCH CSRF FIRST (SAME PATTERN AS CREATE TICKET)
-        CSRFHelper.fetchToken(requireContext(), new CSRFHelper.CSRFCallback() {
+        api.applyForHostTournament(
+                tournamentId,
+                request
+        ).enqueue(new Callback<HostApplyResponse>() {
 
             @Override
-            public void onSuccess(String csrf) {
+            public void onResponse(
+                    Call<HostApplyResponse> call,
+                    Response<HostApplyResponse> response
+            ) {
 
-                api.applyForHostTournament(
-                        "Bearer " + token,
-                        csrf,
-                        tournamentId,
-                        request
-                ).enqueue(new Callback<HostApplyResponse>() {
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().success) {
 
-                    @Override
-                    public void onResponse(
-                            Call<HostApplyResponse> call,
-                            Response<HostApplyResponse> response
-                    ) {
+                    ((TextView) btnApply).setText("Applied");
+                    btnApply.setAlpha(0.5f);
 
-                        if (response.isSuccessful()
-                                && response.body() != null
-                                && response.body().success) {
-
-                            ((TextView) btnApply).setText("Applied");
-                            btnApply.setAlpha(0.5f);
-
-                        } else {
-                            resetApply(btnApply);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<HostApplyResponse> call, Throwable t) {
-                        resetApply(btnApply);
-                    }
-                });
+                } else {
+                    resetApply(btnApply);
+                }
             }
 
             @Override
-            public void onFailure(String error) {
+            public void onFailure(Call<HostApplyResponse> call, Throwable t) {
                 resetApply(btnApply);
-                TopRightToast.show(requireContext(), "Security error! Try again.");
             }
         });
     }

@@ -25,7 +25,6 @@ import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ForgotPasswordRequest;
 import com.booyahx.network.models.ResetPasswordRequest;
 import com.booyahx.network.models.SimpleResponse;
-import com.booyahx.utils.CSRFHelper;
 
 import org.json.JSONObject;
 
@@ -84,35 +83,9 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             startLocalBlockCountdown(blockUntil - now);
         }
 
-        // 🔥 APPLY CSRF BEFORE SENDING OTP
-        btnSendOtp.setOnClickListener(v -> {
-            CSRFHelper.fetchToken(ForgotPasswordActivity.this, new CSRFHelper.CSRFCallback() {
-                @Override
-                public void onSuccess(String token) {
-                    sendOtp();
-                }
+        btnSendOtp.setOnClickListener(v -> sendOtp());
 
-                @Override
-                public void onFailure(String error) {
-                    showTopRightToast("Security check failed. Try again.");
-                }
-            });
-        });
-
-        // 🔥 APPLY CSRF BEFORE RESET PASSWORD
-        btnReset.setOnClickListener(v -> {
-            CSRFHelper.fetchToken(ForgotPasswordActivity.this, new CSRFHelper.CSRFCallback() {
-                @Override
-                public void onSuccess(String token) {
-                    resetPassword();
-                }
-
-                @Override
-                public void onFailure(String error) {
-                    showTopRightToast("Security check failed. Try again.");
-                }
-            });
-        });
+        btnReset.setOnClickListener(v -> resetPassword());
     }
 
     private void initViews() {

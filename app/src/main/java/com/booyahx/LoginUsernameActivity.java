@@ -21,7 +21,7 @@ import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.LoginRequest;
 import com.booyahx.network.models.AuthResponse;
-import com.booyahx.utils.CSRFHelper;
+
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -41,6 +41,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
     Boolean showPass = false;
 
     ApiService api;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,10 +68,14 @@ public class LoginUsernameActivity extends AppCompatActivity {
             showPass = !showPass;
 
             if (showPass) {
-                etLoginPassword.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                etLoginPassword.setTransformationMethod(
+                        HideReturnsTransformationMethod.getInstance()
+                );
                 eyeLogin.setImageResource(R.drawable.ic_eye_on);
             } else {
-                etLoginPassword.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                etLoginPassword.setTransformationMethod(
+                        PasswordTransformationMethod.getInstance()
+                );
                 eyeLogin.setImageResource(R.drawable.ic_eye_off);
             }
             etLoginPassword.setSelection(etLoginPassword.getText().length());
@@ -80,29 +85,32 @@ public class LoginUsernameActivity extends AppCompatActivity {
             String email = etLoginUsername.getText().toString().trim();
             String pass = etLoginPassword.getText().toString().trim();
 
-            if (email.isEmpty()) { etLoginUsername.setError("Enter email"); return; }
-            if (pass.isEmpty()) { etLoginPassword.setError("Enter password"); return; }
+            if (email.isEmpty()) {
+                etLoginUsername.setError("Enter email");
+                return;
+            }
+            if (pass.isEmpty()) {
+                etLoginPassword.setError("Enter password");
+                return;
+            }
 
-            // 🔵 FIRST GET CSRF TOKEN BEFORE LOGIN
-            CSRFHelper.fetchToken(LoginUsernameActivity.this, new CSRFHelper.CSRFCallback() {
-                @Override
-                public void onSuccess(String token) {
-                    loginUser(email, pass);
-                }
-
-                @Override
-                public void onFailure(String error) {
-                    showTopRightToast("Security error! Please try again.");
-                }
-            });
+            // ✅ DIRECT LOGIN
+            // CSRF + cookies are handled automatically by interceptor
+            loginUser(email, pass);
         });
 
         txtForgotPassword.setOnClickListener(v ->
-                startActivity(new Intent(LoginUsernameActivity.this, ForgotPasswordActivity.class))
+                startActivity(new Intent(
+                        LoginUsernameActivity.this,
+                        ForgotPasswordActivity.class
+                ))
         );
 
         txtCreateAccount.setOnClickListener(v ->
-                startActivity(new Intent(LoginUsernameActivity.this, RegisterActivity.class))
+                startActivity(new Intent(
+                        LoginUsernameActivity.this,
+                        RegisterActivity.class
+                ))
         );
     }
 

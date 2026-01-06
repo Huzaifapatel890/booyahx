@@ -4,7 +4,6 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.ArrayAdapter;
@@ -12,39 +11,14 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.Toast;
-import android.os.Bundle;
-import android.view.Gravity;
-import android.view.animation.AlphaAnimation;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.Spinner;
-import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import com.booyahx.R;
-import com.booyahx.TokenManager;
-import com.booyahx.LoaderOverlay;
-import com.booyahx.network.ApiClient;
-import com.booyahx.network.ApiService;
-import com.booyahx.network.models.ProfileResponse;
-import com.booyahx.network.models.UpdateProfileRequest;
-import com.booyahx.network.models.SimpleResponse;
-import com.booyahx.utils.CSRFHelper;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 import androidx.cardview.widget.CardView;
 
 import com.booyahx.R;
-import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.CreateTicketRequest;
 import com.booyahx.network.models.TicketResponse;
-import com.booyahx.utils.CSRFHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +56,6 @@ public class CreateTicketDialog {
         EditText etImageUrl = dialog.findViewById(R.id.etImageUrl);
         CardView btnSubmit = dialog.findViewById(R.id.btnSubmitTicket);
 
-        // ✅ DEFAULT SAFE SPINNER (same as EditProfileActivity)
         String[] subjects = {
                 "Select Subject",
                 "Dispute",
@@ -119,7 +92,7 @@ public class CreateTicketDialog {
     }
 
     // --------------------------------------------------
-    // CREATE TICKET (SAME PATTERN AS EDIT PROFILE)
+    // CREATE TICKET
     // --------------------------------------------------
     private void submitTicket(
             Spinner spinnerSubject,
@@ -157,67 +130,43 @@ public class CreateTicketDialog {
 
         setUiEnabled(false, btnSubmit);
 
-        String token = TokenManager.getAccessToken(context);
-
-        // ⭐ FETCH CSRF FIRST (IDENTICAL FLOW)
-        CSRFHelper.fetchToken(context, new CSRFHelper.CSRFCallback() {
+        api.createTicket(req).enqueue(new Callback<TicketResponse>() {
 
             @Override
-            public void onSuccess(String csrf) {
+            public void onResponse(
+                    Call<TicketResponse> call,
+                    Response<TicketResponse> response
+            ) {
 
-                api.createTicket(
-                        "Bearer " + token,
-                        csrf,
-                        req
-                ).enqueue(new Callback<TicketResponse>() {
+                setUiEnabled(true, btnSubmit);
 
-                    @Override
-                    public void onResponse(
-                            Call<TicketResponse> call,
-                            Response<TicketResponse> response
-                    ) {
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().isSuccess()) {
 
-                        setUiEnabled(true, btnSubmit);
+                    Toast.makeText(
+                            context,
+                            "Ticket created successfully!",
+                            Toast.LENGTH_LONG
+                    ).show();
 
-                        if (response.isSuccessful()
-                                && response.body() != null
-                                && response.body().isSuccess()) {
+                    dialog.dismiss();
 
-                            Toast.makeText(
-                                    context,
-                                    "Ticket created successfully!",
-                                    Toast.LENGTH_LONG
-                            ).show();
-
-                            dialog.dismiss();
-
-                        } else {
-                            Toast.makeText(
-                                    context,
-                                    "Failed to create ticket",
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<TicketResponse> call, Throwable t) {
-                        setUiEnabled(true, btnSubmit);
-                        Toast.makeText(
-                                context,
-                                "Network error. Please try again",
-                                Toast.LENGTH_SHORT
-                        ).show();
-                    }
-                });
+                } else {
+                    Toast.makeText(
+                            context,
+                            "Failed to create ticket",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                }
             }
 
             @Override
-            public void onFailure(String error) {
+            public void onFailure(Call<TicketResponse> call, Throwable t) {
                 setUiEnabled(true, btnSubmit);
                 Toast.makeText(
                         context,
-                        error != null ? error : "Security error! Try again.",
+                        "Network error. Please try again",
                         Toast.LENGTH_SHORT
                 ).show();
             }

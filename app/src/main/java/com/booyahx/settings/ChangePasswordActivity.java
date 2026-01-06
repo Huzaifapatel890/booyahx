@@ -138,8 +138,6 @@ public class ChangePasswordActivity extends AppCompatActivity {
         String accessToken = TokenManager.getAccessToken(this);
 
         api.changePassword(
-                "Bearer " + accessToken,
-                csrfToken,
                 req
         ).enqueue(new Callback<SimpleResponse>() {
             @Override

@@ -5,31 +5,27 @@ import com.booyahx.network.models.*;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
-import retrofit2.http.Header;
-import retrofit2.http.Headers;
 import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Query;
 import retrofit2.http.Path;
+
 public interface ApiService {
 
-    // REGISTER
+    /* ================= AUTH ================= */
+
     @POST("/api/auth/register")
     Call<RegisterResponse> registerUser(@Body RegisterRequest request);
 
-    // VERIFY OTP
     @POST("/api/auth/verify-otp")
     Call<AuthResponse> verifyOtp(@Body VerifyOtpRequest request);
 
-    // LOGIN
     @POST("/api/auth/login")
     Call<AuthResponse> loginUser(@Body LoginRequest request);
 
-    @Headers("Content-Type: application/json")
     @POST("/api/auth/forgot-password")
     Call<SimpleResponse> forgotPassword(@Body ForgotPasswordRequest request);
 
-    @Headers("Content-Type: application/json")
     @POST("/api/auth/reset-password")
     Call<SimpleResponse> resetPassword(@Body ResetPasswordRequest request);
 
@@ -41,47 +37,51 @@ public interface ApiService {
 
     @GET("/api/auth/csrf-token")
     Call<CsrfResponse> getCsrfToken();
-
     // CHANGE PASSWORD
     @PUT("/api/auth/change-password")
     Call<SimpleResponse> changePassword(
-            @Header("Authorization") String token,
-            @Header("X-CSRF-Token") String csrfToken,
             @Body ChangePasswordRequest request
     );
 
-    // GET PROFILE
+    /* ================= PROFILE ================= */
+
     @GET("/api/profile")
     Call<ProfileResponse> getProfile();
+
     @PUT("/api/profile")
-    Call<SimpleResponse> updateProfile(
-            @Header("Authorization") String token,
-            @Header("X-CSRF-Token") String csrfToken,
-            @Body UpdateProfileRequest request
-    );
+    Call<SimpleResponse> updateProfile(@Body UpdateProfileRequest request);
+
+
+    /* ================= WALLET ================= */
+
     @GET("/api/wallet/history")
     Call<WalletHistoryResponse> getWalletHistory(
             @Query("limit") int limit,
             @Query("skip") int skip
     );
 
+    @GET("/api/wallet/balance")
+    Call<WalletBalanceResponse> getWalletBalance();
+
+
+    /* ================= TOURNAMENT ================= */
+
     @GET("/api/tournament/list")
     Call<TournamentResponse> getTournaments(
             @Query("status") String status,
             @Query("mode") String mode
     );
-    @GET("/api/wallet/balance")
-    Call<WalletBalanceResponse> getWalletBalance();
 
     @POST("/api/tournament/join")
     Call<JoinTournamentResponse> joinTournament(
-            @Header("Authorization") String auth,
-            @Header("X-CSRF-Token") String csrf,
             @Body JoinTournamentRequest request
     );
 
     @GET("/api/tournament/joined")
     Call<JoinedTournamentResponse> getJoinedTournaments();
+
+
+    /* ================= SUPPORT ================= */
 
     @GET("/api/support/tickets")
     Call<TicketResponse> getTickets(
@@ -92,15 +92,15 @@ public interface ApiService {
 
     @POST("/api/support/tickets")
     Call<TicketResponse> createTicket(
-            @Header("Authorization") String token,
-            @Header("X-CSRF-Token") String csrf,
             @Body CreateTicketRequest request
     );
+
+
+    /* ================= HOST ================= */
+
     @POST("/api/host/tournaments/{id}/apply")
     Call<HostApplyResponse> applyForHostTournament(
-            @Header("Authorization") String token,
-            @Header("X-CSRF-Token") String csrf,
             @Path("id") String tournamentId,
             @Body HostApplyRequest request
     );
-    }
+}

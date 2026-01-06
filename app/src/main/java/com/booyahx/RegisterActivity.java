@@ -22,7 +22,7 @@ import com.booyahx.network.models.AuthResponse;
 import com.booyahx.network.models.RegisterRequest;
 import com.booyahx.network.models.RegisterResponse;
 import com.booyahx.network.models.VerifyOtpRequest;
-import com.booyahx.utils.CSRFHelper;
+
 
 import org.json.JSONObject;
 
@@ -57,35 +57,11 @@ public class RegisterActivity extends AppCompatActivity {
         initViews();
         setupOtpAutoMove();
 
-        // 🔵 APPLY CSRF LOGIC BEFORE SENDING OTP
-        btnSendOtp.setOnClickListener(v -> {
-            CSRFHelper.fetchToken(RegisterActivity.this, new CSRFHelper.CSRFCallback() {
-                @Override
-                public void onSuccess(String token) {
-                    sendOtp();
-                }
+        // ✅ SEND OTP DIRECTLY (CSRF handled automatically)
+        btnSendOtp.setOnClickListener(v -> sendOtp());
 
-                @Override
-                public void onFailure(String error) {
-                    showTopRightToast("Security Error! Try again.");
-                }
-            });
-        });
-
-        // 🔵 APPLY CSRF BEFORE VERIFY OTP & REGISTER
-        btnRegister.setOnClickListener(v -> {
-            CSRFHelper.fetchToken(RegisterActivity.this, new CSRFHelper.CSRFCallback() {
-                @Override
-                public void onSuccess(String token) {
-                    verifyOtpAndRegister();
-                }
-
-                @Override
-                public void onFailure(String error) {
-                    showTopRightToast("Security Error! Try again.");
-                }
-            });
-        });
+        // ✅ VERIFY OTP & REGISTER DIRECTLY
+        btnRegister.setOnClickListener(v -> verifyOtpAndRegister());
 
         txtGoLogin.setOnClickListener(v -> finish());
     }

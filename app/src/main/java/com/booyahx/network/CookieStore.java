@@ -1,50 +1,34 @@
 package com.booyahx.network;
 
-import java.net.CookieManager;
-import java.net.CookiePolicy;
-import java.net.HttpCookie;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import okhttp3.Cookie;
 import okhttp3.CookieJar;
 import okhttp3.HttpUrl;
 
-public class CookieStore implements CookieJar {
+public final class CookieStore implements CookieJar {
 
     private static final CookieStore INSTANCE = new CookieStore();
-    private final CookieManager manager;
 
-    private CookieStore() {
-        manager = new CookieManager();
-        manager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
-    }
+    private final Map<String, List<Cookie>> cookieMap = new HashMap<>();
+
+    private CookieStore() {}
 
     public static CookieStore getInstance() {
         return INSTANCE;
     }
 
     @Override
-    public void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-        for (Cookie c : cookies) {
-            manager.getCookieStore()
-                    .add(url.uri(), new HttpCookie(c.name(), c.value()));
-        }
+    public synchronized void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
+        cookieMap.put(url.host(), cookies);
     }
 
     @Override
-    public List<Cookie> loadForRequest(HttpUrl url) {
-        List<HttpCookie> stored = manager.getCookieStore().get(url.uri());
-        List<Cookie> out = new ArrayList<>();
-
-        for (HttpCookie hc : stored) {
-            out.add(new Cookie.Builder()
-                    .name(hc.getName())
-                    .value(hc.getValue())
-                    .domain(url.host())
-                    .path("/")
-                    .build());
-        }
-        return out;
+    public synchronized List<Cookie> loadForRequest(HttpUrl url) {
+        List<Cookie> cookies = cookieMap.get(url.host());
+        return cookies != null ? new ArrayList<>(cookies) : new ArrayList<>();
     }
 }

@@ -13,10 +13,11 @@ import okhttp3.Request;
 import okhttp3.Response;
 import retrofit2.Call;
 
-public class TokenRefreshInterceptor implements Interceptor {
+public final class TokenRefreshInterceptor implements Interceptor {
 
     private static boolean refreshing = false;
     private static final Object LOCK = new Object();
+
     private final Context ctx;
 
     public TokenRefreshInterceptor(Context ctx) {
@@ -25,25 +26,25 @@ public class TokenRefreshInterceptor implements Interceptor {
 
     @Override
     public Response intercept(Chain chain) throws IOException {
+        Request request = chain.request();
+        Response response = chain.proceed(request);
 
-        Request req = chain.request();
-        Response res = chain.proceed(req);
-
-        if (res.code() != 401 || req.url().encodedPath().contains("/auth/")) {
-            return res;
+        if (response.code() != 401 ||
+                request.url().encodedPath().startsWith("/api/auth/")) {
+            return response;
         }
 
-        res.close();
+        response.close();
 
         synchronized (LOCK) {
             if (!refreshing) {
                 refreshing = true;
                 try {
                     String refresh = TokenManager.getRefreshToken(ctx);
-                    if (refresh == null) return res;
+                    if (refresh == null) return response;
 
-                    ApiService api =
-                            ApiClient.getRefreshClient().create(ApiService.class);
+                    ApiService api = ApiClient.getClient(ctx)
+                            .create(ApiService.class);
 
                     Call<RefreshResponse> call =
                             api.refreshToken(new RefreshRequest(refresh));
@@ -69,9 +70,9 @@ public class TokenRefreshInterceptor implements Interceptor {
         }
 
         String newToken = TokenManager.getAccessToken(ctx);
-        if (newToken == null) return res;
+        if (newToken == null) return response;
 
-        Request retry = req.newBuilder()
+        Request retry = request.newBuilder()
                 .header("Authorization", "Bearer " + newToken)
                 .build();
 

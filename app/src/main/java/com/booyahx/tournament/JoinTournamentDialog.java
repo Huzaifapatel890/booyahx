@@ -22,7 +22,7 @@ import com.booyahx.network.models.JoinTournamentRequest;
 import com.booyahx.network.models.JoinTournamentResponse;
 import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.network.models.Tournament;
-import com.booyahx.utils.CSRFHelper;
+
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -141,18 +141,9 @@ public class JoinTournamentDialog extends DialogFragment {
                         teamName
                 );
 
-        String token = TokenManager.getAccessToken(requireContext());
-
-        CSRFHelper.fetchToken(requireContext(), new CSRFHelper.CSRFCallback() {
-
-            @Override
-            public void onSuccess(String csrf) {
-
-                api.joinTournament(
-                        "Bearer " + token,
-                        csrf,
-                        req
-                ).enqueue(new Callback<JoinTournamentResponse>() {
+        // ✅ DIRECT API CALL
+        api.joinTournament(req)
+                .enqueue(new Callback<JoinTournamentResponse>() {
 
                     @Override
                     public void onResponse(
@@ -187,14 +178,6 @@ public class JoinTournamentDialog extends DialogFragment {
                         setUiEnabled(true);
                     }
                 });
-            }
-
-            @Override
-            public void onFailure(String error) {
-                showToast(error != null ? error : "Security error! Try again.");
-                setUiEnabled(true);
-            }
-        });
     }
 
     // --------------------------------------------------
