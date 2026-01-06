@@ -29,6 +29,20 @@ public final class TokenManager {
                 .getString("refresh", null);
     }
 
+    /* ================= CSRF ================= */
+
+    public static void saveCsrf(Context ctx, String csrf) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .edit()
+                .putString("csrf", csrf)
+                .apply();
+    }
+
+    public static String getCsrf(Context ctx) {
+        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .getString("csrf", null);
+    }
+
     /* ================= USER ================= */
 
     public static void saveRole(Context ctx, String role) {

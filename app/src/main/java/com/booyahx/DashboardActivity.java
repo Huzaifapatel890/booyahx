@@ -24,6 +24,7 @@ public class DashboardActivity extends AppCompatActivity {
     private TextView tvNavHome, tvNavParticipated, tvNavWallet, tvNavProfile;
 
     private Socket socket;
+    private int currentIndex = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,100 +50,91 @@ public class DashboardActivity extends AppCompatActivity {
             setActive(tvNavHome);
         }
 
+        // 🔥 APPLY ROLE-BASED LABEL (FIRST TIME)
+        applyRoleLabel();
+
         navHome.setOnClickListener(v -> {
-            Log.d("SOCKET_FLOW", "Home clicked");
             loadFragment(new HomeFragment(), 0, true);
             setActive(tvNavHome);
         });
 
         navParticipated.setOnClickListener(v -> {
-            Log.d("SOCKET_FLOW", "Joined clicked");
             loadFragment(new ParticipatedFragment(), 1, true);
             setActive(tvNavParticipated);
         });
 
         navWallet.setOnClickListener(v -> {
-            Log.d("SOCKET_FLOW", "Wallet clicked");
             loadFragment(new WalletFragment(), 2, true);
             setActive(tvNavWallet);
         });
 
         navSettings.setOnClickListener(v -> {
-            Log.d("SOCKET_FLOW", "Settings clicked");
             loadFragment(new SettingsFragment(), 3, true);
             setActive(tvNavProfile);
         });
 
         String token = TokenManager.getAccessToken(this);
-        Log.d("SOCKET_FLOW", "Requesting socket with token");
-
         socket = SocketManager.getSocket(token);
         SocketManager.connect();
 
-        // 🔥 FIX: SUBSCRIBE IF SOCKET IS ALREADY CONNECTED
-        String userId = TokenManager.getUserId(DashboardActivity.this);
-        if (socket != null && socket.connected() && userId != null && !userId.isEmpty()) {
-            Log.d("SOCKET_FLOW", "🔔 Socket already connected, subscribing immediately: " + userId);
+        String userId = TokenManager.getUserId(this);
+        if (socket != null && socket.connected() && userId != null) {
             socket.emit("subscribe:user-tournaments", userId);
         }
 
         socket.on(Socket.EVENT_CONNECT, args -> {
-            String uid = TokenManager.getUserId(DashboardActivity.this);
-            Log.d("SOCKET_FLOW", "✅ Socket connected, subscribing user: " + uid);
-
-            if (uid != null && !uid.isEmpty()) {
-                socket.emit("subscribe:user-tournaments", uid);
-            }
+            String uid = TokenManager.getUserId(this);
+            if (uid != null) socket.emit("subscribe:user-tournaments", uid);
         });
 
-        socket.on("tournament:room-updated", args -> {
-            Log.d("SOCKET_FLOW", "🔥 tournament:room-updated EVENT RECEIVED");
-            Log.d("SOCKET_FLOW", "Payload = " + (args.length > 0 ? args[0] : "null"));
-
-            runOnUiThread(() ->
-                    getSupportFragmentManager().setFragmentResult(
-                            "joined_refresh",
-                            new Bundle()
-                    )
-            );
-        });
+        socket.on("tournament:room-updated", args ->
+                runOnUiThread(() ->
+                        getSupportFragmentManager().setFragmentResult(
+                                "joined_refresh",
+                                new Bundle()
+                        )
+                )
+        );
 
         socket.on("tournament:status-updated", args -> {
-            Log.d("SOCKET_FLOW", "🔥 tournament:status-updated EVENT RECEIVED");
-
             if (args.length > 0) {
                 try {
                     JSONObject data = (JSONObject) args[0];
-                    String tournamentId = data.optString("tournamentId", "");
-                    String newStatus = data.optString("status", "");
-
-                    Log.d("SOCKET_FLOW", "Tournament ID: " + tournamentId);
-                    Log.d("SOCKET_FLOW", "New Status: " + newStatus);
+                    Bundle bundle = new Bundle();
+                    bundle.putString("tournament_id", data.optString("tournamentId"));
+                    bundle.putString("new_status", data.optString("status"));
 
                     runOnUiThread(() -> {
-                        Bundle bundle = new Bundle();
-                        bundle.putString("tournament_id", tournamentId);
-                        bundle.putString("new_status", newStatus);
-
                         getSupportFragmentManager().setFragmentResult(
                                 "tournament_status_changed",
                                 bundle
                         );
-
                         getSupportFragmentManager().setFragmentResult(
                                 "joined_refresh",
                                 new Bundle()
                         );
                     });
-
-                } catch (Exception e) {
-                    Log.e("SOCKET_FLOW", "Error parsing status update", e);
-                }
+                } catch (Exception ignored) {}
             }
         });
     }
 
-    private int currentIndex = 0;
+    // 🔥 THIS IS THE FIX
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyRoleLabel();
+    }
+
+    // 🔥 SINGLE SOURCE OF TRUTH FOR LABEL
+    private void applyRoleLabel() {
+        String role = TokenManager.getRole(this);
+        if ("host".equalsIgnoreCase(role)) {
+            tvNavParticipated.setText("Host Panel");
+        } else {
+            tvNavParticipated.setText("Joined");
+        }
+    }
 
     private void loadFragment(Fragment fragment, int newIndex, Boolean animate) {
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
@@ -173,7 +165,6 @@ public class DashboardActivity extends AppCompatActivity {
     }
 
     public void showTopRightToast(String message) {
-
         TextView tv = new TextView(this);
         tv.setText(message);
         tv.setPadding(40, 25, 40, 25);
@@ -189,7 +180,6 @@ public class DashboardActivity extends AppCompatActivity {
         AlphaAnimation fade = new AlphaAnimation(0f, 1f);
         fade.setDuration(350);
         tv.startAnimation(fade);
-
         toast.show();
     }
 }

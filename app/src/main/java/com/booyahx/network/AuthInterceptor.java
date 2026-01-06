@@ -20,23 +20,28 @@ public final class AuthInterceptor implements Interceptor {
 
     @Override
     public Response intercept(Chain chain) throws IOException {
+
         Request original = chain.request();
         String path = original.url().encodedPath();
 
-        // Skip ONLY auth endpoints
+        // Skip auth endpoints
         if (path.startsWith("/api/auth/")) {
             return chain.proceed(original);
         }
 
         String access = TokenManager.getAccessToken(context);
-        if (access == null || access.isEmpty()) {
-            return chain.proceed(original);
+        String csrf = TokenManager.getCsrf(context);
+
+        Request.Builder builder = original.newBuilder();
+
+        if (access != null && !access.isEmpty()) {
+            builder.header("Authorization", "Bearer " + access);
         }
 
-        Request authReq = original.newBuilder()
-                .header("Authorization", "Bearer " + access)
-                .build();
+        if (csrf != null) {
+            builder.header("X-CSRF-Token", csrf);
+        }
 
-        return chain.proceed(authReq);
+        return chain.proceed(builder.build());
     }
 }

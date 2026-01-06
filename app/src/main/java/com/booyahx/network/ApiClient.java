@@ -29,12 +29,9 @@ public class ApiClient {
                     .addInterceptor(new AuthInterceptor(ctx))
                     .addInterceptor(new TokenRefreshInterceptor(ctx))
                     .addInterceptor(log)
-
-                    // 🔥 FIX: ALL TIMEOUTS
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)
-
                     .build();
 
             api = new Retrofit.Builder()

@@ -12,7 +12,6 @@ import okhttp3.HttpUrl;
 public final class CookieStore implements CookieJar {
 
     private static final CookieStore INSTANCE = new CookieStore();
-
     private final Map<String, List<Cookie>> cookieMap = new HashMap<>();
 
     private CookieStore() {}
@@ -23,7 +22,13 @@ public final class CookieStore implements CookieJar {
 
     @Override
     public synchronized void saveFromResponse(HttpUrl url, List<Cookie> cookies) {
-        cookieMap.put(url.host(), cookies);
+        List<Cookie> existing = cookieMap.get(url.host());
+        List<Cookie> merged = new ArrayList<>();
+
+        if (existing != null) merged.addAll(existing);
+        merged.addAll(cookies);
+
+        cookieMap.put(url.host(), merged);
     }
 
     @Override

@@ -15,10 +15,9 @@ import retrofit2.Call;
 
 public final class TokenRefreshInterceptor implements Interceptor {
 
-    private static boolean refreshing = false;
-    private static final Object LOCK = new Object();
-
     private final Context ctx;
+    private boolean refreshing = false;
+    private final Object LOCK = new Object();
 
     public TokenRefreshInterceptor(Context ctx) {
         this.ctx = ctx.getApplicationContext();
@@ -26,15 +25,19 @@ public final class TokenRefreshInterceptor implements Interceptor {
 
     @Override
     public Response intercept(Chain chain) throws IOException {
+
         Request request = chain.request();
         Response response = chain.proceed(request);
 
+        // Only refresh if:
+        // 1. 401
+        // 2. Authorization header exists
+        // 3. NOT auth endpoints
         if (response.code() != 401 ||
+                request.header("Authorization") == null ||
                 request.url().encodedPath().startsWith("/api/auth/")) {
             return response;
         }
-
-        response.close();
 
         synchronized (LOCK) {
             if (!refreshing) {
@@ -43,7 +46,8 @@ public final class TokenRefreshInterceptor implements Interceptor {
                     String refresh = TokenManager.getRefreshToken(ctx);
                     if (refresh == null) return response;
 
-                    ApiService api = ApiClient.getClient(ctx)
+                    ApiService api = ApiClient
+                            .getRefreshClient()
                             .create(ApiService.class);
 
                     Call<RefreshResponse> call =
@@ -57,6 +61,8 @@ public final class TokenRefreshInterceptor implements Interceptor {
                                 r.body().data.accessToken,
                                 r.body().data.refreshToken
                         );
+                    } else {
+                        return response;
                     }
                 } finally {
                     refreshing = false;
