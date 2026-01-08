@@ -1,4 +1,4 @@
-package com.booyahx.settings;
+package com.booyahx.payment;
 
 public class Transaction {
     private String dateTime;

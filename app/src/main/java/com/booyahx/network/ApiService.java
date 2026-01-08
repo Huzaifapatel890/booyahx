@@ -103,4 +103,17 @@ public interface ApiService {
             @Path("id") String tournamentId,
             @Body HostApplyRequest request
     );
+
+    /* ================= PAYMENT ================= */
+    @POST("/api/payment/create-qr")
+    Call<CreateQRResponse> createQR(@Body CreateQRRequest request);
+
+    @POST("/api/payment/confirm")
+    Call<SuccessResponse> confirmPayment(@Body ConfirmPaymentRequest request);
+
+    @GET("/api/payment/qr-status/{qrCodeId}")
+    Call<QRStatusResponse> getQRStatus(@Path("qrCodeId") String qrCodeId);
+
+    @POST("/api/payment/close-qr/{qrCodeId}")
+    Call<SuccessResponse> closeQR(@Path("qrCodeId") String qrCodeId);
 }

@@ -1,4 +1,4 @@
-package com.booyahx.settings;
+package com.booyahx.payment;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -6,19 +6,23 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
-import java.util.List;
+
 import com.booyahx.R;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.TransactionViewHolder> {
 
     private Context context;
-    private List<Transaction> transactionList;
+    private List<Transaction> transactionList = new ArrayList<>();
 
-    public TransactionAdapter(Context context, List<Transaction> transactionList) {
+    public TransactionAdapter(Context context, List<Transaction> list) {
         this.context = context;
-        this.transactionList = transactionList;
+        if (list != null) this.transactionList = list;
     }
 
     @NonNull
@@ -31,6 +35,7 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
     @Override
     public void onBindViewHolder(@NonNull TransactionViewHolder holder, int position) {
         Transaction transaction = transactionList.get(position);
+        if (transaction == null) return;
 
         holder.tvDateTime.setText(transaction.getDateTime());
         holder.tvType.setText(transaction.getType());
@@ -38,14 +43,10 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
         holder.tvDescription.setText(transaction.getDescription());
         holder.tvStatus.setText(transaction.getStatus());
 
-        // Set amount color based on positive/negative
-        if (transaction.isPositive()) {
-            holder.tvAmount.setTextColor(Color.parseColor("#00FF88"));
-        } else {
-            holder.tvAmount.setTextColor(Color.parseColor("#FF4444"));
-        }
+        holder.tvAmount.setTextColor(
+                transaction.isPositive() ? Color.parseColor("#00FF88") : Color.parseColor("#FF4444")
+        );
 
-        // Set status background and color
         switch (transaction.getStatus().toLowerCase()) {
             case "completed":
                 holder.tvStatus.setBackgroundResource(R.drawable.status_completed_bg);
@@ -59,12 +60,26 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
                 holder.tvStatus.setBackgroundResource(R.drawable.status_failed_bg);
                 holder.tvStatus.setTextColor(Color.parseColor("#FF4444"));
                 break;
+            default:
+                holder.tvStatus.setBackgroundResource(R.drawable.status_pending_bg);
+                holder.tvStatus.setTextColor(Color.WHITE);
+                break;
         }
     }
 
     @Override
     public int getItemCount() {
         return transactionList.size();
+    }
+
+    public void setTransactions(List<Transaction> list) {
+        transactionList = list;
+        notifyDataSetChanged();
+    }
+
+    public void addTransaction(Transaction transaction) {
+        transactionList.add(0, transaction);
+        notifyItemInserted(0);
     }
 
     public static class TransactionViewHolder extends RecyclerView.ViewHolder {

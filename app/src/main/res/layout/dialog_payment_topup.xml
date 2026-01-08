@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#80000000"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/top_up_bg"
+        android:padding="24dp">
+
+        <!-- HEADER WITH CLOSE BUTTON -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Complete Payment"
+                android:textColor="@color/cyan"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_centerInParent="true"/>
+
+            <ImageView
+                android:id="@+id/btnClose"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+        </RelativeLayout>
+
+        <!-- STEP INDICATOR -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="24dp">
+
+            <!-- Step 1 Circle -->
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <View
+                    android:id="@+id/step1Circle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/step_active"/>
+
+                <TextView
+                    android:id="@+id/step1Text"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="1"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+            </FrameLayout>
+
+            <!-- Connector Line -->
+            <View
+                android:id="@+id/stepConnector"
+                android:layout_width="60dp"
+                android:layout_height="3dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:background="@color/neon_cyan_alpha_30"/>
+
+            <!-- Step 2 Circle -->
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <View
+                    android:id="@+id/step2Circle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/step_inactive"/>
+
+                <TextView
+                    android:id="@+id/step2Text"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="2"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- CONTENT CONTAINER -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- STEP 1: AMOUNT INPUT -->
+            <LinearLayout
+                android:id="@+id/layoutAmount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Enter Top-up Amount"
+                    android:textColor="@color/white"
+                    android:textSize="16sp"
+                    android:layout_marginBottom="12dp"/>
+
+                <EditText
+                    android:id="@+id/etAmount"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:background="@drawable/neon_button"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/light_gray"
+                    android:padding="16dp"
+                    android:hint="Amount (₹)"
+                    android:textSize="16sp"
+                    android:inputType="number"/>
+
+                <TextView
+                    android:id="@+id/btnContinue"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="20dp"
+                    android:text="Continue"
+                    android:textColor="@color/white"
+                    android:gravity="center"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/top_up_button"
+                    android:clickable="true"
+                    android:focusable="true"/>
+
+                <!-- Inline Loading Indicator -->
+                <LinearLayout
+                    android:id="@+id/loaderStep1"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginTop="16dp"
+                    android:visibility="gone">
+
+                    <ProgressBar
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:indeterminateTint="@color/cyan"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Creating QR code..."
+                        android:textColor="@color/cyan"
+                        android:textSize="14sp"
+                        android:layout_marginStart="12dp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- STEP 2: QR CODE & UTR -->
+            <ScrollView
+                android:id="@+id/layoutQR"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
+
+                    <!-- QR Code Container -->
+                    <FrameLayout
+                        android:layout_width="240dp"
+                        android:layout_height="240dp"
+                        android:layout_marginBottom="16dp"
+                        android:background="@drawable/qr_frame"
+                        android:padding="12dp">
+
+                        <ImageView
+                            android:id="@+id/ivQR"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="fitCenter"
+                            android:contentDescription="QR Code"/>
+                    </FrameLayout>
+
+                    <!-- Amount Display -->
+                    <TextView
+                        android:id="@+id/tvAmount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Amount to Pay: ₹5"
+                        android:textColor="@color/cyan"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp"/>
+
+                    <!-- Timer -->
+                    <TextView
+                        android:id="@+id/tvTimer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⏱ Expires in: 10:00"
+                        android:textColor="@color/green"
+                        android:textSize="14sp"
+                        android:layout_marginBottom="16dp"/>
+
+                    <!-- Instructions -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Scan this QR code with any UPI app (PhonePe, Google Pay, Paytm, etc.) to complete payment"
+                        android:textColor="@color/light_gray"
+                        android:textSize="13sp"
+                        android:gravity="center"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:layout_marginBottom="20dp"/>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/neon_cyan_alpha_30"
+                        android:layout_marginBottom="16dp"/>
+
+                    <!-- After Payment Instructions -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="After scanning and paying, come back here to enter your UTR number."
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:layout_marginBottom="12dp"/>
+
+                    <!-- UTR Input Section -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="UTR Number"
+                        android:textColor="@color/cyan"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:layout_marginBottom="8dp"/>
+
+                    <EditText
+                        android:id="@+id/etUTR"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:background="@drawable/neon_button"
+                        android:textColor="@color/white"
+                        android:textColorHint="@color/light_gray"
+                        android:padding="16dp"
+                        android:hint="Enter UTR (8-20 characters)"
+                        android:textSize="14sp"
+                        android:inputType="number"
+                        android:digits="0123456789"
+                        android:maxLength="20"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Find UTR in your payment app or bank SMS\n(8-20 alphanumeric characters)"
+                        android:textColor="@color/light_gray"
+                        android:textSize="11sp"
+                        android:gravity="center"
+                        android:layout_marginTop="6dp"
+                        android:layout_marginBottom="16dp"/>
+
+                    <TextView
+                        android:id="@+id/btnSubmit"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp"
+                        android:text="Submit UTR"
+                        android:textColor="@color/black"
+                        android:gravity="center"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/top_up_button"
+                        android:clickable="true"
+                        android:focusable="true"/>
+
+                    <!-- Inline Loading Indicator for Step 2 -->
+                    <LinearLayout
+                        android:id="@+id/loaderStep2"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="16dp"
+                        android:visibility="gone">
+
+                        <ProgressBar
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:indeterminateTint="@color/green"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Submitting payment..."
+                            android:textColor="@color/green"
+                            android:textSize="14sp"
+                            android:layout_marginStart="12dp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- STEP 3: SUCCESS -->
+            <LinearLayout
+                android:id="@+id/layoutDone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:visibility="gone"
+                android:padding="20dp">
+
+                <com.airbnb.lottie.LottieAnimationView
+                    android:id="@+id/ivDone"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    app:lottie_rawRes="@raw/anim_check"
+                    app:lottie_autoPlay="true"
+                    app:lottie_loop="false"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Payment Submitted"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/cyan"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="12dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Your payment has been submitted successfully. Our team will verify your payment within 5-10 minutes."
+                    android:gravity="center"
+                    android:textSize="14sp"
+                    android:textColor="@color/white"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="You can close this modal. You will be notified once the payment is verified."
+                    android:gravity="center"
+                    android:textSize="12sp"
+                    android:textColor="@color/light_gray"
+                    android:layout_marginBottom="24dp"/>
+
+                <TextView
+                    android:id="@+id/btnDone"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="OK"
+                    android:textColor="@color/black"
+                    android:gravity="center"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/neon_button_filled"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>
