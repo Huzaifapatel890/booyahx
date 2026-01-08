@@ -14,8 +14,7 @@ public class ApiClient {
     private static Retrofit api;
     private static Retrofit refresh;
 
-    private static final String BASE_URL =
-            "https://api.gaminghuballday.buzz";
+    private static final String BASE_URL = "https://api.gaminghuballday.buzz";
 
     public static Retrofit getClient(Context ctx) {
 
@@ -47,8 +46,13 @@ public class ApiClient {
 
         if (refresh == null) {
 
+            // Add logging to debug refresh requests
+            HttpLoggingInterceptor log = new HttpLoggingInterceptor();
+            log.setLevel(HttpLoggingInterceptor.Level.BODY);
+
             OkHttpClient refreshClient = new OkHttpClient.Builder()
-                    .cookieJar(CookieStore.getInstance())
+                    .cookieJar(CookieStore.getInstance()) // ✅ CRITICAL: Must have cookies
+                    .addInterceptor(log) // ✅ Add logging to see what's happening
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)
@@ -61,5 +65,11 @@ public class ApiClient {
                     .build();
         }
         return refresh;
+    }
+
+    // Optional: Method to reset clients (useful for logout)
+    public static void reset() {
+        api = null;
+        refresh = null;
     }
 }

@@ -262,6 +262,8 @@ public class HomeFragment extends Fragment {
                     if (data.role != null && !data.role.isEmpty()) {
                         TokenManager.saveRole(requireContext(), data.role);
                     }
+                    Bundle b = new Bundle();
+                    getParentFragmentManager().setFragmentResult("role_updated", b);
 
 // Use updated role
                     String role = TokenManager.getRole(requireContext());

@@ -95,6 +95,11 @@ public class DashboardActivity extends AppCompatActivity {
                         )
                 )
         );
+        getSupportFragmentManager().setFragmentResultListener(
+                "role_updated",
+                this,
+                (key, bundle) -> applyRoleLabel()
+        );
 
         socket.on("tournament:status-updated", args -> {
             if (args.length > 0) {

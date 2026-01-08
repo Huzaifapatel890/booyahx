@@ -1,5 +1,4 @@
 package com.booyahx;
-
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -29,6 +28,14 @@ public final class TokenManager {
                 .getString("refresh", null);
     }
 
+    public static void clearTokens(Context ctx) {
+        SharedPreferences.Editor e =
+                ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit();
+        e.remove("access");
+        e.remove("refresh");
+        e.commit(); // synchronous
+    }
+
     /* ================= CSRF ================= */
 
     public static void saveCsrf(Context ctx, String csrf) {
@@ -49,7 +56,7 @@ public final class TokenManager {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
                 .edit()
                 .putString("role", role)
-                .apply();
+                .commit();
     }
 
     public static String getRole(Context ctx) {
@@ -61,7 +68,7 @@ public final class TokenManager {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
                 .edit()
                 .putString("user_id", id)
-                .apply();
+                .commit();
     }
 
     public static String getUserId(Context ctx) {
@@ -75,6 +82,6 @@ public final class TokenManager {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
                 .edit()
                 .clear()
-                .apply();
+                .commit();
     }
 }
