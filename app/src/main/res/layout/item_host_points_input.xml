@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/host_match_selector_bg"
+    android:padding="14dp"
+    android:layout_marginBottom="12dp">
+
+    <!-- Serial + Team Name -->
+    <TextView
+        android:id="@+id/teamLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="01 • Team Alpha"
+        android:textColor="#00FFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- Kill Points -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginEnd="6dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Kill Points"
+                android:textColor="#888888"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+
+            <EditText
+                android:id="@+id/killPointsInput"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:hint="0"
+                android:textColorHint="#444444"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:padding="6dp"
+                android:background="@drawable/input_background"
+                android:inputType="number"
+                android:gravity="center" />
+        </LinearLayout>
+
+        <!-- Position Selector -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Position"
+                android:textColor="#888888"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+
+            <Spinner
+                android:id="@+id/positionSpinner"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:background="@drawable/input_background"
+                android:padding="6dp"
+                android:popupBackground="#111111" />
+        </LinearLayout>
+
+        <!-- Auto Total -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.9"
+            android:orientation="vertical"
+            android:layout_marginStart="6dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Total"
+                android:textColor="#888888"
+                android:textSize="12sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/totalPoints"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:text="0"
+                android:textColor="#00FFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:padding="6dp"
+                android:background="@drawable/host_total_display_bg"
+                android:gravity="center" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

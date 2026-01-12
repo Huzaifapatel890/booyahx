@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -12,12 +13,13 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.booyahx.HostTournamentAdapter;
-import com.booyahx.R;
-import com.booyahx.network.models.HostTournament;
+import com.booyahx.Host.HostPointsHelper;
+import com.booyahx.Host.HostSubmitResultDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.booyahx.network.models.HostTournament;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -75,7 +77,7 @@ public class HostTournamentActivity extends AppCompatActivity {
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<String>(this,
                 android.R.layout.simple_spinner_item, statuses) {
             @Override
-            public View getView(int position, View convertView, android.view.ViewGroup parent) {
+            public View getView(int position, View convertView, ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
                 TextView textView = (TextView) view;
                 textView.setTextColor(Color.parseColor("#00FFFF"));
@@ -84,7 +86,7 @@ public class HostTournamentActivity extends AppCompatActivity {
             }
 
             @Override
-            public View getDropDownView(int position, View convertView, android.view.ViewGroup parent) {
+            public View getDropDownView(int position, View convertView, ViewGroup parent) {
                 View view = super.getDropDownView(position, convertView, parent);
                 TextView textView = (TextView) view;
                 textView.setTextColor(Color.WHITE);
@@ -145,6 +147,7 @@ public class HostTournamentActivity extends AppCompatActivity {
                 return;
             }
 
+            // TODO: API call POST /api/host/tournaments/{tournamentId}/update-room
             tournament.setRoomId(newRoomId);
             tournament.setPassword(newPassword);
             adapter.notifyDataSetChanged();
@@ -154,30 +157,40 @@ public class HostTournamentActivity extends AppCompatActivity {
         });
 
         dialog.show();
-        dialog.getWindow().setLayout(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT);
-        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
     }
 
     private void showSubmitResultDialog(HostTournament tournament) {
-        Dialog dialog = new Dialog(this);
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_submit_result);
-        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        // Get team names from tournament
+        List<String> teamNames = getTeamNamesFromTournament(tournament.getId());
 
-        EditText screenshotUrl = dialog.findViewById(R.id.screenshotUrlInput);
-        TextView cancelBtn = dialog.findViewById(R.id.cancelSubmitBtn);
-        TextView submitBtn = dialog.findViewById(R.id.submitAllBtn);
+        // Determine total matches based on game mode
+        int totalMatches = tournament.getMode().contains("3") ? 3 : 6;
 
-        cancelBtn.setOnClickListener(v -> dialog.dismiss());
+        HostSubmitResultDialog submitDialog = new HostSubmitResultDialog(
+                this,
+                tournament.getId(),
+                totalMatches,
+                teamNames
+        );
+        submitDialog.show();
+    }
 
-        submitBtn.setOnClickListener(v -> {
-            Toast.makeText(this, "Results submitted successfully!", Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-        });
-
-        dialog.show();
-        dialog.getWindow().setLayout(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT);
-        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+    private List<String> getTeamNamesFromTournament(String tournamentId) {
+        // TODO: Fetch from API - GET /api/host/tournaments/{tournamentId}/teams
+        List<String> teams = new ArrayList<>();
+        teams.add("Team Alpha");
+        teams.add("Team Beta");
+        teams.add("Team Gamma");
+        teams.add("Team Delta");
+        teams.add("Team Epsilon");
+        teams.add("Team Zeta");
+        teams.add("Team Eta");
+        teams.add("Team Theta");
+        teams.add("Team Iota");
+        teams.add("Team Kappa");
+        teams.add("Team Lambda");
+        teams.add("Team Mu");
+        return teams;
     }
 
     private void showEndTournamentDialog(HostTournament tournament) {
@@ -197,6 +210,7 @@ public class HostTournamentActivity extends AppCompatActivity {
                     .setTitle("Confirm")
                     .setMessage("Are you absolutely sure you want to end this tournament?")
                     .setPositiveButton("Yes, End Now", (d, which) -> {
+                        // TODO: API call POST /api/host/tournaments/{tournamentId}/end
                         String reason = reasonInput.getText().toString().trim();
                         Toast.makeText(this, "Tournament ended successfully!", Toast.LENGTH_SHORT).show();
                         dialog.dismiss();
@@ -207,7 +221,5 @@ public class HostTournamentActivity extends AppCompatActivity {
         });
 
         dialog.show();
-        dialog.getWindow().setLayout(RecyclerView.LayoutParams.MATCH_PARENT, RecyclerView.LayoutParams.WRAP_CONTENT);
-        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
     }
 }
