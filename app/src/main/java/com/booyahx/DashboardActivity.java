@@ -7,7 +7,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.util.Log;
-
+import android.content.Intent;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
@@ -59,7 +59,7 @@ public class DashboardActivity extends AppCompatActivity {
         });
 
         navParticipated.setOnClickListener(v -> {
-            loadFragment(new ParticipatedFragment(), 1, true);
+            startActivity(new Intent(DashboardActivity.this, HostTournamentActivity.class));
             setActive(tvNavParticipated);
         });
 

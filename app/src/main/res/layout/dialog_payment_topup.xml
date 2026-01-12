@@ -212,7 +212,47 @@
                         android:textStyle="bold"
                         android:layout_marginBottom="8dp"/>
 
-                    <!-- Timer -->
+                    <!-- QUICK PAY BUTTONS -->
+                    <LinearLayout
+                        android:id="@+id/appButtons"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginBottom="20dp">
+
+                        <ImageView
+                            android:id="@+id/btnPhonePe"
+                            android:layout_width="46dp"
+                            android:layout_height="46dp"
+                            android:src="@drawable/ic_phonepe"
+                            android:layout_margin="6dp"
+                            android:contentDescription="PhonePe"/>
+
+                        <ImageView
+                            android:id="@+id/btnGPay"
+                            android:layout_width="46dp"
+                            android:layout_height="46dp"
+                            android:src="@drawable/ic_gpay"
+                            android:layout_margin="6dp"
+                            android:contentDescription="G Pay"/>
+
+                        <ImageView
+                            android:id="@+id/btnPaytm"
+                            android:layout_width="46dp"
+                            android:layout_height="46dp"
+                            android:src="@drawable/is_paytm"
+                            android:layout_margin="6dp"
+                            android:contentDescription="Paytm"/>
+
+                        <ImageView
+                            android:id="@+id/btnFampay"
+                            android:layout_width="46dp"
+                            android:layout_height="46dp"
+                            android:src="@drawable/ic_fampay"
+                            android:layout_margin="6dp"
+                            android:contentDescription="Fampay"/>
+                    </LinearLayout><!-- Timer -->
                     <TextView
                         android:id="@+id/tvTimer"
                         android:layout_width="wrap_content"

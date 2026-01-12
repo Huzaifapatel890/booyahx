@@ -47,6 +47,11 @@
         <!-- <activity
             android:name="com.booyahx.SettingsActivity"
             android:exported="false" /> -->
+
+        <activity
+            android:name="HostTournamentActivity"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:exported="true" />
         <activity
             android:name=".settings.AboutActivity$AboutUsActivity"
             android:parentActivityName=".DashboardActivity"

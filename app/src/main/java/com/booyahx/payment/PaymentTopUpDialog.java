@@ -5,10 +5,12 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.CountDownTimer;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -19,6 +21,7 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -58,6 +61,9 @@ public class PaymentTopUpDialog extends Dialog {
 
     private String qrCodeId;
     private int paymentAmount;
+
+    // 🔥 NEW: store deep link
+    private String upiDeepLink = "";
 
     public PaymentTopUpDialog(@NonNull Context context, WalletFragment parent) {
         super(context);
@@ -103,6 +109,8 @@ public class PaymentTopUpDialog extends Dialog {
         step1Circle = findViewById(R.id.step1Circle);
         step2Circle = findViewById(R.id.step2Circle);
         stepConnector = findViewById(R.id.stepConnector);
+
+        // nothing removed
     }
 
     private void setupListeners() {
@@ -116,11 +124,16 @@ public class PaymentTopUpDialog extends Dialog {
             if (timer != null) timer.cancel();
             dismiss();
         });
+
+        // 🔥 NEW quick-pay buttons
+        findViewById(R.id.btnGPay).setOnClickListener(v -> openUpiApp("com.google.android.apps.nbu.paisa.user"));
+        findViewById(R.id.btnPhonePe).setOnClickListener(v -> openUpiApp("com.phonepe.app"));
+        findViewById(R.id.btnPaytm).setOnClickListener(v -> openUpiApp("net.one97.paytm"));
+        findViewById(R.id.btnFampay).setOnClickListener(v -> openUpiApp("in.fampay.app"));
     }
 
     private void animateStepTransition(int fromStep, int toStep) {
         if (toStep == 2) {
-            // Animate step 2 circle to active with slower, more visible animation
             step2Circle.setBackgroundResource(R.drawable.step_active);
             step2Circle.setScaleX(0.5f);
             step2Circle.setScaleY(0.5f);
@@ -129,16 +142,15 @@ public class PaymentTopUpDialog extends Dialog {
                     .scaleX(1.0f)
                     .scaleY(1.0f)
                     .alpha(1.0f)
-                    .setDuration(1200)  // Slower: 600ms (was 300ms)
+                    .setDuration(1200)
                     .setInterpolator(new AccelerateDecelerateInterpolator())
                     .start();
 
-            // Animate connector line color transition
             ValueAnimator colorAnim = ValueAnimator.ofArgb(
                     ContextCompat.getColor(getContext(), R.color.neon_cyan_alpha_30),
                     ContextCompat.getColor(getContext(), R.color.cyan)
             );
-            colorAnim.setDuration(600);  // Slower: 600ms (was 300ms)
+            colorAnim.setDuration(600);
             colorAnim.addUpdateListener(animator ->
                     stepConnector.setBackgroundColor((int) animator.getAnimatedValue())
             );
@@ -160,7 +172,6 @@ public class PaymentTopUpDialog extends Dialog {
     private void showQRScreen() {
         animateStepTransition(1, 2);
 
-        // Slide out amount layout to the left
         layoutAmount.animate()
                 .translationX(-layoutAmount.getWidth())
                 .alpha(0f)
@@ -176,7 +187,6 @@ public class PaymentTopUpDialog extends Dialog {
                 })
                 .start();
 
-        // Slide in QR layout from the right
         layoutQR.setTranslationX(layoutQR.getWidth());
         layoutQR.setAlpha(0f);
         layoutQR.setVisibility(View.VISIBLE);
@@ -191,7 +201,6 @@ public class PaymentTopUpDialog extends Dialog {
     }
 
     private void showDoneScreen() {
-        // Slide out QR layout to the left
         layoutQR.animate()
                 .translationX(-layoutQR.getWidth())
                 .alpha(0f)
@@ -207,13 +216,12 @@ public class PaymentTopUpDialog extends Dialog {
                 })
                 .start();
 
-        // Slide in done layout from the right (FIXED - was missing alpha!)
         layoutDone.setTranslationX(layoutDone.getWidth());
-        layoutDone.setAlpha(0f);  // Start invisible
+        layoutDone.setAlpha(0f);
         layoutDone.setVisibility(View.VISIBLE);
         layoutDone.animate()
                 .translationX(0)
-                .alpha(1f)  // Fade in while sliding
+                .alpha(1f)
                 .setDuration(400)
                 .setInterpolator(new AccelerateDecelerateInterpolator())
                 .start();
@@ -270,7 +278,7 @@ public class PaymentTopUpDialog extends Dialog {
         showLoaderStep1();
         Log.d(TAG, "Creating QR for amount: " + paymentAmount);
 
-        api.createQR(new CreateQRRequest(paymentAmount, true, "Top-up"))
+        api.createQR(new CreateQRRequest(paymentAmount, true, "Payment"))
                 .enqueue(new Callback<CreateQRResponse>() {
                     @Override
                     public void onResponse(Call<CreateQRResponse> call, Response<CreateQRResponse> res) {
@@ -308,6 +316,11 @@ public class PaymentTopUpDialog extends Dialog {
                         qrCodeId = res.body().data.qrCodeId;
                         tvAmount.setText("Amount to Pay: ₹" + paymentAmount);
 
+                        // 🔥 NEW: store UPI deep link
+                        if (!TextUtils.isEmpty(res.body().data.upiLink)) {
+                            upiDeepLink = res.body().data.upiLink;
+                        }
+
                         if (!TextUtils.isEmpty(res.body().data.qrCodeImage)) {
                             Log.d(TAG, "Using base64 image");
                             loadBase64Image(res.body().data.qrCodeImage);
@@ -322,7 +335,6 @@ public class PaymentTopUpDialog extends Dialog {
                             Toast.makeText(getContext(), "QR code data missing", Toast.LENGTH_SHORT).show();
                             return;
                         }
-
                         startTimer();
                         showQRScreen();
                     }
@@ -408,6 +420,7 @@ public class PaymentTopUpDialog extends Dialog {
             etUTR.requestFocus();
             return;
         }
+
         if (!utr.matches("\\d+")) {
             etUTR.setError("Only numbers allowed");
             return;
@@ -469,5 +482,32 @@ public class PaymentTopUpDialog extends Dialog {
             timer.cancel();
         }
         super.dismiss();
+    }
+
+    // 🔥 NEW universal UPI opener
+    private void openUpiApp(String packageName) {
+        if (upiDeepLink == null || upiDeepLink.isEmpty()) {
+            Toast.makeText(getContext(), "UPI link not ready", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            String uri = upiDeepLink;
+
+            if (!uri.contains("am=")) {
+                if (uri.contains("?")) {
+                    uri = uri + "&am=" + paymentAmount;
+                } else {
+                    uri = uri + "?am=" + paymentAmount;
+                }
+            }
+
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+            intent.setPackage(packageName);
+            getContext().startActivity(intent);
+
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "App not installed", Toast.LENGTH_SHORT).show();
+        }
     }
 }
