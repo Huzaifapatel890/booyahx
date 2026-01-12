@@ -6,6 +6,7 @@
     android:background="@drawable/dialog_bg"
     android:padding="25dp">
 
+    <!-- Header -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -17,7 +18,7 @@
         android:layout_marginBottom="15dp"
         android:background="@drawable/dialog_header_border" />
 
-    <!-- Match Selector -->
+    <!-- Match Spinner -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -42,10 +43,9 @@
             android:background="@drawable/input_bg"
             android:padding="10dp"
             android:popupBackground="#111111" />
-
     </LinearLayout>
 
-    <!-- Teams List -->
+    <!-- Teams Title -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -55,6 +55,7 @@
         android:textStyle="bold"
         android:layout_marginBottom="10dp" />
 
+    <!-- Scroll List -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="400dp"
@@ -65,10 +66,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
-
     </ScrollView>
 
-    <!-- Action Buttons -->
+    <!-- Save Match / Cancel -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -108,7 +108,7 @@
 
     </LinearLayout>
 
-    <!-- Submit Final Button (only visible after all matches saved) -->
+    <!-- Final Submit -->
     <TextView
         android:id="@+id/submitFinalBtn"
         android:layout_width="match_parent"
