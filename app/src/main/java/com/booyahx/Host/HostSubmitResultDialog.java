@@ -355,7 +355,29 @@ public class HostSubmitResultDialog extends Dialog {
 
     private void setupButtons() {
         saveMatchBtn.setOnClickListener(v -> saveCurrentMatch());
-        submitFinalBtn.setOnClickListener(v -> dismiss());
+        submitFinalBtn.setOnClickListener(v -> {
+
+            // validate all matches saved
+            for (int m = 0; m < totalMatches; m++) {
+                if (!matchSaved[m]) {
+                    Toast.makeText(context,
+                            "Please save all matches before submitting final result!",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+
+            List<FinalRow> finalTable =
+                    FinalResultCalculator.calculate(matchScores, teamsList);
+
+            FinalResultStore.save(context, tournamentId, finalTable);
+
+            Toast.makeText(context,
+                    "Final result calculated & saved!",
+                    Toast.LENGTH_SHORT).show();
+
+            dismiss();
+        });
         cancelBtn.setOnClickListener(v -> dismiss());
     }
 }
