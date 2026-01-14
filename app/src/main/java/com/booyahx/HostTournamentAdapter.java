@@ -13,7 +13,8 @@ import com.booyahx.network.models.HostTournament;
 
 import java.util.List;
 
-public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAdapter.ViewHolder> {
+public class HostTournamentAdapter
+        extends RecyclerView.Adapter<HostTournamentAdapter.ViewHolder> {
 
     private Context context;
     private List<HostTournament> tournaments;
@@ -22,10 +23,16 @@ public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAd
     public interface OnItemClickListener {
         void onEditRoom(HostTournament tournament);
         void onSubmitResult(HostTournament tournament);
+        void onViewResult(HostTournament tournament);
         void onEndTournament(HostTournament tournament);
+        void onViewRules(HostTournament tournament); // Added for Rules button
     }
 
-    public HostTournamentAdapter(Context context, List<HostTournament> tournaments, OnItemClickListener listener) {
+    public HostTournamentAdapter(
+            Context context,
+            List<HostTournament> tournaments,
+            OnItemClickListener listener
+    ) {
         this.context = context;
         this.tournaments = tournaments;
         this.listener = listener;
@@ -33,13 +40,20 @@ public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAd
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_host_tournament_card, parent, false);
+    public ViewHolder onCreateViewHolder(
+            @NonNull ViewGroup parent,
+            int viewType
+    ) {
+        View view = LayoutInflater.from(context)
+                .inflate(R.layout.item_host_tournament_card, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+    public void onBindViewHolder(
+            @NonNull ViewHolder holder,
+            int position
+    ) {
         HostTournament tournament = tournaments.get(position);
 
         holder.tournamentTitle.setText(tournament.getTitle());
@@ -52,9 +66,30 @@ public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAd
         holder.password.setText(tournament.getPassword());
         holder.slotBadge.setText(tournament.getSlotBadge());
 
-        holder.editIcon.setOnClickListener(v -> listener.onEditRoom(tournament));
-        holder.submitResultBtn.setOnClickListener(v -> listener.onSubmitResult(tournament));
-        holder.endBtn.setOnClickListener(v -> listener.onEndTournament(tournament));
+        // Edit Room
+        holder.editIcon.setOnClickListener(v ->
+                listener.onEditRoom(tournament)
+        );
+
+        // Submit Result
+        holder.submitResultBtn.setOnClickListener(v ->
+                listener.onSubmitResult(tournament)
+        );
+
+        // View Result - THIS IS THE KEY FIX
+        holder.resultBtn.setOnClickListener(v ->
+                listener.onViewResult(tournament)
+        );
+
+        // View Rules
+        holder.rulesBtn.setOnClickListener(v ->
+                listener.onViewRules(tournament)
+        );
+
+        // End Tournament
+        holder.endBtn.setOnClickListener(v ->
+                listener.onEndTournament(tournament)
+        );
     }
 
     @Override
@@ -63,12 +98,15 @@ public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAd
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tournamentTitle, tournamentMode, entryFee, prizePool, slots, timeStatus;
-        TextView roomId, password, slotBadge;
-        TextView editIcon, submitResultBtn, endBtn;
+
+        TextView tournamentTitle, tournamentMode, entryFee, prizePool,
+                slots, timeStatus, roomId, password, slotBadge;
+
+        TextView editIcon, submitResultBtn, resultBtn, rulesBtn, endBtn;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
+
             tournamentTitle = itemView.findViewById(R.id.tournamentTitle);
             tournamentMode = itemView.findViewById(R.id.tournamentMode);
             entryFee = itemView.findViewById(R.id.entryFee);
@@ -78,8 +116,11 @@ public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAd
             roomId = itemView.findViewById(R.id.roomId);
             password = itemView.findViewById(R.id.password);
             slotBadge = itemView.findViewById(R.id.slotBadge);
+
             editIcon = itemView.findViewById(R.id.editIcon);
             submitResultBtn = itemView.findViewById(R.id.submitResultBtn);
+            resultBtn = itemView.findViewById(R.id.resultButton);
+            rulesBtn = itemView.findViewById(R.id.rulesButton);
             endBtn = itemView.findViewById(R.id.endBtn);
         }
     }

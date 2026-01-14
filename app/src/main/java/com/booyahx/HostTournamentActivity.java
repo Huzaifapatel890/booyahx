@@ -13,12 +13,15 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-import com.booyahx.Host.HostPointsHelper;
-import com.booyahx.Host.HostSubmitResultDialog;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.booyahx.Host.FinalResultDialog;
+import com.booyahx.Host.FinalResultStore;
+import com.booyahx.Host.FinalRow;
+import com.booyahx.Host.HostSubmitResultDialog;
 import com.booyahx.network.models.HostTournament;
 
 import java.util.ArrayList;
@@ -47,22 +50,43 @@ public class HostTournamentActivity extends AppCompatActivity {
 
         tournamentRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         tournamentList = new ArrayList<>();
-        adapter = new HostTournamentAdapter(this, tournamentList, new HostTournamentAdapter.OnItemClickListener() {
-            @Override
-            public void onEditRoom(HostTournament tournament) {
-                showUpdateRoomDialog(tournament);
-            }
 
-            @Override
-            public void onSubmitResult(HostTournament tournament) {
-                showSubmitResultDialog(tournament);
-            }
+        adapter = new HostTournamentAdapter(
+                this,
+                tournamentList,
+                new HostTournamentAdapter.OnItemClickListener() {
 
-            @Override
-            public void onEndTournament(HostTournament tournament) {
-                showEndTournamentDialog(tournament);
-            }
-        });
+                    @Override
+                    public void onEditRoom(HostTournament tournament) {
+                        showUpdateRoomDialog(tournament);
+                    }
+
+                    @Override
+                    public void onSubmitResult(HostTournament tournament) {
+                        showSubmitResultDialog(tournament);
+                    }
+
+                    @Override
+                    public void onViewResult(HostTournament tournament) {
+                        showFinalResultDialog(tournament);
+                    }
+
+                    @Override
+                    public void onEndTournament(HostTournament tournament) {
+                        showEndTournamentDialog(tournament);
+                    }
+
+                    @Override
+                    public void onViewRules(HostTournament tournament) {
+                        Toast.makeText(
+                                HostTournamentActivity.this,
+                                "Rules: Coming Soon!",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                }
+        );
+
         tournamentRecyclerView.setAdapter(adapter);
     }
 
@@ -74,27 +98,30 @@ public class HostTournamentActivity extends AppCompatActivity {
         statuses.add("Pending Result Tournaments");
         statuses.add("Cancelled Tournaments");
 
-        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_spinner_item, statuses) {
-            @Override
-            public View getView(int position, View convertView, ViewGroup parent) {
-                View view = super.getView(position, convertView, parent);
-                TextView textView = (TextView) view;
-                textView.setTextColor(Color.parseColor("#00FFFF"));
-                textView.setTextSize(14);
-                return view;
-            }
+        ArrayAdapter<String> spinnerAdapter =
+                new ArrayAdapter<String>(this,
+                        android.R.layout.simple_spinner_item,
+                        statuses) {
 
-            @Override
-            public View getDropDownView(int position, View convertView, ViewGroup parent) {
-                View view = super.getDropDownView(position, convertView, parent);
-                TextView textView = (TextView) view;
-                textView.setTextColor(Color.WHITE);
-                textView.setBackgroundColor(Color.parseColor("#0a0a0a"));
-                textView.setPadding(30, 30, 30, 30);
-                return view;
-            }
-        };
+                    @Override
+                    public View getView(int position, View convertView, ViewGroup parent) {
+                        View view = super.getView(position, convertView, parent);
+                        TextView tv = (TextView) view;
+                        tv.setTextColor(Color.parseColor("#00FFFF"));
+                        tv.setTextSize(14);
+                        return view;
+                    }
+
+                    @Override
+                    public View getDropDownView(int position, View convertView, ViewGroup parent) {
+                        View view = super.getDropDownView(position, convertView, parent);
+                        TextView tv = (TextView) view;
+                        tv.setTextColor(Color.WHITE);
+                        tv.setBackgroundColor(Color.parseColor("#0a0a0a"));
+                        tv.setPadding(30, 30, 30, 30);
+                        return view;
+                    }
+                };
 
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         statusSpinner.setAdapter(spinnerAdapter);
@@ -112,14 +139,21 @@ public class HostTournamentActivity extends AppCompatActivity {
 
     private void loadTournaments() {
         tournamentList.clear();
-        tournamentList.add(new HostTournament("1", "Free Fire", "BR - squad", "150 GC", "127 GC", "0/12", "CANCEL", "UPDA", "TING", "#0"));
-        tournamentList.add(new HostTournament("2", "Free Fire", "LW - duo", "50 GC", "85 GC", "0/24", "CANCEL", "UPDA", "TING", "#0"));
+        tournamentList.add(new HostTournament(
+                "1", "Free Fire", "BR - squad",
+                "150 GC", "127 GC", "0/12",
+                "CANCEL", "UPDA", "TING", "#0"
+        ));
+        tournamentList.add(new HostTournament(
+                "2", "Free Fire", "LW - duo",
+                "50 GC", "85 GC", "0/24",
+                "CANCEL", "UPDA", "TING", "#0"
+        ));
         adapter.notifyDataSetChanged();
     }
 
     private void filterTournaments(String status) {
         Toast.makeText(this, "Filtering: " + status, Toast.LENGTH_SHORT).show();
-        // TODO: API call to fetch tournaments by status
     }
 
     private void showUpdateRoomDialog(HostTournament tournament) {
@@ -139,20 +173,17 @@ public class HostTournamentActivity extends AppCompatActivity {
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
 
         updateBtn.setOnClickListener(v -> {
-            String newRoomId = roomIdInput.getText().toString().trim();
-            String newPassword = passwordInput.getText().toString().trim();
-
-            if (newRoomId.isEmpty() || newPassword.isEmpty()) {
+            if (roomIdInput.getText().toString().isEmpty()
+                    || passwordInput.getText().toString().isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // TODO: API call POST /api/host/tournaments/{tournamentId}/update-room
-            tournament.setRoomId(newRoomId);
-            tournament.setPassword(newPassword);
+            tournament.setRoomId(roomIdInput.getText().toString());
+            tournament.setPassword(passwordInput.getText().toString());
             adapter.notifyDataSetChanged();
 
-            Toast.makeText(this, "Room info updated successfully!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Room updated", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 
@@ -160,29 +191,47 @@ public class HostTournamentActivity extends AppCompatActivity {
     }
 
     private void showSubmitResultDialog(HostTournament tournament) {
-        // Get team names from tournament
         List<String> teamNames = getTeamNamesFromTournament(tournament.getId());
-
-        // Determine total matches based on game mode
         int totalMatches = tournament.getMode().contains("3") ? 3 : 6;
 
-        HostSubmitResultDialog submitDialog = new HostSubmitResultDialog(
-                this,
-                tournament.getId(),
-                totalMatches,
-                teamNames
-        );
-        submitDialog.show();
+        HostSubmitResultDialog dialog =
+                new HostSubmitResultDialog(
+                        this,
+                        tournament.getId(),
+                        totalMatches,
+                        teamNames
+                );
+
+        dialog.show();
+    }
+
+    // 🔥 THIS IS THE KEY METHOD - NOW SHOWS THE DIALOG
+    private void showFinalResultDialog(HostTournament tournament) {
+
+        List<FinalRow> rows =
+                FinalResultStore.load(this, tournament.getId());
+
+        if (rows == null || rows.isEmpty()) {
+            Toast.makeText(
+                    this,
+                    "Result not submitted yet!",
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        // 🔥 SHOW THE DIALOG
+        FinalResultDialog dialog = new FinalResultDialog(this, rows);
+        dialog.show();
     }
 
     private List<String> getTeamNamesFromTournament(String tournamentId) {
-        // TODO: Fetch from API - GET /api/host/tournaments/{tournamentId}/teams
         List<String> teams = new ArrayList<>();
-        teams.add("Team Alpha");
-        teams.add("Team Beta");
-        teams.add("Team Gamma");
-        teams.add("Team Delta");
-        teams.add("Team Epsilon");
+        teams.add("Bharuch esports");
+        teams.add("Pine airlines");
+        teams.add("NG Pros");
+        teams.add("Iqoo Tg");
+        teams.add("S8Ul ESP");
         teams.add("Team Zeta");
         teams.add("Team Eta");
         teams.add("Team Theta");
@@ -205,20 +254,18 @@ public class HostTournamentActivity extends AppCompatActivity {
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
 
-        endBtn.setOnClickListener(v -> {
-            new androidx.appcompat.app.AlertDialog.Builder(this)
-                    .setTitle("Confirm")
-                    .setMessage("Are you absolutely sure you want to end this tournament?")
-                    .setPositiveButton("Yes, End Now", (d, which) -> {
-                        // TODO: API call POST /api/host/tournaments/{tournamentId}/end
-                        String reason = reasonInput.getText().toString().trim();
-                        Toast.makeText(this, "Tournament ended successfully!", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                        loadTournaments();
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
-        });
+        endBtn.setOnClickListener(v ->
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Confirm")
+                        .setMessage("End this tournament?")
+                        .setPositiveButton("Yes", (d, w) -> {
+                            Toast.makeText(this, "Tournament ended", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                            loadTournaments();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show()
+        );
 
         dialog.show();
     }

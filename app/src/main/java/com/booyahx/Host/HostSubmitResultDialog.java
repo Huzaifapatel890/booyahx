@@ -29,7 +29,7 @@ import java.util.List;
 public class HostSubmitResultDialog extends Dialog {
 
     private static final String PREFS = "host_match_storage";
-    private static final long EXPIRY_MS = 60L * 24 * 60 * 60 * 1000; // 60 days
+    private static final long EXPIRY_MS = 60L * 24 * 60 * 60 * 1000;
 
     private final Context context;
     private final int totalMatches;
@@ -41,7 +41,7 @@ public class HostSubmitResultDialog extends Dialog {
      * [1] POSITION
      * [2] PP
      * [3] TOTAL
-     * [4] BOOYAH (1 if pos==1 else 0)
+     * [4] BOOYAH
      */
     private final List<List<int[]>> matchScores = new ArrayList<>();
     private final boolean[] matchSaved;
@@ -52,6 +52,7 @@ public class HostSubmitResultDialog extends Dialog {
     private Spinner matchSelector;
     private LinearLayout teamsContainer;
     private TextView saveMatchBtn, submitFinalBtn, cancelBtn;
+    private TextView matchStatusIndicator;
 
     public HostSubmitResultDialog(
             @NonNull Context context,
@@ -97,17 +98,19 @@ public class HostSubmitResultDialog extends Dialog {
         saveMatchBtn = findViewById(R.id.saveMatchBtn);
         submitFinalBtn = findViewById(R.id.submitFinalBtn);
         cancelBtn = findViewById(R.id.cancelBtn);
+        matchStatusIndicator = findViewById(R.id.matchStatusIndicator); // FIX ADDED
 
         setupMatchSelector();
         loadTeamsUI();
         setupButtons();
+        updateUIState();
     }
-
-    // ================= MATCH SELECTOR =================
 
     private void setupMatchSelector() {
         List<String> list = new ArrayList<>();
-        for (int i = 1; i <= totalMatches; i++) list.add("Match " + i);
+        for (int i = 1; i <= totalMatches; i++) {
+            list.add("Match " + i + (matchSaved[i - 1] ? " ✓" : ""));
+        }
 
         ArrayAdapter<String> adapter =
                 new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, list);
@@ -119,12 +122,11 @@ public class HostSubmitResultDialog extends Dialog {
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int pos, long id) {
                 currentMatch = pos;
                 loadTeamsUI();
+                updateUIState();
             }
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
     }
-
-    // ================= UI LOAD =================
 
     private void loadTeamsUI() {
         teamsContainer.removeAllViews();
@@ -142,7 +144,6 @@ public class HostSubmitResultDialog extends Dialog {
 
             teamName.setText((i + 1) + ". " + teamsList.get(i));
 
-            // KP UX: gray 0 hint
             killInput.setHint("0");
             killInput.setHintTextColor(Color.parseColor("#777777"));
 
@@ -163,19 +164,25 @@ public class HostSubmitResultDialog extends Dialog {
 
             int teamIndex = i;
 
-            killInput.setOnFocusChangeListener((v, hasFocus) -> {
-                if (!hasFocus && killInput.getText().toString().isEmpty()) {
-                    killInput.setText("0");
-                }
-            });
-
             killInput.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
                 @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
                 @Override
                 public void afterTextChanged(Editable s) {
-                    data[0] = s.toString().isEmpty() ? 0 : Integer.parseInt(s.toString());
+                    try {
+                        String val = s.toString().trim();
+                        if (val.isEmpty()) {
+                            data[0] = 0;
+                        } else {
+                            long parsed = Long.parseLong(val);
+                            if (parsed > 100) parsed = 100;
+                            data[0] = (int) parsed;
+                        }
+                    } catch (Exception e) {
+                        data[0] = 0;
+                    }
                     calculateTotals();
+                    updateUIState();
                 }
             });
 
@@ -187,6 +194,7 @@ public class HostSubmitResultDialog extends Dialog {
                     if (pos == 0) {
                         data[1] = 0;
                         calculateTotals();
+                        updateUIState();
                         return;
                     }
 
@@ -202,6 +210,7 @@ public class HostSubmitResultDialog extends Dialog {
 
                     data[1] = pos;
                     calculateTotals();
+                    updateUIState();
                 }
 
                 @Override public void onNothingSelected(android.widget.AdapterView<?> parent) {}
@@ -212,8 +221,6 @@ public class HostSubmitResultDialog extends Dialog {
 
         calculateTotals();
     }
-
-    // ================= SAVE MATCH =================
 
     private void saveCurrentMatch() {
         for (int[] row : matchScores.get(currentMatch)) {
@@ -232,12 +239,55 @@ public class HostSubmitResultDialog extends Dialog {
                 "Match " + (currentMatch + 1) + " saved!",
                 Toast.LENGTH_SHORT).show();
 
+        setupMatchSelector();
+        matchSelector.setSelection(currentMatch);
+
+        updateUIState();
+
         if (currentMatch < totalMatches - 1) {
-            matchSelector.setSelection(currentMatch + 1);
+            for (int i = currentMatch + 1; i < totalMatches; i++) {
+                if (!matchSaved[i]) {
+                    matchSelector.setSelection(i);
+                    return;
+                }
+            }
         }
     }
 
-    // ================= STORAGE =================
+    private void updateUIState() {
+        int savedCount = 0;
+        for (boolean saved : matchSaved) {
+            if (saved) savedCount++;
+        }
+
+        if (matchStatusIndicator != null) {
+            matchStatusIndicator.setText("Matches Saved: " + savedCount + "/" + totalMatches);
+            if (savedCount == totalMatches) {
+                matchStatusIndicator.setTextColor(Color.parseColor("#00FF00"));
+            } else {
+                matchStatusIndicator.setTextColor(Color.parseColor("#FFFFFF"));
+            }
+        }
+
+        // FIXED VISIBILITY LOGIC
+        if (savedCount == totalMatches) {
+            submitFinalBtn.setVisibility(View.VISIBLE);
+            submitFinalBtn.setEnabled(true);
+            submitFinalBtn.setAlpha(1f);
+        } else {
+            submitFinalBtn.setVisibility(View.GONE);
+            submitFinalBtn.setEnabled(false);
+            submitFinalBtn.setAlpha(0.5f);
+        }
+
+        if (matchSaved[currentMatch]) {
+            saveMatchBtn.setText("Match " + (currentMatch + 1) + " Saved ✓");
+            saveMatchBtn.setBackgroundColor(Color.parseColor("#00AA00"));
+        } else {
+            saveMatchBtn.setText("Save Match " + (currentMatch + 1));
+            saveMatchBtn.setBackgroundColor(Color.parseColor("#00AAFF"));
+        }
+    }
 
     private void saveToStorage() {
         SharedPreferences sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -247,11 +297,16 @@ public class HostSubmitResultDialog extends Dialog {
         for (int m = 0; m < totalMatches; m++) {
             for (int t = 0; t < teamsList.size(); t++) {
                 int[] d = matchScores.get(m).get(t);
-                String key = tournamentId + "" + m + "" + t;
+                String key = tournamentId + m + t;
                 ed.putString(key,
                         d[0] + "," + d[1] + "," + d[2] + "," + d[3] + "," + d[4] + "," + now);
             }
         }
+
+        for (int m = 0; m < totalMatches; m++) {
+            ed.putBoolean(tournamentId + "match_saved" + m, matchSaved[m]);
+        }
+
         ed.apply();
     }
 
@@ -262,37 +317,19 @@ public class HostSubmitResultDialog extends Dialog {
         for (int m = 0; m < totalMatches; m++) {
             for (int t = 0; t < teamsList.size(); t++) {
 
-                String key = tournamentId + "" + m + "" + t;
+                String key = tournamentId + m + t;
                 String val = sp.getString(key, null);
                 if (val == null) continue;
 
                 String[] p = val.split(",");
 
-                // OLD FORMAT: KP,POS,PP,TOTAL,TS (length 5)
-                // NEW FORMAT: KP,POS,PP,TOTAL,BOOYAH,TS (length 6)
-
-                long ts;
-                int kp, pos, pp, total, booyah;
-
                 try {
-                    if (p.length == 5) {
-                        // 🔁 migrate old data
-                        kp = Integer.parseInt(p[0]);
-                        pos = Integer.parseInt(p[1]);
-                        pp = Integer.parseInt(p[2]);
-                        total = Integer.parseInt(p[3]);
-                        booyah = (pos == 1) ? 1 : 0;
-                        ts = Long.parseLong(p[4]);
-                    } else if (p.length >= 6) {
-                        kp = Integer.parseInt(p[0]);
-                        pos = Integer.parseInt(p[1]);
-                        pp = Integer.parseInt(p[2]);
-                        total = Integer.parseInt(p[3]);
-                        booyah = Integer.parseInt(p[4]);
-                        ts = Long.parseLong(p[5]);
-                    } else {
-                        continue;
-                    }
+                    int kp = Integer.parseInt(p[0]);
+                    int pos = Integer.parseInt(p[1]);
+                    int pp = Integer.parseInt(p[2]);
+                    int total = Integer.parseInt(p[3]);
+                    int booyah = Integer.parseInt(p[4]);
+                    long ts = Long.parseLong(p[5]);
 
                     if (now - ts > EXPIRY_MS) continue;
 
@@ -300,13 +337,12 @@ public class HostSubmitResultDialog extends Dialog {
                             kp, pos, pp, total, booyah
                     });
 
-                } catch (Exception ignored) {
-                    // corrupted row → skip safely
-                }
+                } catch (Exception ignored) {}
             }
+
+            matchSaved[m] = sp.getBoolean(tournamentId + "match_saved" + m, false);
         }
     }
-    // ================= DUPLICATE CHECK =================
 
     private boolean isDuplicatePosition(int pos, int currentTeam) {
         for (int i = 0; i < matchScores.get(currentMatch).size(); i++) {
@@ -316,15 +352,13 @@ public class HostSubmitResultDialog extends Dialog {
         return false;
     }
 
-    // ================= CALC =================
-
     private void calculateTotals() {
         for (int i = 0; i < teamsContainer.getChildCount(); i++) {
             TextView totalView = teamsContainer.getChildAt(i).findViewById(R.id.totalPoints);
             int[] data = matchScores.get(currentMatch).get(i);
 
             data[2] = getPositionPoints(data[1]);
-            data[4] = (data[1] == 1) ? 1 : 0; // 🔥 BOOYAH
+            data[4] = (data[1] == 1) ? 1 : 0;
             data[3] = data[0] + data[2];
 
             totalView.setText(String.valueOf(data[3]));
@@ -344,20 +378,15 @@ public class HostSubmitResultDialog extends Dialog {
             case 9: return 2;
             case 10:
             case 11:
-            case 12:
-                return 1;
-            default:
-                return 0;
+            case 12: return 1;
+            default: return 0;
         }
     }
 
-    // ================= BUTTONS =================
-
     private void setupButtons() {
         saveMatchBtn.setOnClickListener(v -> saveCurrentMatch());
-        submitFinalBtn.setOnClickListener(v -> {
 
-            // validate all matches saved
+        submitFinalBtn.setOnClickListener(v -> {
             for (int m = 0; m < totalMatches; m++) {
                 if (!matchSaved[m]) {
                     Toast.makeText(context,
@@ -373,11 +402,12 @@ public class HostSubmitResultDialog extends Dialog {
             FinalResultStore.save(context, tournamentId, finalTable);
 
             Toast.makeText(context,
-                    "Final result calculated & saved!",
-                    Toast.LENGTH_SHORT).show();
+                    "Final result calculated & saved successfully!",
+                    Toast.LENGTH_LONG).show();
 
             dismiss();
         });
+
         cancelBtn.setOnClickListener(v -> dismiss());
     }
 }

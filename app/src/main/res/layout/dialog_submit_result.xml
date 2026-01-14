@@ -17,6 +17,16 @@
         android:paddingBottom="15dp"
         android:layout_marginBottom="15dp"
         android:background="@drawable/dialog_header_border" />
+    <TextView
+        android:id="@+id/matchStatusIndicator"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Matches Saved: 0/6"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:paddingBottom="5dp"
+        android:layout_marginBottom="10dp"/>
 
     <!-- Match Spinner -->
     <LinearLayout
