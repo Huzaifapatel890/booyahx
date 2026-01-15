@@ -1,6 +1,4 @@
-package com.booyahx.Host;
-
-import android.app.Dialog;
+package com.booyahx.Host;import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -26,13 +24,13 @@ public class FinalResultDialog extends Dialog {
     private List<FinalRow> results;
     private LinearLayout tableContainer;
     private TextView exportButton, closeButton, themeIndicator;
-    private ResultImageGenerator imageGenerator;
+    private PdfResultGenerator imageGenerator;
 
     public FinalResultDialog(@NonNull Context context, List<FinalRow> results) {
         super(context);
         this.context = context;
         this.results = results;
-        this.imageGenerator = new ResultImageGenerator(context);
+        this.imageGenerator = new PdfResultGenerator(context);
     }
 
     @Override
@@ -98,25 +96,23 @@ public class FinalResultDialog extends Dialog {
             exportButton.setText("Generating...");
 
             new Thread(() -> {
-                File imageFile = imageGenerator.generateResultImage(
-                        results,
-                        "tournament_final"
-                );
+                PdfResultGenerator pdfGen = new PdfResultGenerator(context);
+                File pdfFile = pdfGen.generatePdfResult(results, "tournament_final");
 
                 ((android.app.Activity) context).runOnUiThread(() -> {
                     exportButton.setEnabled(true);
-                    exportButton.setText("Export Image");
+                    exportButton.setText("Export PDF");
 
-                    if (imageFile != null) {
+                    if (pdfFile != null) {
                         Toast.makeText(
                                 context,
-                                "Saved to: " + imageFile.getAbsolutePath(),
+                                "✅ PDF saved!\n📁 " + pdfFile.getAbsolutePath(),
                                 Toast.LENGTH_LONG
                         ).show();
                     } else {
                         Toast.makeText(
                                 context,
-                                "Failed to generate image",
+                                "❌ Failed to generate PDF",
                                 Toast.LENGTH_SHORT
                         ).show();
                     }
