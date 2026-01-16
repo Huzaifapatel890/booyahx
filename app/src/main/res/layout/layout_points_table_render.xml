@@ -1,0 +1,46 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="1080dp"
+    android:layout_height="1920dp">
+
+    <!-- BACKGROUND -->
+    <ImageView
+        android:id="@+id/bgImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY" />
+
+    <!-- TABLE CONTAINER -->
+    <LinearLayout
+        android:id="@+id/tableRoot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="520dp"
+        android:orientation="vertical"
+        android:paddingStart="25dp"
+        android:paddingEnd="25dp">
+
+        <!-- HEADER ROW -->
+        <LinearLayout
+            android:id="@+id/headerRow"
+            android:layout_width="match_parent"
+            android:layout_height="70dp"
+            android:orientation="horizontal">
+
+            <TextView style="@style/TableHeader" android:layout_width="80dp"  android:text="SLO"/>
+            <TextView style="@style/TableHeader" android:layout_width="380dp" android:text="SLOT NAME"/>
+            <TextView style="@style/TableHeader" android:layout_width="130dp" android:text="BOOYAH"/>
+            <TextView style="@style/TableHeader" android:layout_width="130dp" android:text="KILL"/>
+            <TextView style="@style/TableHeader" android:layout_width="150dp" android:text="POSITION"/>
+            <TextView style="@style/TableHeader" android:layout_width="160dp" android:text="TOTAL"/>
+        </LinearLayout>
+
+        <!-- DATA ROWS GO HERE -->
+        <LinearLayout
+            android:id="@+id/rowsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
+
+    </LinearLayout>
+
+</FrameLayout>

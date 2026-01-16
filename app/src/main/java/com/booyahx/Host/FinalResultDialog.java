@@ -1,4 +1,6 @@
-package com.booyahx.Host;import android.app.Dialog;
+package com.booyahx.Host;
+
+import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -23,14 +25,14 @@ public class FinalResultDialog extends Dialog {
     private Context context;
     private List<FinalRow> results;
     private LinearLayout tableContainer;
-    private TextView exportButton, closeButton, themeIndicator;
-    private PdfResultGenerator imageGenerator;
+    private TextView exportButton, closeButton;
+    private HtmlResultGenerator imageGenerator;
 
     public FinalResultDialog(@NonNull Context context, List<FinalRow> results) {
         super(context);
         this.context = context;
         this.results = results;
-        this.imageGenerator = new PdfResultGenerator(context);
+        this.imageGenerator = new HtmlResultGenerator(context);
     }
 
     @Override
@@ -50,10 +52,6 @@ public class FinalResultDialog extends Dialog {
         tableContainer = findViewById(R.id.tableContainer);
         exportButton = findViewById(R.id.exportButton);
         closeButton = findViewById(R.id.closeButton);
-        themeIndicator = findViewById(R.id.themeIndicator);
-
-        // Show current theme
-        themeIndicator.setText("Theme: " + imageGenerator.getCurrentTheme());
 
         buildTable();
         setupButtons();
@@ -64,6 +62,7 @@ public class FinalResultDialog extends Dialog {
 
         for (int i = 0; i < results.size(); i++) {
             FinalRow row = results.get(i);
+
             View rowView = LayoutInflater.from(context)
                     .inflate(R.layout.item_final_result_row, tableContainer, false);
 
@@ -81,7 +80,7 @@ public class FinalResultDialog extends Dialog {
             total.setText(String.valueOf(row.total));
             booyah.setText(String.valueOf(row.booyah));
 
-            // Highlight top 3
+            // Highlight top 3 teams
             if (i < 3) {
                 rowView.setBackgroundColor(Color.parseColor("#1A00FF00"));
             }
@@ -96,23 +95,23 @@ public class FinalResultDialog extends Dialog {
             exportButton.setText("Generating...");
 
             new Thread(() -> {
-                PdfResultGenerator pdfGen = new PdfResultGenerator(context);
-                File pdfFile = pdfGen.generatePdfResult(results, "tournament_final");
+                File imageFile =
+                        imageGenerator.generateResultImage(results, "tournament_final");
 
                 ((android.app.Activity) context).runOnUiThread(() -> {
                     exportButton.setEnabled(true);
-                    exportButton.setText("Export PDF");
+                    exportButton.setText("Export Image");
 
-                    if (pdfFile != null) {
+                    if (imageFile != null) {
                         Toast.makeText(
                                 context,
-                                "✅ PDF saved!\n📁 " + pdfFile.getAbsolutePath(),
+                                "✅ Image saved!\n📁 " + imageFile.getAbsolutePath(),
                                 Toast.LENGTH_LONG
                         ).show();
                     } else {
                         Toast.makeText(
                                 context,
-                                "❌ Failed to generate PDF",
+                                "❌ Failed to generate image",
                                 Toast.LENGTH_SHORT
                         ).show();
                     }
