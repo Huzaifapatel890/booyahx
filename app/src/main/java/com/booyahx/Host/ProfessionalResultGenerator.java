@@ -32,15 +32,21 @@ public class ProfessionalResultGenerator {
     private static final int BRONZE = Color.parseColor("#CD7F32");
     private static final int WHITE = Color.WHITE;
 
+    // ✅ TABLE BACKGROUND COLOR (dark blue/black)
+    private static final int TABLE_BG = Color.parseColor("#CC0B132B");
+
     public static class Config {
         public int backgroundDrawable = R.drawable.forest_theme;
         public int width = 1080;
         public int height = 1920;
-        public int tableTopMargin = 520;
+
+        // ⬇️ MOVED TABLE DOWN (FIX LOGO CLASH)
+        public int tableTopMargin = 640;
+
         public int maxTeams = 12;
 
-        public int rowBgColor = Color.parseColor("#22000000");
-        public int alternateBgColor = Color.parseColor("#16000000");
+        public int rowBgColor = Color.parseColor("#22FFFFFF");
+        public int alternateBgColor = Color.parseColor("#16FFFFFF");
         public int headerBgColor = Color.parseColor("#33000000");
     }
 
@@ -107,11 +113,9 @@ public class ProfessionalResultGenerator {
         float dx = 0, dy = 0;
 
         if (dWidth * config.height > config.width * dHeight) {
-            // image is wider than canvas
             scale = (float) config.height / (float) dHeight;
             dx = (config.width - dWidth * scale) * 0.5f;
         } else {
-            // image is taller than canvas
             scale = (float) config.width / (float) dWidth;
             dy = (config.height - dHeight * scale) * 0.5f;
         }
@@ -127,7 +131,6 @@ public class ProfessionalResultGenerator {
     }
     // ==================================================
 
-    // ✅ THIS METHOD WAS MISSING (CRITICAL FIX)
     public File generateWithBackground(List<FinalRow> rows, String name, int backgroundRes) {
         Config config = new Config();
         config.backgroundDrawable = backgroundRes;
@@ -157,11 +160,26 @@ public class ProfessionalResultGenerator {
         }
     }
 
+    // ================= TABLE =================
     private void drawTable(Canvas canvas, List<FinalRow> rows, Config config) {
         int x = 30;
         int y = config.tableTopMargin;
 
         int[] w = {90, 380, 130, 130, 150, 160};
+        int tableWidth = sum(w);
+        int tableHeight = 74 + (config.maxTeams * 80);
+
+        // ✅ BACKGROUND PANEL
+        Paint tableBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tableBgPaint.setColor(TABLE_BG);
+
+        RectF tableBg = new RectF(
+                x - 10,
+                y - 10,
+                x + tableWidth + 10,
+                y + tableHeight + 10
+        );
+        canvas.drawRoundRect(tableBg, 24, 24, tableBgPaint);
 
         drawHeader(canvas, x, y, w);
         y += 74;
@@ -171,10 +189,16 @@ public class ProfessionalResultGenerator {
             y += 80;
         }
 
-        RectF outer = new RectF(x, config.tableTopMargin, x + sum(w), y);
-        borderPaint.setColor(Color.parseColor("#CCFFFFFF"));
-        canvas.drawRoundRect(outer, 16, 16, borderPaint);
+        RectF outer = new RectF(
+                x - 10,
+                config.tableTopMargin - 10,
+                x + tableWidth + 10,
+                y + 10
+        );
+        borderPaint.setColor(Color.parseColor("#AAFFFFFF"));
+        canvas.drawRoundRect(outer, 24, 24, borderPaint);
     }
+    // =========================================
 
     private void drawHeader(Canvas canvas, int x, int y, int[] w) {
         boxPaint.setColor(Color.parseColor("#33000000"));
