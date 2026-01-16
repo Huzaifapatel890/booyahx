@@ -18,7 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.booyahx.Host.FinalResultDialog;
+import com.booyahx.Host.EnhancedFinalResultDialog;
 import com.booyahx.Host.FinalResultStore;
 import com.booyahx.Host.FinalRow;
 import com.booyahx.Host.HostSubmitResultDialog;
@@ -221,7 +221,7 @@ public class HostTournamentActivity extends AppCompatActivity {
         }
 
         // 🔥 SHOW THE DIALOG
-        FinalResultDialog dialog = new FinalResultDialog(this, rows);
+        EnhancedFinalResultDialog dialog = new EnhancedFinalResultDialog(this, rows);
         dialog.show();
     }
 
