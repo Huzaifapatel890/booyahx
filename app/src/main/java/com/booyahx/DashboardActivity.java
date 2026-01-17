@@ -58,8 +58,18 @@ public class DashboardActivity extends AppCompatActivity {
             setActive(tvNavHome);
         });
 
+        // 🔥 ROLE-BASED FRAGMENT LOADING
         navParticipated.setOnClickListener(v -> {
-            startActivity(new Intent(DashboardActivity.this, HostTournamentActivity.class));
+            String role = TokenManager.getRole(this);
+            Fragment fragment;
+
+            if ("host".equalsIgnoreCase(role)) {
+                fragment = new HostTournamentFragment();
+            } else {
+                fragment = new ParticipatedFragment();
+            }
+
+            loadFragment(fragment, 1, true);
             setActive(tvNavParticipated);
         });
 
@@ -95,6 +105,7 @@ public class DashboardActivity extends AppCompatActivity {
                         )
                 )
         );
+
         getSupportFragmentManager().setFragmentResultListener(
                 "role_updated",
                 this,

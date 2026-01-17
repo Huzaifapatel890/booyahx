@@ -4,6 +4,7 @@ import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -14,7 +15,9 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -27,32 +30,37 @@ import com.booyahx.network.models.HostTournament;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HostTournamentActivity extends AppCompatActivity {
+public class HostTournamentFragment extends Fragment {
 
     private RecyclerView tournamentRecyclerView;
     private HostTournamentAdapter adapter;
     private List<HostTournament> tournamentList;
     private Spinner statusSpinner;
 
+    @Nullable
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_host_panel);
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.activity_host_panel, container, false);
+    }
 
-        initViews();
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        initViews(view);
         setupStatusSpinner();
         loadTournaments();
     }
 
-    private void initViews() {
-        tournamentRecyclerView = findViewById(R.id.tournamentRecyclerView);
-        statusSpinner = findViewById(R.id.spinnerTournamentStatus);
+    private void initViews(View view) {
+        tournamentRecyclerView = view.findViewById(R.id.tournamentRecyclerView);
+        statusSpinner = view.findViewById(R.id.spinnerTournamentStatus);
 
-        tournamentRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        tournamentRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         tournamentList = new ArrayList<>();
 
         adapter = new HostTournamentAdapter(
-                this,
+                requireContext(),
                 tournamentList,
                 new HostTournamentAdapter.OnItemClickListener() {
 
@@ -79,7 +87,7 @@ public class HostTournamentActivity extends AppCompatActivity {
                     @Override
                     public void onViewRules(HostTournament tournament) {
                         Toast.makeText(
-                                HostTournamentActivity.this,
+                                requireContext(),
                                 "Rules: Coming Soon!",
                                 Toast.LENGTH_SHORT
                         ).show();
@@ -99,7 +107,7 @@ public class HostTournamentActivity extends AppCompatActivity {
         statuses.add("Cancelled Tournaments");
 
         ArrayAdapter<String> spinnerAdapter =
-                new ArrayAdapter<String>(this,
+                new ArrayAdapter<String>(requireContext(),
                         android.R.layout.simple_spinner_item,
                         statuses) {
 
@@ -153,11 +161,11 @@ public class HostTournamentActivity extends AppCompatActivity {
     }
 
     private void filterTournaments(String status) {
-        Toast.makeText(this, "Filtering: " + status, Toast.LENGTH_SHORT).show();
+        Toast.makeText(requireContext(), "Filtering: " + status, Toast.LENGTH_SHORT).show();
     }
 
     private void showUpdateRoomDialog(HostTournament tournament) {
-        Dialog dialog = new Dialog(this);
+        Dialog dialog = new Dialog(requireContext());
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_host_update_room);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -175,7 +183,7 @@ public class HostTournamentActivity extends AppCompatActivity {
         updateBtn.setOnClickListener(v -> {
             if (roomIdInput.getText().toString().isEmpty()
                     || passwordInput.getText().toString().isEmpty()) {
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Please fill all fields", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -183,7 +191,7 @@ public class HostTournamentActivity extends AppCompatActivity {
             tournament.setPassword(passwordInput.getText().toString());
             adapter.notifyDataSetChanged();
 
-            Toast.makeText(this, "Room updated", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Room updated", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 
@@ -196,7 +204,7 @@ public class HostTournamentActivity extends AppCompatActivity {
 
         HostSubmitResultDialog dialog =
                 new HostSubmitResultDialog(
-                        this,
+                        requireContext(),
                         tournament.getId(),
                         totalMatches,
                         teamNames
@@ -205,23 +213,20 @@ public class HostTournamentActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    // 🔥 THIS IS THE KEY METHOD - NOW SHOWS THE DIALOG
     private void showFinalResultDialog(HostTournament tournament) {
-
         List<FinalRow> rows =
-                FinalResultStore.load(this, tournament.getId());
+                FinalResultStore.load(requireContext(), tournament.getId());
 
         if (rows == null || rows.isEmpty()) {
             Toast.makeText(
-                    this,
+                    requireContext(),
                     "Result not submitted yet!",
                     Toast.LENGTH_SHORT
             ).show();
             return;
         }
 
-        // 🔥 SHOW THE DIALOG
-        EnhancedFinalResultDialog dialog = new EnhancedFinalResultDialog(this, rows);
+        EnhancedFinalResultDialog dialog = new EnhancedFinalResultDialog(requireContext(), rows);
         dialog.show();
     }
 
@@ -243,7 +248,7 @@ public class HostTournamentActivity extends AppCompatActivity {
     }
 
     private void showEndTournamentDialog(HostTournament tournament) {
-        Dialog dialog = new Dialog(this);
+        Dialog dialog = new Dialog(requireContext());
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_end_tournament_bg);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -255,11 +260,11 @@ public class HostTournamentActivity extends AppCompatActivity {
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
 
         endBtn.setOnClickListener(v ->
-                new androidx.appcompat.app.AlertDialog.Builder(this)
+                new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                         .setTitle("Confirm")
                         .setMessage("End this tournament?")
                         .setPositiveButton("Yes", (d, w) -> {
-                            Toast.makeText(this, "Tournament ended", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(requireContext(), "Tournament ended", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                             loadTournaments();
                         })
