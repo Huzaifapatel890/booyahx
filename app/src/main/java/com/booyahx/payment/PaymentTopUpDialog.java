@@ -6,11 +6,11 @@ import android.animation.ValueAnimator;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.os.CountDownTimer;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -21,7 +21,6 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -61,9 +60,6 @@ public class PaymentTopUpDialog extends Dialog {
 
     private String qrCodeId;
     private int paymentAmount;
-
-    // 🔥 NEW: store deep link
-    private String upiDeepLink = "";
 
     public PaymentTopUpDialog(@NonNull Context context, WalletFragment parent) {
         super(context);
@@ -109,8 +105,6 @@ public class PaymentTopUpDialog extends Dialog {
         step1Circle = findViewById(R.id.step1Circle);
         step2Circle = findViewById(R.id.step2Circle);
         stepConnector = findViewById(R.id.stepConnector);
-
-        // nothing removed
     }
 
     private void setupListeners() {
@@ -125,7 +119,7 @@ public class PaymentTopUpDialog extends Dialog {
             dismiss();
         });
 
-        // 🔥 NEW quick-pay buttons
+        // Quick-pay buttons - only open the apps
         findViewById(R.id.btnGPay).setOnClickListener(v -> openUpiApp("com.google.android.apps.nbu.paisa.user"));
         findViewById(R.id.btnPhonePe).setOnClickListener(v -> openUpiApp("com.phonepe.app"));
         findViewById(R.id.btnPaytm).setOnClickListener(v -> openUpiApp("net.one97.paytm"));
@@ -316,11 +310,6 @@ public class PaymentTopUpDialog extends Dialog {
                         qrCodeId = res.body().data.qrCodeId;
                         tvAmount.setText("Amount to Pay: ₹" + paymentAmount);
 
-                        // 🔥 NEW: store UPI deep link
-                        if (!TextUtils.isEmpty(res.body().data.upiLink)) {
-                            upiDeepLink = res.body().data.upiLink;
-                        }
-
                         if (!TextUtils.isEmpty(res.body().data.qrCodeImage)) {
                             Log.d(TAG, "Using base64 image");
                             loadBase64Image(res.body().data.qrCodeImage);
@@ -484,30 +473,21 @@ public class PaymentTopUpDialog extends Dialog {
         super.dismiss();
     }
 
-    // 🔥 NEW universal UPI opener
+    // Simply open the UPI app without any deep link
     private void openUpiApp(String packageName) {
-        if (upiDeepLink == null || upiDeepLink.isEmpty()) {
-            Toast.makeText(getContext(), "UPI link not ready", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         try {
-            String uri = upiDeepLink;
+            PackageManager pm = getContext().getPackageManager();
+            Intent intent = pm.getLaunchIntentForPackage(packageName);
 
-            if (!uri.contains("am=")) {
-                if (uri.contains("?")) {
-                    uri = uri + "&am=" + paymentAmount;
-                } else {
-                    uri = uri + "?am=" + paymentAmount;
-                }
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intent);
+            } else {
+                Toast.makeText(getContext(), "App not installed", Toast.LENGTH_SHORT).show();
             }
-
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
-            intent.setPackage(packageName);
-            getContext().startActivity(intent);
-
         } catch (Exception e) {
-            Toast.makeText(getContext(), "App not installed", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Error opening app: " + packageName, e);
+            Toast.makeText(getContext(), "Unable to open app", Toast.LENGTH_SHORT).show();
         }
     }
 }

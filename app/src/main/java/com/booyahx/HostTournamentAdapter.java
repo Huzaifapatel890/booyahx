@@ -64,7 +64,6 @@ public class HostTournamentAdapter
         holder.timeStatus.setText(tournament.getTimeStatus());
         holder.roomId.setText(tournament.getRoomId());
         holder.password.setText(tournament.getPassword());
-        holder.slotBadge.setText(tournament.getSlotBadge());
 
         // Edit Room
         holder.editIcon.setOnClickListener(v ->
@@ -115,7 +114,6 @@ public class HostTournamentAdapter
             timeStatus = itemView.findViewById(R.id.timeStatus);
             roomId = itemView.findViewById(R.id.roomId);
             password = itemView.findViewById(R.id.password);
-            slotBadge = itemView.findViewById(R.id.slotBadge);
 
             editIcon = itemView.findViewById(R.id.editIcon);
             submitResultBtn = itemView.findViewById(R.id.submitResultBtn);

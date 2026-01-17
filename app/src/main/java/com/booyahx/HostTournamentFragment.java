@@ -196,8 +196,16 @@ public class HostTournamentFragment extends Fragment {
         });
 
         dialog.show();
-    }
 
+        // ✅ FIX: FORCE FULL WIDTH
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+        }
+    }
     private void showSubmitResultDialog(HostTournament tournament) {
         List<String> teamNames = getTeamNamesFromTournament(tournament.getId());
         int totalMatches = tournament.getMode().contains("3") ? 3 : 6;
@@ -273,5 +281,13 @@ public class HostTournamentFragment extends Fragment {
         );
 
         dialog.show();
-    }
-}
+
+        // ✅ FIX: FORCE FULL WIDTH
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+        }
+    }}

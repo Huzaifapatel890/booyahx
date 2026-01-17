@@ -57,7 +57,10 @@ public class WalletFragment extends Fragment {
         transactionAdapter = new TransactionAdapter(getContext(), transactionList);
         rvTransactions.setAdapter(transactionAdapter);
 
-        loadWalletBalance();
+        // 🔥 LOAD FROM CACHE FIRST (INSTANT), THEN API (BACKGROUND)
+        loadBalanceFromCache();
+        loadBalanceFromAPI();
+
         loadFakeTransactions(); // remove after real API
 
         btnTopUp.setOnClickListener(v -> {
@@ -69,19 +72,52 @@ public class WalletFragment extends Fragment {
                 Toast.makeText(getContext(), "Withdraw coming soon", Toast.LENGTH_SHORT).show()
         );
 
+        // 🔥 LISTEN FOR BALANCE UPDATES FROM OTHER FRAGMENTS
+        getParentFragmentManager().setFragmentResultListener(
+                "balance_updated",
+                this,
+                (requestKey, bundle) -> {
+                    if (isAdded()) {
+                        loadBalanceFromCache();
+                    }
+                }
+        );
+
         return view;
     }
 
-    private void loadWalletBalance() {
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 🔥 REFRESH FROM CACHE WHEN RETURNING
+        loadBalanceFromCache();
+    }
+
+    // 🔥 LOAD FROM CACHE (INSTANT)
+    private void loadBalanceFromCache() {
+        if (WalletCacheManager.hasBalance(requireContext())) {
+            int balance = WalletCacheManager.getBalanceAsInt(requireContext());
+            tvBalance.setText(String.valueOf(balance));
+        }
+    }
+
+    // 🔥 LOAD FROM API (BACKGROUND - ENSURES FRESH DATA)
+    private void loadBalanceFromAPI() {
         api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
             @Override
             public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> res) {
-                if (res.isSuccessful() && res.body() != null && res.body().data != null) {
+                if (res.isSuccessful()
+                        && res.body() != null
+                        && res.body().data != null) {
 
                     double balance = res.body().data.balanceGC;
-                    int rupees = (int) Math.round(balance);   // remove paise
 
-                    tvBalance.setText(String.valueOf(rupees)); // no GC, no .00
+                    // 🔥 UPDATE CACHE
+                    WalletCacheManager.saveBalance(requireContext(), balance);
+
+                    // Update UI
+                    int rupees = (int) Math.round(balance);
+                    tvBalance.setText(String.valueOf(rupees));
                 }
             }
 
@@ -91,6 +127,7 @@ public class WalletFragment extends Fragment {
             }
         });
     }
+
     private void loadFakeTransactions() {
         transactionList.add(new Transaction("Dec 23", "Top Up", "+500 GC", "Completed", "Card", true));
         transactionList.add(new Transaction("Dec 22", "Withdraw", "-250 GC", "Completed", "Bank", false));
@@ -111,7 +148,8 @@ public class WalletFragment extends Fragment {
         rvTransactions.scrollToPosition(0);
     }
 
+    // 🔥 CALLED AFTER SUCCESSFUL TOP-UP
     public void refreshBalance() {
-        loadWalletBalance();
+        loadBalanceFromAPI(); // Force refresh from API
     }
 }

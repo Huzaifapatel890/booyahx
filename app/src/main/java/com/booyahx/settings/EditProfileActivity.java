@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.booyahx.ProfileCacheManager;
 import com.booyahx.R;
 import com.booyahx.TokenManager;
 import com.booyahx.LoaderOverlay;
@@ -51,11 +52,12 @@ public class EditProfileActivity extends AppCompatActivity {
         setupAgeButtons();
         setupButtons();
 
-        loadProfile();   // ⭐ Load data from server
+        // 🔥 LOAD FROM CACHE FIRST (INSTANT), THEN API (BACKGROUND)
+        loadProfileFromCache();
+        loadProfileFromAPI();
     }
 
     private void initViews() {
-
         btnBack = findViewById(R.id.btnBack);
 
         etName = findViewById(R.id.etName);
@@ -75,47 +77,44 @@ public class EditProfileActivity extends AppCompatActivity {
         btnCancel = findViewById(R.id.btnCancel);
         btnUpdate = findViewById(R.id.btnUpdate);
 
-        etEmail.setText("user@gmail.com");
-        etRole.setText("User");
-
         btnBack.setOnClickListener(v -> finish());
     }
 
-    // ⭐ GET PROFILE & LOAD VALUES
-    private void loadProfile() {
+    // 🔥 LOAD FROM CACHE (INSTANT)
+    private void loadProfileFromCache() {
+        ProfileResponse.Data profile = ProfileCacheManager.getProfile(this);
 
+        if (profile != null) {
+            populateFields(profile);
+        }
+    }
+
+    // 🔥 LOAD FROM API (BACKGROUND - ENSURES FRESH DATA)
+    private void loadProfileFromAPI() {
         LoaderOverlay.show(this);
-
-        String token = TokenManager.getAccessToken(this);
 
         api.getProfile().enqueue(new Callback<ProfileResponse>() {
             @Override
             public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
-
                 LoaderOverlay.hide(EditProfileActivity.this);
 
-                if (response.isSuccessful() && response.body() != null && response.body().success) {
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().success) {
 
-                    ProfileResponse.Data d = response.body().data;
+                    ProfileResponse.Data data = response.body().data;
 
-                    etName.setText(d.name);
-                    etEmail.setText(d.email);
-                    etGameName.setText(d.ign);
-                    etPhone.setText(d.phoneNumber);
-                    etUpiId.setText(d.paymentUPI);
+                    // 🔥 UPDATE CACHE
+                    ProfileCacheManager.saveProfile(EditProfileActivity.this, data);
 
-                    int age = (d.age <= 0) ? 18 : d.age;
-                    etAge.setText(String.valueOf(age));
-
-                    etRole.setText("User");
-
-                    setSpinnerSelection(spinnerGender, d.gender);
-                    setSpinnerSelection(spinnerPaymentMethod, d.paymentMethod);
+                    // Update UI
+                    populateFields(data);
 
                 } else {
-
                     String serverMsg = null;
-                    try { serverMsg = response.errorBody().string(); } catch (Exception ignored) {}
+                    try {
+                        serverMsg = response.errorBody().string();
+                    } catch (Exception ignored) {}
 
                     if (serverMsg != null && !serverMsg.isEmpty())
                         showTopRightToast(serverMsg);
@@ -130,6 +129,22 @@ public class EditProfileActivity extends AppCompatActivity {
                 showTopRightToast("Error loading profile!");
             }
         });
+    }
+
+    private void populateFields(ProfileResponse.Data d) {
+        etName.setText(d.name);
+        etEmail.setText(d.email);
+        etGameName.setText(d.ign);
+        etPhone.setText(d.phoneNumber);
+        etUpiId.setText(d.paymentUPI);
+
+        int age = (d.age <= 0) ? 18 : d.age;
+        etAge.setText(String.valueOf(age));
+
+        etRole.setText(d.role != null ? d.role : "user");
+
+        setSpinnerSelection(spinnerGender, d.gender);
+        setSpinnerSelection(spinnerPaymentMethod, d.paymentMethod);
     }
 
     private void setSpinnerSelection(Spinner spinner, String value) {
@@ -153,7 +168,6 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void setupPaymentMethodSpinner() {
-
         String[] methods = {
                 "UPI",
                 "Bank Transfer",
@@ -174,7 +188,6 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void setupAgeButtons() {
-
         btnAgePlus.setOnClickListener(v -> {
             String ageStr = etAge.getText().toString().trim();
             int age = ageStr.isEmpty() ? 18 : Integer.parseInt(ageStr);
@@ -193,7 +206,6 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void setupButtons() {
-
         btnCancel.setOnClickListener(v -> finish());
 
         btnUpdate.setOnClickListener(v -> {
@@ -202,38 +214,43 @@ public class EditProfileActivity extends AppCompatActivity {
         });
     }
 
-    // ⭐ PUT UPDATE PROFILE API
+    // 🔥 UPDATE PROFILE API - ALSO UPDATE CACHE
     private void updateProfile() {
-
         LoaderOverlay.show(this);
 
+        String name = etName.getText().toString().trim();
+        String ign = etGameName.getText().toString().trim();
         String genderFixed = spinnerGender.getSelectedItem().toString().toLowerCase();
+        int age = Integer.parseInt(etAge.getText().toString().trim());
+        String phone = etPhone.getText().toString().trim();
         String upiClean = etUpiId.getText().toString().trim().replace("-", "").replace(" ", "");
+        String paymentMethod = spinnerPaymentMethod.getSelectedItem().toString();
 
         UpdateProfileRequest req = new UpdateProfileRequest(
-                etName.getText().toString().trim(),
-                etGameName.getText().toString().trim(),
-                genderFixed,
-                Integer.parseInt(etAge.getText().toString().trim()),
-                etPhone.getText().toString().trim(),
-                upiClean,
-                spinnerPaymentMethod.getSelectedItem().toString()
+                name, ign, genderFixed, age, phone, upiClean, paymentMethod
         );
 
         api.updateProfile(req).enqueue(new Callback<SimpleResponse>() {
-
             @Override
             public void onResponse(Call<SimpleResponse> call, Response<SimpleResponse> response) {
-
                 LoaderOverlay.hide(EditProfileActivity.this);
 
                 if (response.isSuccessful() && response.body() != null) {
+
+                    // 🔥 UPDATE CACHE IMMEDIATELY (NO NEED TO RE-FETCH)
+                    ProfileCacheManager.updateProfile(
+                            EditProfileActivity.this,
+                            name, ign, genderFixed, age, phone, upiClean, paymentMethod
+                    );
+
                     showTopRightToast(response.body().getMessage());
                     finish();
-                } else {
 
+                } else {
                     String serverMsg = null;
-                    try { serverMsg = response.errorBody().string(); } catch (Exception ignored) {}
+                    try {
+                        serverMsg = response.errorBody().string();
+                    } catch (Exception ignored) {}
 
                     if (serverMsg != null && !serverMsg.isEmpty())
                         showTopRightToast(serverMsg);
@@ -251,7 +268,6 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private boolean validateInputs() {
-
         String name = etName.getText().toString().trim();
         String age = etAge.getText().toString().trim();
         String gameName = etGameName.getText().toString().trim();
@@ -287,7 +303,6 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void showTopRightToast(String message) {
-
         TextView tv = new TextView(this);
         tv.setText(message);
         tv.setPadding(40, 25, 40, 25);

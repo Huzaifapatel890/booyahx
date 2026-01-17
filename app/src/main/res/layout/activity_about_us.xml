@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bg_esports_gradient">
@@ -18,8 +19,7 @@
             android:id="@+id/btnBack"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:src="@drawable/ic_back_arrow"
-      />
+            android:src="@drawable/ic_back_arrow" />
     </LinearLayout>
 
     <!-- SCROLL CONTENT -->
@@ -169,9 +169,138 @@
                 android:textColor="#D0FFFFFF"
                 android:textSize="16sp"
                 android:lineSpacingExtra="7dp"
-                android:layout_marginBottom="40dp" />
+                android:layout_marginBottom="30dp" />
+
+            <!-- 🔥 FOLLOW US SECTION (FIXED) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/card_rounded_neon"
+                android:padding="24dp"
+                android:layout_marginBottom="40dp"
+                android:elevation="10dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📱 Follow Us"
+                    android:textColor="#00FFA3"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:layout_marginBottom="16dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Stay connected with BooyahX for latest updates, tournaments, and community events!"
+                    android:textColor="#C0FFFFFF"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="20dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <!-- Instagram -->
+                    <LinearLayout
+                        android:id="@+id/btnInstagram"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/ic_instagram"
+                            android:layout_marginBottom="6dp" />
+
+                        <TextView
+                            android:text="Instagram"
+                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:textColor="#B0FFFFFF"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <!-- WhatsApp -->
+                    <LinearLayout
+                        android:id="@+id/btnWhatsApp"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/ic_whatsapp"
+                            android:layout_marginBottom="6dp" />
+
+                        <TextView
+                            android:text="WhatsApp"
+                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:textColor="#B0FFFFFF"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <!-- Telegram -->
+                    <LinearLayout
+                        android:id="@+id/btnTelegram"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/ic_telegram"
+                            android:layout_marginBottom="6dp" />
+
+                        <TextView
+                            android:text="Telegram"
+                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:textColor="#B0FFFFFF"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <!-- Discord -->
+                    <LinearLayout
+                        android:id="@+id/btnDiscord"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:gravity="center">
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:src="@drawable/ic_discord"
+                            android:layout_marginBottom="6dp" />
+
+                        <TextView
+                            android:text="Discord"
+                            android:layout_height="wrap_content"
+                            android:layout_width="wrap_content"
+                            android:textColor="#B0FFFFFF"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                </LinearLayout>
+            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
-
 </RelativeLayout>

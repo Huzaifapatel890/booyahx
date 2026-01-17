@@ -7,6 +7,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.booyahx.ProfileCacheManager;
 import com.booyahx.R;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -56,6 +57,9 @@ public class HelpSupportActivity extends AppCompatActivity {
         setupTickets();
         setupListeners();
 
+        // 🔥 HIDE CREATE TICKET BUTTON FOR HOSTS
+        applyRoleBasedVisibility();
+
         loadAllTickets(); // default
     }
 
@@ -73,6 +77,19 @@ public class HelpSupportActivity extends AppCompatActivity {
         ticketsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 
+    // 🔥 APPLY ROLE-BASED VISIBILITY
+    private void applyRoleBasedVisibility() {
+        String role = ProfileCacheManager.getRole(this);
+
+        if ("host".equalsIgnoreCase(role)) {
+            // 🔥 HIDE CREATE TICKET BUTTON FOR HOSTS
+            btnCreateTicket.setVisibility(View.GONE);
+        } else {
+            // 🔥 SHOW CREATE TICKET BUTTON FOR USERS
+            btnCreateTicket.setVisibility(View.VISIBLE);
+        }
+    }
+
     /* ---------------- FAQ LOGIC (UNCHANGED) ---------------- */
 
     private void setupFAQs() {
@@ -80,16 +97,18 @@ public class HelpSupportActivity extends AppCompatActivity {
         roomMatchFAQs.add(new FAQ("How do I join a scrim room?",
                 "Go to the 'Rooms' tab, select your desired scrim match, and click 'Join Room'. Make sure you have sufficient balance for entry fee."));
         roomMatchFAQs.add(new FAQ("What happens if I can't join the room on time?",
-                "If you miss the room entry time, your entry fee will be automatically refunded within 24 hours."));
+                "If you fail to join the room before the given entry time, you will not be allowed to participate in the match. As clearly mentioned in our rules, all players must join the room at least 10 minutes before match start."));
         roomMatchFAQs.add(new FAQ("How are winners determined?",
                 "Winners are determined based on final placement and kills. Results are updated automatically after match completion."));
         addFAQCategory("🎮 Room & Match", roomMatchFAQs);
 
         List<FAQ> walletFAQs = new ArrayList<>();
+        walletFAQs.add(new FAQ("Why i am not able to withdraw my Balance?",
+                "Go to settings,Then click on edit profile and Update Upi id and Update Profile.After that you will be Able to Withdraw Your Balance"));
         walletFAQs.add(new FAQ("How do I add money to my wallet?",
-                "Click on 'Wallet' → 'Add Money', enter the amount and select your preferred payment method. We support UPI, Cards, and Net Banking."));
+                "Click on 'Wallet' → 'Top-Up', enter the amount and select your preferred payment method. We support UPI, Cards, and Net Banking."));
         walletFAQs.add(new FAQ("How long does withdrawal take?",
-                "Withdrawals are processed within 24-48 hours. Amount will be credited to your registered bank account or UPI."));
+                "Withdrawals are processed within 24-48 hours. Amount will be credited to your registered  UPI."));
         walletFAQs.add(new FAQ("Is there a minimum withdrawal amount?",
                 "Yes, the minimum withdrawal amount is ₹100. Maximum per transaction is ₹50,000."));
         addFAQCategory("💰 Wallet & Payment", walletFAQs);
@@ -103,9 +122,9 @@ public class HelpSupportActivity extends AppCompatActivity {
 
         List<FAQ> accountFAQs = new ArrayList<>();
         accountFAQs.add(new FAQ("How do I link my Free Fire ID?",
-                "Go to 'Profile' → 'Game Settings' → 'Link Free Fire ID' and enter your 10-digit ID number."));
-        accountFAQs.add(new FAQ("Can I change my registered mobile number?",
-                "Yes, you can change it from 'Profile' → 'Account Settings'. You'll need to verify the new number via OTP."));
+                "Go to 'Profile' → 'Game Settings' → 'Link Free Fire ID' and enter your 8-10 digit ID number."));
+        accountFAQs.add(new FAQ("Can I change my registered email account?",
+                "No you will not able to change your email account after successfull Registration."));
         addFAQCategory("👤 Account & Profile", accountFAQs);
     }
 
@@ -169,6 +188,7 @@ public class HelpSupportActivity extends AppCompatActivity {
             loadClosedTickets();
         });
 
+        // 🔥 CREATE TICKET BUTTON (ONLY VISIBLE FOR USERS)
         btnCreateTicket.setOnClickListener(v ->
                 new CreateTicketDialog(this).show()
         );

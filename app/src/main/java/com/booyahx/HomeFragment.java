@@ -44,16 +44,13 @@ import retrofit2.Response;
 
 public class HomeFragment extends Fragment {
 
-    // Profile
     private TextView txtUsername, txtWalletBalance;
     private TextView txtHostBadge;
     private ImageView btnNotification;
 
-    // Tabs + tournaments
     private LinearLayout tournamentsContainer;
     private LinearLayout btnBermuda, btnClashSquad, btnSpecial;
 
-    // Tournament Status Spinner
     private Spinner spinnerTournamentStatus;
     private TournamentStatusAdapter statusAdapter;
 
@@ -61,7 +58,6 @@ public class HomeFragment extends Fragment {
     private String currentStatus = "upcoming";
     private ApiService api;
 
-    // Loader
     private View fragmentLoader;
     private ImageView loaderRing, loaderGlow;
     private int pendingCalls = 0;
@@ -123,7 +119,9 @@ public class HomeFragment extends Fragment {
                 this,
                 (requestKey, bundle) -> {
                     if (isAdded()) {
-                        loadWalletBalance();
+                        // 🔥 REFRESH BALANCE FROM API (BALANCE CHANGED)
+                        loadWalletBalanceFromAPI();
+
                         String tournamentId = bundle.getString("tournament_id");
                         if (tournamentId != null) {
                             markTournamentAsJoined(tournamentId);
@@ -137,12 +135,18 @@ public class HomeFragment extends Fragment {
                 this,
                 (requestKey, bundle) -> {
                     if (isAdded()) {
-                        String tournamentId = bundle.getString("tournament_id");
-                        String newStatus = bundle.getString("new_status");
-
-                        android.util.Log.d("HomeFragment", "Status changed for tournament: " + tournamentId + " -> " + newStatus);
-
                         loadTournaments();
+                    }
+                }
+        );
+
+        getParentFragmentManager().setFragmentResultListener(
+                "balance_updated",
+                this,
+                (requestKey, bundle) -> {
+                    if (isAdded()) {
+                        // 🔥 BALANCE UPDATED (TOP-UP/WITHDRAW)
+                        loadWalletBalanceFromCache();
                     }
                 }
         );
@@ -154,8 +158,9 @@ public class HomeFragment extends Fragment {
         updateButtonStates(currentMode);
 
         view.post(() -> {
-            loadProfile();
-            loadWalletBalance();
+            // 🔥 LOAD FROM CACHE FIRST, THEN API IF NEEDED
+            loadProfileData();
+            loadWalletData();
         });
     }
 
@@ -169,7 +174,6 @@ public class HomeFragment extends Fragment {
 
         statusAdapter = new TournamentStatusAdapter(requireContext(), statusItems);
         spinnerTournamentStatus.setAdapter(statusAdapter);
-
         spinnerTournamentStatus.setSelection(0);
 
         spinnerTournamentStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -183,8 +187,7 @@ public class HomeFragment extends Fragment {
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
+            public void onNothingSelected(AdapterView<?> parent) {}
         });
     }
 
@@ -194,6 +197,119 @@ public class HomeFragment extends Fragment {
         } else {
             btnNotification.setImageResource(R.drawable.ic_notification);
         }
+    }
+
+    // 🔥 PROFILE DATA LOADING SYSTEM
+    private void loadProfileData() {
+        // 1️⃣ Try to load from cache first
+        if (ProfileCacheManager.hasProfile(requireContext())) {
+            loadProfileFromCache();
+            // Load tournaments after profile is loaded
+            loadTournaments();
+        } else {
+            // 2️⃣ No cache → hit API
+            loadProfileFromAPI();
+        }
+    }
+
+    private void loadProfileFromCache() {
+        ProfileResponse.Data profile = ProfileCacheManager.getProfile(requireContext());
+        if (profile != null) {
+            updateProfileUI(profile);
+        }
+    }
+
+    private void loadProfileFromAPI() {
+        showLoader();
+        api.getProfile().enqueue(new Callback<ProfileResponse>() {
+            @Override
+            public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
+                hideLoader();
+
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().data != null) {
+
+                    ProfileResponse.Data data = response.body().data;
+
+                    // 🔥 SAVE TO CACHE
+                    ProfileCacheManager.saveProfile(requireContext(), data);
+
+                    // 🔥 ALSO SAVE TO OLD TOKEN MANAGER FOR COMPATIBILITY
+                    if (data.userId != null) {
+                        TokenManager.saveUserId(requireContext(), data.userId);
+                    }
+                    if (data.role != null) {
+                        TokenManager.saveRole(requireContext(), data.role);
+                    }
+
+                    updateProfileUI(data);
+
+                    Bundle b = new Bundle();
+                    getParentFragmentManager().setFragmentResult("role_updated", b);
+
+                    loadTournaments();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ProfileResponse> call, Throwable t) {
+                hideLoader();
+            }
+        });
+    }
+
+    private void updateProfileUI(ProfileResponse.Data data) {
+        txtUsername.setText(data.name != null ? data.name : "User");
+
+        String role = data.role != null ? data.role : "user";
+        if ("host".equalsIgnoreCase(role)) {
+            txtHostBadge.setVisibility(View.VISIBLE);
+        } else {
+            txtHostBadge.setVisibility(View.GONE);
+        }
+    }
+
+    // 🔥 WALLET DATA LOADING SYSTEM
+    private void loadWalletData() {
+        // 1️⃣ Try to load from cache first
+        if (WalletCacheManager.hasBalance(requireContext())) {
+            loadWalletBalanceFromCache();
+        } else {
+            // 2️⃣ No cache → hit API
+            loadWalletBalanceFromAPI();
+        }
+    }
+
+    private void loadWalletBalanceFromCache() {
+        double balance = WalletCacheManager.getBalance(requireContext());
+        txtWalletBalance.setText(String.format("%.2f GC", balance));
+    }
+
+    private void loadWalletBalanceFromAPI() {
+        showLoader();
+        api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
+            @Override
+            public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> response) {
+                hideLoader();
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().data != null) {
+
+                    double balance = response.body().data.balanceGC;
+
+                    // 🔥 SAVE TO CACHE
+                    WalletCacheManager.saveBalance(requireContext(), balance);
+
+                    txtWalletBalance.setText(String.format("%.2f GC", balance));
+                }
+            }
+
+            @Override
+            public void onFailure(Call<WalletBalanceResponse> call, Throwable t) {
+                hideLoader();
+            }
+        });
     }
 
     private void showLoader() {
@@ -235,71 +351,6 @@ public class HomeFragment extends Fragment {
                 loaderGlow.clearAnimation();
             }
         }
-    }
-
-    private void loadProfile() {
-        showLoader();
-        api.getProfile().enqueue(new Callback<ProfileResponse>() {
-            @Override
-            public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
-                hideLoader();
-
-                if (response.isSuccessful()
-                        && response.body() != null
-                        && response.body().data != null) {
-
-                    ProfileResponse.Data data = response.body().data;
-
-// Username
-                    txtUsername.setText(data.name);
-
-// Save userId
-                    if (data.userId != null && !data.userId.isEmpty()) {
-                        TokenManager.saveUserId(requireContext(), data.userId);
-                    }
-
-// 🔥 SYNC ROLE FROM BACKEND
-                    if (data.role != null && !data.role.isEmpty()) {
-                        TokenManager.saveRole(requireContext(), data.role);
-                    }
-                    Bundle b = new Bundle();
-                    getParentFragmentManager().setFragmentResult("role_updated", b);
-
-// Use updated role
-                    String role = TokenManager.getRole(requireContext());
-
-                    if ("host".equalsIgnoreCase(role)) {
-                        txtHostBadge.setVisibility(View.VISIBLE);
-                    } else {
-                        txtHostBadge.setVisibility(View.GONE);
-                    }
-
-                    loadTournaments();
-                }
-            }
-            @Override
-            public void onFailure(Call<ProfileResponse> call, Throwable t) {
-                hideLoader();
-            }
-        });
-    }
-
-    private void loadWalletBalance() {
-        showLoader();
-        api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
-            @Override
-            public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> response) {
-                hideLoader();
-                if (response.isSuccessful() && response.body() != null && response.body().data != null) {
-                    txtWalletBalance.setText(String.format("%.2f GC", response.body().data.balanceGC));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<WalletBalanceResponse> call, Throwable t) {
-                hideLoader();
-            }
-        });
     }
 
     private void switchMode(String mode) {
@@ -359,7 +410,6 @@ public class HomeFragment extends Fragment {
     }
 
     private View createTournamentCard(Tournament t) {
-
         View card = LayoutInflater.from(getContext())
                 .inflate(R.layout.item_tournament_card, tournamentsContainer, false);
 
@@ -404,15 +454,13 @@ public class HomeFragment extends Fragment {
         if (btnJoin != null) {
             btnJoin.setTag(t.getId());
 
-            String role = TokenManager.getRole(requireContext());
-
-
-            String myUserId = TokenManager.getUserId(requireContext());
+            // 🔥 USE CACHED ROLE AND USER ID
+            String role = ProfileCacheManager.getRole(requireContext());
+            String myUserId = ProfileCacheManager.getUserId(requireContext());
 
             if ("host".equalsIgnoreCase(role)
                     && "upcoming".equalsIgnoreCase(t.getStatus())) {
 
-                // 🟢 I am already the host
                 if (t.getHostId() != null
                         && myUserId != null
                         && myUserId.equals(t.getHostId().id)) {
@@ -421,13 +469,9 @@ public class HomeFragment extends Fragment {
                     btnJoin.setEnabled(false);
                     btnJoin.setAlpha(0.5f);
                 }
-
-                // 🔴 Another host already assigned
                 else if (t.getHostId() != null) {
                     btnJoin.setVisibility(View.GONE);
                 }
-
-                // 🟡 No host → can apply
                 else {
                     ((TextView) btnJoin).setText("Apply");
                     btnJoin.setEnabled(true);
@@ -441,17 +485,14 @@ public class HomeFragment extends Fragment {
 
                 return card;
             } else {
-
                 btnJoin.setOnClickListener(v -> {
                     JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
                     dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
                 });
 
-                String userId = TokenManager.getUserId(requireContext());
-
                 if (!"upcoming".equalsIgnoreCase(t.getStatus())) {
                     btnJoin.setVisibility(View.GONE);
-                } else if (t.isJoinedDerived(userId)) {
+                } else if (t.isJoinedDerived(myUserId)) {
                     btnJoin.setEnabled(false);
                     btnJoin.setAlpha(0.5f);
                     ((TextView) btnJoin).setText("Joined");
@@ -463,7 +504,6 @@ public class HomeFragment extends Fragment {
     }
 
     private void applyForHost(String tournamentId, View btnApply) {
-
         btnApply.setEnabled(false);
         btnApply.setAlpha(0.6f);
 
@@ -473,38 +513,26 @@ public class HomeFragment extends Fragment {
                 "Can manage lobby and results"
         );
 
-        // ✅ NO TOKEN FETCH
-        // ✅ NO CSRF HELPER
-        // ✅ Auth handled by interceptor + cookies
+        api.applyForHostTournament(tournamentId, request)
+                .enqueue(new Callback<HostApplyResponse>() {
+                    @Override
+                    public void onResponse(Call<HostApplyResponse> call, Response<HostApplyResponse> response) {
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().success) {
 
-        api.applyForHostTournament(
-                tournamentId,
-                request
-        ).enqueue(new Callback<HostApplyResponse>() {
+                            ((TextView) btnApply).setText("Applied");
+                            btnApply.setAlpha(0.5f);
+                        } else {
+                            resetApply(btnApply);
+                        }
+                    }
 
-            @Override
-            public void onResponse(
-                    Call<HostApplyResponse> call,
-                    Response<HostApplyResponse> response
-            ) {
-
-                if (response.isSuccessful()
-                        && response.body() != null
-                        && response.body().success) {
-
-                    ((TextView) btnApply).setText("Applied");
-                    btnApply.setAlpha(0.5f);
-
-                } else {
-                    resetApply(btnApply);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<HostApplyResponse> call, Throwable t) {
-                resetApply(btnApply);
-            }
-        });
+                    @Override
+                    public void onFailure(Call<HostApplyResponse> call, Throwable t) {
+                        resetApply(btnApply);
+                    }
+                });
     }
 
     private void resetApply(View btn) {

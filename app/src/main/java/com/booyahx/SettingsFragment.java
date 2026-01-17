@@ -13,18 +13,12 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
-import com.booyahx.network.ApiClient;
-import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.settings.AboutActivity;
 import com.booyahx.settings.ChangePasswordActivity;
 import com.booyahx.settings.EditProfileActivity;
 import com.booyahx.settings.HelpSupportActivity;
 import com.booyahx.settings.WinningHistoryActivity;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class SettingsFragment extends Fragment {
 
@@ -46,7 +40,8 @@ public class SettingsFragment extends Fragment {
         txtUserName = view.findViewById(R.id.txtUserName);
         txtEmail = view.findViewById(R.id.txtEmail);
 
-        fetchUserProfile();
+        // 🔥 LOAD FROM CACHE (NO API CALL)
+        loadProfileFromCache();
 
         view.findViewById(R.id.btnEditProfile)
                 .setOnClickListener(v -> startActivity(
@@ -71,33 +66,37 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.btnLogout)
                 .setOnClickListener(v -> showLogoutDialog());
 
+        // 🔥 LISTEN FOR PROFILE UPDATES
+        getParentFragmentManager().setFragmentResultListener(
+                "profile_updated",
+                this,
+                (requestKey, bundle) -> {
+                    if (isAdded()) {
+                        loadProfileFromCache();
+                    }
+                }
+        );
     }
 
-    private void fetchUserProfile() {
-        ApiService api = ApiClient.getClient(requireContext()).create(ApiService.class);
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 🔥 REFRESH FROM CACHE WHEN RETURNING FROM EDIT PROFILE
+        loadProfileFromCache();
+    }
 
-        api.getProfile().enqueue(new Callback<ProfileResponse>() {
-            @Override
-            public void onResponse(Call<ProfileResponse> call,
-                                   Response<ProfileResponse> response) {
+    // 🔥 LOAD FROM CACHE - NO API CALL
+    private void loadProfileFromCache() {
+        ProfileResponse.Data profile = ProfileCacheManager.getProfile(requireContext());
 
-                if (response.isSuccessful()
-                        && response.body() != null
-                        && response.body().success) {
-
-                    ProfileResponse.Data data = response.body().data;
-                    txtUserName.setText(data.name != null ? data.name : "Unknown");
-                    txtEmail.setText(data.email != null ? data.email : "No Email");
-                } else {
-                    showToast("Failed to load profile");
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ProfileResponse> call, Throwable t) {
-                showToast("Network error");
-            }
-        });
+        if (profile != null) {
+            txtUserName.setText(profile.name != null ? profile.name : "Unknown");
+            txtEmail.setText(profile.email != null ? profile.email : "No Email");
+        } else {
+            // If no cache exists, show defaults
+            txtUserName.setText("Unknown");
+            txtEmail.setText("No Email");
+        }
     }
 
     private void showLogoutDialog() {
@@ -110,7 +109,11 @@ public class SettingsFragment extends Fragment {
     }
 
     private void logout() {
+        // 🔥 CLEAR ALL CACHES ON LOGOUT
+        ProfileCacheManager.clear(requireContext());
+        WalletCacheManager.clear(requireContext());
         TokenManager.logout(requireContext());
+
         Intent i = new Intent(requireContext(), LoginActivity.class);
         i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(i);

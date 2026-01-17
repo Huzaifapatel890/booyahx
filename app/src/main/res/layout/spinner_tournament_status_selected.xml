@@ -16,8 +16,4 @@
         android:textSize="16sp"
         android:textStyle="bold" />
 
-    <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@android:drawable/arrow_down_float" />
 </LinearLayout>
