@@ -32,17 +32,14 @@ public class ProfessionalResultGenerator {
     private static final int BRONZE = Color.parseColor("#CD7F32");
     private static final int WHITE = Color.WHITE;
 
-    // ✅ TABLE BACKGROUND COLOR (dark blue/black)
+    // Table background
     private static final int TABLE_BG = Color.parseColor("#CC0B132B");
 
     public static class Config {
         public int backgroundDrawable = R.drawable.forest_theme;
         public int width = 1080;
         public int height = 1920;
-
-        // ⬇️ MOVED TABLE DOWN (FIX LOGO CLASH)
         public int tableTopMargin = 640;
-
         public int maxTeams = 12;
 
         public int rowBgColor = Color.parseColor("#22FFFFFF");
@@ -93,7 +90,7 @@ public class ProfessionalResultGenerator {
         strokePaint.setTextAlign(Paint.Align.CENTER);
     }
 
-    // ================= BACKGROUND FIX =================
+    // ================= BACKGROUND =================
     private void drawBackground(Canvas canvas, Config config) {
         Drawable drawable = ResourcesCompat.getDrawable(
                 context.getResources(),
@@ -113,10 +110,10 @@ public class ProfessionalResultGenerator {
         float dx = 0, dy = 0;
 
         if (dWidth * config.height > config.width * dHeight) {
-            scale = (float) config.height / (float) dHeight;
+            scale = (float) config.height / dHeight;
             dx = (config.width - dWidth * scale) * 0.5f;
         } else {
-            scale = (float) config.width / (float) dWidth;
+            scale = (float) config.width / dWidth;
             dy = (config.height - dHeight * scale) * 0.5f;
         }
 
@@ -129,8 +126,9 @@ public class ProfessionalResultGenerator {
 
         canvas.restore();
     }
-    // ==================================================
+    // ==============================================
 
+    // ✅ EXISTING METHODS (UNCHANGED)
     public File generateWithBackground(List<FinalRow> rows, String name, int backgroundRes) {
         Config config = new Config();
         config.backgroundDrawable = backgroundRes;
@@ -160,6 +158,27 @@ public class ProfessionalResultGenerator {
         }
     }
 
+    // =================================================
+    // ✅ NEW METHOD (PREVIEW ONLY – DOES NOT SAVE)
+    // =================================================
+    public Bitmap generatePreviewBitmap(List<FinalRow> rows, int backgroundRes) {
+        Config config = new Config();
+        config.backgroundDrawable = backgroundRes;
+
+        Bitmap bmp = Bitmap.createBitmap(
+                config.width,
+                config.height,
+                Bitmap.Config.ARGB_8888
+        );
+
+        Canvas canvas = new Canvas(bmp);
+        drawBackground(canvas, config);
+        drawTable(canvas, rows, config);
+
+        return bmp;
+    }
+    // =================================================
+
     // ================= TABLE =================
     private void drawTable(Canvas canvas, List<FinalRow> rows, Config config) {
         int x = 30;
@@ -169,7 +188,6 @@ public class ProfessionalResultGenerator {
         int tableWidth = sum(w);
         int tableHeight = 74 + (config.maxTeams * 80);
 
-        // ✅ BACKGROUND PANEL
         Paint tableBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         tableBgPaint.setColor(TABLE_BG);
 

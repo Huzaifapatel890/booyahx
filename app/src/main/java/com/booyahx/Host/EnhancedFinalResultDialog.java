@@ -4,12 +4,10 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.ImageView;
@@ -38,10 +36,19 @@ public class EnhancedFinalResultDialog extends Dialog {
     private ProgressBar progressBar;
 
     private ProfessionalResultGenerator generator;
-    private File currentImageFile;
+
+    // ✅ File exists ONLY after user presses download
+    private File savedImageFile;
+
+    // ✅ SINGLE SOURCE OF TRUTH FOR THEME
+    private int selectedThemeRes;
+
     private volatile boolean isDestroyed = false;
 
-    public EnhancedFinalResultDialog(@NonNull Context context, List<FinalRow> results) {
+    public EnhancedFinalResultDialog(
+            @NonNull Context context,
+            List<FinalRow> results
+    ) {
         super(context);
         this.context = context;
         this.results = results;
@@ -64,7 +71,10 @@ public class EnhancedFinalResultDialog extends Dialog {
         }
 
         initViews();
-        generateBasedOnTime();
+
+        // ✅ FIX: wait until ImageView is laid out
+        resultPreview.post(this::generateBasedOnTime);
+
         setupButtons();
     }
 
@@ -85,77 +95,78 @@ public class EnhancedFinalResultDialog extends Dialog {
         resultPreview.setScaleType(ImageView.ScaleType.FIT_CENTER);
     }
 
-    // ✅ FIXED TIME RANGE LOGIC
+    // ================= PREVIEW (NO SAVE) =================
     private void generateBasedOnTime() {
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        int themeRes;
 
         if (hour >= 6 && hour < 12) {
-            themeRes = R.drawable.mountain_theme;      // Morning
+            selectedThemeRes = R.drawable.bloom_theme;
         } else if (hour >= 12 && hour < 17) {
-            themeRes = R.drawable.forest_theme;        // Afternoon
+            selectedThemeRes = R.drawable.anim_theme;
         } else if (hour >= 17 && hour < 21) {
-            themeRes = R.drawable.forest_theme;        // Evening
+            selectedThemeRes = R.drawable.nostalagic_theme;
         } else if (hour >= 21 && hour < 24) {
-            themeRes = R.drawable.lightning_theme;     // Night
+            selectedThemeRes = R.drawable.mountain_theme;
         } else {
-            themeRes = R.drawable.galexy_theme;        // Midnight
+            selectedThemeRes = R.drawable.galexy_theme;
         }
 
-        generatePreview(themeRes);
+        generatePreview();
     }
 
-    private void generatePreview(final int backgroundRes) {
-        progressBar.setVisibility(View.VISIBLE);
+    private void generatePreview() {
+        progressBar.setVisibility(ProgressBar.VISIBLE);
         resultPreview.setImageDrawable(null);
 
         new Thread(() -> {
-            try {
-                File file = generator.generateWithBackground(
-                        results, "Preview", backgroundRes);
+            Bitmap preview =
+                    generator.generatePreviewBitmap(results, selectedThemeRes);
 
-                if (isDestroyed || file == null || !file.exists()) return;
-
-                currentImageFile = file;
-
-                // ✅ SAFE PREVIEW DECODING (scaled)
-                BitmapFactory.Options opts = new BitmapFactory.Options();
-                opts.inSampleSize = 2; // half resolution for preview
-                final Bitmap preview = BitmapFactory.decodeFile(
-                        file.getAbsolutePath(), opts);
-
-                resultPreview.post(() -> {
-                    if (isDestroyed) return;
-                    resultPreview.setImageBitmap(preview);
-                    progressBar.setVisibility(View.GONE);
-                });
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                showError("Failed to generate preview");
-            }
+            resultPreview.post(() -> {
+                if (isDestroyed) return;
+                resultPreview.setImageBitmap(preview);
+                progressBar.setVisibility(ProgressBar.GONE);
+            });
         }).start();
     }
+    // ====================================================
 
     private void setupButtons() {
 
+        // ================= DOWNLOAD =================
         downloadBtn.setOnClickListener(v -> {
-            if (currentImageFile == null || !currentImageFile.exists()) {
+            if (savedImageFile != null && savedImageFile.exists()) {
                 Toast.makeText(context,
-                        "Please wait, generating image...",
+                        "Result already saved",
                         Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            Toast.makeText(context,
-                    "Result saved to Pictures/BooyahX/",
-                    Toast.LENGTH_LONG).show();
+            progressBar.setVisibility(ProgressBar.VISIBLE);
+
+            new Thread(() -> {
+                File file = generator.generateWithBackground(
+                        results,
+                        "Final_Result",
+                        selectedThemeRes // ✅ SAME THEME AS PREVIEW
+                );
+
+                savedImageFile = file;
+
+                resultPreview.post(() -> {
+                    progressBar.setVisibility(ProgressBar.GONE);
+                    Toast.makeText(context,
+                            "Result saved to Pictures/BooyahX/",
+                            Toast.LENGTH_LONG).show();
+                });
+            }).start();
         });
 
+        // ================= SHARE =================
         shareBtn.setOnClickListener(v -> {
-            if (currentImageFile == null || !currentImageFile.exists()) {
+            if (savedImageFile == null || !savedImageFile.exists()) {
                 Toast.makeText(context,
-                        "Please wait, generating image...",
+                        "Please download first",
                         Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -166,11 +177,16 @@ public class EnhancedFinalResultDialog extends Dialog {
     }
 
     private void shareImage() {
+        if (savedImageFile == null || !savedImageFile.exists()) {
+            Toast.makeText(context, "Image not found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         try {
             Uri imageUri = FileProvider.getUriForFile(
                     context,
                     context.getPackageName() + ".fileprovider",
-                    currentImageFile
+                    savedImageFile
             );
 
             Intent intent = new Intent(Intent.ACTION_SEND);
@@ -178,22 +194,27 @@ public class EnhancedFinalResultDialog extends Dialog {
             intent.putExtra(Intent.EXTRA_STREAM, imageUri);
             intent.putExtra(Intent.EXTRA_TEXT,
                     "🏆 Tournament Results - Shared from BooyahX");
+
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // 🔥 REQUIRED FOR DIALOG
 
             context.startActivity(Intent.createChooser(intent, "Share Result"));
 
         } catch (Exception e) {
+            e.printStackTrace(); // 🔥 NOW YOU WILL SEE LOGS
             Toast.makeText(context,
                     "Failed to share image",
                     Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void showError(final String message) {
-        progressBar.post(() -> {
-            if (isDestroyed) return;
-            progressBar.setVisibility(View.GONE);
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
-        });
+    private int getCurrentTheme() {
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+
+        if (hour >= 6 && hour < 12) return R.drawable.bloom_theme;
+        if (hour >= 12 && hour < 17) return R.drawable.anim_theme;
+        if (hour >= 17 && hour < 21) return R.drawable.nostalagic_theme;
+        if (hour >= 21 && hour < 24) return R.drawable.mountain_theme;
+        return R.drawable.galexy_theme;
     }
 }

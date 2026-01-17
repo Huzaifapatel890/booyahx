@@ -4,24 +4,24 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@drawable/dialog_bg_rounded"
+    android:background="@drawable/neon_card"
     android:padding="20dp">
 
     <!-- Header -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="🏆 Professional Result (Final) "
+        android:text="Overall Standings 🏆 "
         android:textSize="22sp"
         android:textStyle="bold"
-        android:textColor="#FFD700"
+        android:textColor="#39FF14"
         android:gravity="center"
         android:paddingBottom="10dp"/>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Select theme and download high-quality result image"
+        android:text="Contact host via Raising Dispute ticket if you find any Error"
         android:textSize="13sp"
         android:textColor="#AAAAAA"
         android:gravity="center"
@@ -73,7 +73,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="💡 Tip: Image will be saved in 1080x1920 full HD quality"
+        android:text="Prizes will be Credited in your Account Shortly"
         android:textSize="12sp"
         android:textColor="#888888"
         android:gravity="center"
@@ -95,7 +95,7 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="@drawable/btn_download_bg"
+            android:background="@drawable/neon_green"
             android:layout_marginEnd="8dp"
             android:clickable="true"
             android:focusable="true">
@@ -104,7 +104,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="💾"
-                android:textSize="24sp"/>
+                android:textSize="18sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -124,7 +124,7 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
-            android:background="@drawable/btn_share_bg"
+            android:background="@drawable/neon_green"
             android:layout_marginStart="8dp"
             android:clickable="true"
             android:focusable="true">
@@ -133,7 +133,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="📤"
-                android:textSize="24sp"/>
+                android:textSize="18sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
