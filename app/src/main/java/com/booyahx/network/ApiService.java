@@ -116,4 +116,8 @@ public interface ApiService {
 
     @POST("/api/payment/close-qr/{qrCodeId}")
     Call<SuccessResponse> closeQR(@Path("qrCodeId") String qrCodeId);
+
+    @GET("/api/host/my-lobbies")
+    Call<HostTournamentResponse> getHostMyLobbies();
+
 }

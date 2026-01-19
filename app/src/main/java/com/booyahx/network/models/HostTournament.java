@@ -1,52 +1,202 @@
 package com.booyahx.network.models;
 
-public class HostTournament {
-    private String id;
-    private String title;
-    private String mode;
-    private String entryFee;
-    private String prizePool;
-    private String slots;
-    private String timeStatus;
-    private String roomId;
-    private String password;
-    private String slotBadge;
+import com.google.gson.annotations.SerializedName;
+import java.util.List;
 
-    public HostTournament(String id, String title, String mode, String entryFee, String prizePool,
-                          String slots, String timeStatus, String roomId, String password, String slotBadge) {
-        this.id = id;
-        this.title = title;
-        this.mode = mode;
-        this.entryFee = entryFee;
-        this.prizePool = prizePool;
-        this.slots = slots;
-        this.timeStatus = timeStatus;
-        this.roomId = roomId;
-        this.password = password;
-        this.slotBadge = slotBadge;
+public class HostTournament {
+
+    // ========================
+    // CORE FIELDS
+    // ========================
+
+    @SerializedName("_id")
+    private String id;
+
+    @SerializedName("game")
+    private String game;
+
+    @SerializedName("mode")
+    private String mode;
+
+    @SerializedName("subMode")
+    private String subMode;
+
+    @SerializedName("entryFee")
+    private int entryFee;
+
+    @SerializedName("maxPlayers")
+    private int maxPlayers;
+
+    @SerializedName("date")
+    private String date;
+
+    @SerializedName("startTime")
+    private String startTime;
+
+    @SerializedName("lockTime")
+    private String lockTime;
+
+    @SerializedName("participants")
+    private List<Participant> participants;
+
+    @SerializedName("hostId")
+    private Host host;
+
+    @SerializedName("room")
+    private Room room;
+
+    @SerializedName("prizePool")
+    private int prizePool;
+
+    @SerializedName("status")
+    private String status;
+
+    @SerializedName("results")
+    private List<Result> results;
+
+    // ========================
+    // INNER MODELS
+    // ========================
+
+    public static class Host {
+        @SerializedName("_id")
+        private String id;
+
+        @SerializedName("email")
+        private String email;
+
+        @SerializedName("name")
+        private String name;
+
+        public String getId() { return id; }
+        public String getEmail() { return email; }
+        public String getName() { return name; }
     }
 
-    // Getters
-    public String getId() { return id; }
-    public String getTitle() { return title; }
-    public String getMode() { return mode; }
-    public String getEntryFee() { return entryFee; }
-    public String getPrizePool() { return prizePool; }
-    public String getSlots() { return slots; }
-    public String getTimeStatus() { return timeStatus; }
-    public String getRoomId() { return roomId; }
-    public String getPassword() { return password; }
-    public String getSlotBadge() { return slotBadge; }
+    public static class Room {
+        @SerializedName("roomId")
+        private String roomId;
 
-    // Setters
-    public void setId(String id) { this.id = id; }
-    public void setTitle(String title) { this.title = title; }
-    public void setMode(String mode) { this.mode = mode; }
-    public void setEntryFee(String entryFee) { this.entryFee = entryFee; }
-    public void setPrizePool(String prizePool) { this.prizePool = prizePool; }
-    public void setSlots(String slots) { this.slots = slots; }
-    public void setTimeStatus(String timeStatus) { this.timeStatus = timeStatus; }
-    public void setRoomId(String roomId) { this.roomId = roomId; }
-    public void setPassword(String password) { this.password = password; }
-    public void setSlotBadge(String slotBadge) { this.slotBadge = slotBadge; }
+        @SerializedName("password")
+        private String password;
+
+        public String getRoomId() { return roomId; }
+        public void setRoomId(String roomId) { this.roomId = roomId; }
+
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
+    }
+
+    public static class Participant {
+
+        @SerializedName("_id")
+        private String id;
+
+        @SerializedName("name")
+        private String name;
+
+        @SerializedName("ign")
+        private String ign;
+
+        public String getId() { return id; }
+        public String getName() { return name; }
+        public String getIgn() { return ign; }
+
+        public String getDisplayName() {
+            return ign != null && !ign.isEmpty() ? ign : name;
+        }
+    }
+
+    public static class Result {
+
+        @SerializedName("userId")
+        private String userId;
+
+        @SerializedName("position")
+        private int position;
+
+        @SerializedName("kills")
+        private int kills;
+
+        @SerializedName("rewardGC")
+        private int rewardGC;
+
+        @SerializedName("claimed")
+        private boolean claimed;
+
+        public String getUserId() { return userId; }
+        public int getPosition() { return position; }
+        public int getKills() { return kills; }
+        public int getRewardGC() { return rewardGC; }
+        public boolean isClaimed() { return claimed; }
+    }
+
+    // ========================
+    // GETTERS
+    // ========================
+
+    public String getId() { return id; }
+    public String getGame() { return game; }
+    public String getMode() { return mode; }
+    public String getSubMode() { return subMode; }
+    public int getEntryFee() { return entryFee; }
+    public int getMaxPlayers() { return maxPlayers; }
+    public String getDate() { return date; }
+    public String getStartTime() { return startTime; }
+    public String getLockTime() { return lockTime; }
+    public List<Participant> getParticipants() { return participants; }
+    public Host getHost() { return host; }
+    public Room getRoom() { return room; }
+    public int getPrizePool() { return prizePool; }
+    public String getStatus() { return status; }
+    public List<Result> getResults() { return results; }
+
+    // ========================
+    // UI HELPERS
+    // ========================
+
+    public String getTitle() {
+        return game != null && mode != null
+                ? game + " - " + mode
+                : "Unknown Tournament";
+    }
+
+    public String getModeDisplay() {
+        return (mode != null ? mode : "-") +
+                " - " +
+                (subMode != null ? subMode : "-");
+    }
+
+    public String getEntryFeeDisplay() {
+        return entryFee + " GC";
+    }
+
+    public String getPrizePoolDisplay() {
+        return prizePool + " GC";
+    }
+
+    public String getSlotsDisplay() {
+        int current = participants != null ? participants.size() : 0;
+        return current + "/" + maxPlayers;
+    }
+
+    public String getTimeStatusDisplay() {
+        return status != null ? status.toUpperCase() : "UNKNOWN";
+    }
+
+    public String getRoomIdDisplay() {
+        return room != null && room.getRoomId() != null
+                ? room.getRoomId()
+                : "N/A";
+    }
+
+    public String getPasswordDisplay() {
+        return room != null && room.getPassword() != null
+                ? room.getPassword()
+                : "N/A";
+    }
+
+    public String getHostName() {
+        return host != null ? host.getName() : "Unknown Host";
+    }
 }

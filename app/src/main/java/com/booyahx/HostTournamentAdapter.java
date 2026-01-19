@@ -13,8 +13,7 @@ import com.booyahx.network.models.HostTournament;
 
 import java.util.List;
 
-public class HostTournamentAdapter
-        extends RecyclerView.Adapter<HostTournamentAdapter.ViewHolder> {
+public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAdapter.ViewHolder> {
 
     private Context context;
     private List<HostTournament> tournaments;
@@ -25,14 +24,10 @@ public class HostTournamentAdapter
         void onSubmitResult(HostTournament tournament);
         void onViewResult(HostTournament tournament);
         void onEndTournament(HostTournament tournament);
-        void onViewRules(HostTournament tournament); // Added for Rules button
+        void onViewRules(HostTournament tournament);
     }
 
-    public HostTournamentAdapter(
-            Context context,
-            List<HostTournament> tournaments,
-            OnItemClickListener listener
-    ) {
+    public HostTournamentAdapter(Context context, List<HostTournament> tournaments, OnItemClickListener listener) {
         this.context = context;
         this.tournaments = tournaments;
         this.listener = listener;
@@ -40,55 +35,32 @@ public class HostTournamentAdapter
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(
-            @NonNull ViewGroup parent,
-            int viewType
-    ) {
-        View view = LayoutInflater.from(context)
-                .inflate(R.layout.item_host_tournament_card, parent, false);
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(context).inflate(R.layout.item_host_tournament_card, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(
-            @NonNull ViewHolder holder,
-            int position
-    ) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         HostTournament tournament = tournaments.get(position);
 
+        // Use helper methods from model
         holder.tournamentTitle.setText(tournament.getTitle());
-        holder.tournamentMode.setText(tournament.getMode());
-        holder.entryFee.setText(tournament.getEntryFee());
-        holder.prizePool.setText(tournament.getPrizePool());
-        holder.slots.setText(tournament.getSlots());
-        holder.timeStatus.setText(tournament.getTimeStatus());
-        holder.roomId.setText(tournament.getRoomId());
-        holder.password.setText(tournament.getPassword());
+        holder.tournamentMode.setText(tournament.getModeDisplay());
+        holder.entryFee.setText(tournament.getEntryFeeDisplay());
+        holder.prizePool.setText(tournament.getPrizePoolDisplay());
+        holder.slots.setText(tournament.getSlotsDisplay());
+        holder.timeStatus.setText(tournament.getTimeStatusDisplay());
+        holder.roomId.setText(tournament.getRoomIdDisplay());
+        holder.password.setText(tournament.getPasswordDisplay());
 
-        // Edit Room
-        holder.editIcon.setOnClickListener(v ->
-                listener.onEditRoom(tournament)
-        );
 
-        // Submit Result
-        holder.submitResultBtn.setOnClickListener(v ->
-                listener.onSubmitResult(tournament)
-        );
-
-        // View Result - THIS IS THE KEY FIX
-        holder.resultBtn.setOnClickListener(v ->
-                listener.onViewResult(tournament)
-        );
-
-        // View Rules
-        holder.rulesBtn.setOnClickListener(v ->
-                listener.onViewRules(tournament)
-        );
-
-        // End Tournament
-        holder.endBtn.setOnClickListener(v ->
-                listener.onEndTournament(tournament)
-        );
+        // Button click listeners
+        holder.editIcon.setOnClickListener(v -> listener.onEditRoom(tournament));
+        holder.submitResultBtn.setOnClickListener(v -> listener.onSubmitResult(tournament));
+        holder.resultBtn.setOnClickListener(v -> listener.onViewResult(tournament));
+        holder.rulesBtn.setOnClickListener(v -> listener.onViewRules(tournament));
+        holder.endBtn.setOnClickListener(v -> listener.onEndTournament(tournament));
     }
 
     @Override
@@ -96,16 +68,17 @@ public class HostTournamentAdapter
         return tournaments.size();
     }
 
+    public void updateData(List<HostTournament> newTournaments) {
+        this.tournaments = newTournaments;
+        notifyDataSetChanged();
+    }
+
     public static class ViewHolder extends RecyclerView.ViewHolder {
-
-        TextView tournamentTitle, tournamentMode, entryFee, prizePool,
-                slots, timeStatus, roomId, password, slotBadge;
-
+        TextView tournamentTitle, tournamentMode, entryFee, prizePool, slots, timeStatus, roomId, password, slotBadge;
         TextView editIcon, submitResultBtn, resultBtn, rulesBtn, endBtn;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-
             tournamentTitle = itemView.findViewById(R.id.tournamentTitle);
             tournamentMode = itemView.findViewById(R.id.tournamentMode);
             entryFee = itemView.findViewById(R.id.entryFee);
