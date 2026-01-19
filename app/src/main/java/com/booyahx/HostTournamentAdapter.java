@@ -1,6 +1,8 @@
 package com.booyahx;
 
 import android.content.Context;
+import android.os.CountDownTimer;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,88 +13,145 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.booyahx.network.models.HostTournament;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
-public class HostTournamentAdapter extends RecyclerView.Adapter<HostTournamentAdapter.ViewHolder> {
+public class HostTournamentAdapter
+        extends RecyclerView.Adapter<HostTournamentAdapter.ViewHolder> {
 
     private Context context;
-    private List<HostTournament> tournaments;
+    private List<HostTournament> list;
     private OnItemClickListener listener;
+    private Map<Integer, CountDownTimer> activeTimers = new HashMap<>();
 
     public interface OnItemClickListener {
-        void onEditRoom(HostTournament tournament);
-        void onSubmitResult(HostTournament tournament);
-        void onViewResult(HostTournament tournament);
-        void onEndTournament(HostTournament tournament);
-        void onViewRules(HostTournament tournament);
+        void onEditRoom(HostTournament t);
+        void onSubmitResult(HostTournament t);
+        void onViewResult(HostTournament t);
+        void onEndTournament(HostTournament t);
+        void onViewRules(HostTournament t);
     }
 
-    public HostTournamentAdapter(Context context, List<HostTournament> tournaments, OnItemClickListener listener) {
-        this.context = context;
-        this.tournaments = tournaments;
-        this.listener = listener;
+    public HostTournamentAdapter(Context c,
+                                 List<HostTournament> l,
+                                 OnItemClickListener li) {
+        context = c;
+        list = l;
+        listener = li;
     }
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_host_tournament_card, parent, false);
-        return new ViewHolder(view);
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup p, int v) {
+        return new ViewHolder(LayoutInflater.from(context)
+                .inflate(R.layout.item_host_tournament_card, p, false));
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        HostTournament tournament = tournaments.get(position);
+    public void onBindViewHolder(@NonNull ViewHolder h, int pos) {
+        HostTournament t = list.get(pos);
 
-        // Use helper methods from model
-        holder.tournamentTitle.setText(tournament.getTitle());
-        holder.tournamentMode.setText(tournament.getModeDisplay());
-        holder.entryFee.setText(tournament.getEntryFeeDisplay());
-        holder.prizePool.setText(tournament.getPrizePoolDisplay());
-        holder.slots.setText(tournament.getSlotsDisplay());
-        holder.timeStatus.setText(tournament.getTimeStatusDisplay());
-        holder.roomId.setText(tournament.getRoomIdDisplay());
-        holder.password.setText(tournament.getPasswordDisplay());
+        h.title.setText(t.getHeaderTitle());
+        h.mode.setText(t.getModeDisplay());
+        h.slots.setText(t.getSlotsDisplay());
+        h.roomId.setText(t.getRoomIdDisplay());
+        h.password.setText(t.getPasswordDisplay());
 
+        if (activeTimers.containsKey(pos)) {
+            activeTimers.get(pos).cancel();
+            activeTimers.remove(pos);
+        }
 
-        // Button click listeners
-        holder.editIcon.setOnClickListener(v -> listener.onEditRoom(tournament));
-        holder.submitResultBtn.setOnClickListener(v -> listener.onSubmitResult(tournament));
-        holder.resultBtn.setOnClickListener(v -> listener.onViewResult(tournament));
-        holder.rulesBtn.setOnClickListener(v -> listener.onViewRules(tournament));
-        holder.endBtn.setOnClickListener(v -> listener.onEndTournament(tournament));
+        String status = t.getStatus();
+        Log.d("HostAdapter", "Tournament: " + t.getHeaderTitle() + ", Status: " + status);
+
+        if ("upcoming".equals(status)) {
+            long startMillis = t.getStartTimeMillis();
+            long diff = startMillis - System.currentTimeMillis();
+
+            if (diff <= 0) {
+                h.time.setText("Starting Soon");
+            } else {
+                CountDownTimer timer = new CountDownTimer(diff, 1000) {
+                    @Override
+                    public void onTick(long millisUntilFinished) {
+                        long hours = millisUntilFinished / (1000 * 60 * 60);
+                        long mins = (millisUntilFinished % (1000 * 60 * 60)) / (1000 * 60);
+                        long secs = (millisUntilFinished % (1000 * 60)) / 1000;
+
+                        h.time.setText(
+                                String.format(Locale.getDefault(),
+                                        "%02d:%02d:%02d", hours, mins, secs)
+                        );
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        h.time.setText("Starting Soon");
+                    }
+                };
+                timer.start();
+                activeTimers.put(pos, timer);
+            }
+        } else {
+            h.time.setText(t.getTimeDisplay());
+        }
+
+        // 🔥 CHANGE APPLIED HERE ONLY
+        // Submit & End visible for ALL categories
+        h.submit.setVisibility(View.VISIBLE);
+        h.end.setVisibility(View.VISIBLE);
+        h.result.setVisibility(View.VISIBLE);
+
+        h.edit.setOnClickListener(v -> listener.onEditRoom(t));
+        h.submit.setOnClickListener(v -> listener.onSubmitResult(t));
+        h.result.setOnClickListener(v -> listener.onViewResult(t));
+        h.rules.setOnClickListener(v -> listener.onViewRules(t));
+        h.end.setOnClickListener(v -> listener.onEndTournament(t));
     }
 
     @Override
     public int getItemCount() {
-        return tournaments.size();
+        return list.size();
     }
 
-    public void updateData(List<HostTournament> newTournaments) {
-        this.tournaments = newTournaments;
-        notifyDataSetChanged();
+    @Override
+    public void onViewRecycled(@NonNull ViewHolder holder) {
+        super.onViewRecycled(holder);
+        int position = holder.getAdapterPosition();
+        if (position != RecyclerView.NO_POSITION && activeTimers.containsKey(position)) {
+            activeTimers.get(position).cancel();
+            activeTimers.remove(position);
+        }
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tournamentTitle, tournamentMode, entryFee, prizePool, slots, timeStatus, roomId, password, slotBadge;
-        TextView editIcon, submitResultBtn, resultBtn, rulesBtn, endBtn;
+    public void cancelAllTimers() {
+        for (CountDownTimer timer : activeTimers.values()) {
+            timer.cancel();
+        }
+        activeTimers.clear();
+    }
 
-        public ViewHolder(@NonNull View itemView) {
-            super(itemView);
-            tournamentTitle = itemView.findViewById(R.id.tournamentTitle);
-            tournamentMode = itemView.findViewById(R.id.tournamentMode);
-            entryFee = itemView.findViewById(R.id.entryFee);
-            prizePool = itemView.findViewById(R.id.prizePool);
-            slots = itemView.findViewById(R.id.slots);
-            timeStatus = itemView.findViewById(R.id.timeStatus);
-            roomId = itemView.findViewById(R.id.roomId);
-            password = itemView.findViewById(R.id.password);
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView title, mode, slots, time, roomId, password;
+        TextView edit, submit, result, rules, end;
 
-            editIcon = itemView.findViewById(R.id.editIcon);
-            submitResultBtn = itemView.findViewById(R.id.submitResultBtn);
-            resultBtn = itemView.findViewById(R.id.resultButton);
-            rulesBtn = itemView.findViewById(R.id.rulesButton);
-            endBtn = itemView.findViewById(R.id.endBtn);
+        ViewHolder(View v) {
+            super(v);
+            title = v.findViewById(R.id.tournamentTitle);
+            mode = v.findViewById(R.id.tournamentMode);
+            slots = v.findViewById(R.id.slots);
+            time = v.findViewById(R.id.timeStatus);
+            roomId = v.findViewById(R.id.roomId);
+            password = v.findViewById(R.id.password);
+
+            edit = v.findViewById(R.id.editIcon);
+            submit = v.findViewById(R.id.submitResultBtn);
+            result = v.findViewById(R.id.resultButton);
+            rules = v.findViewById(R.id.rulesButton);
+            end = v.findViewById(R.id.endBtn);
         }
     }
 }

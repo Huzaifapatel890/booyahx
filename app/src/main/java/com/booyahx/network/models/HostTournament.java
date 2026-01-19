@@ -1,15 +1,20 @@
 package com.booyahx.network.models;
 
 import com.google.gson.annotations.SerializedName;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public class HostTournament {
 
-    // ========================
-    // CORE FIELDS
-    // ========================
+    // =====================
+    // CORE FIELDS (API)
+    // =====================
 
-    @SerializedName("_id")
+    @SerializedName("id")
     private String id;
 
     @SerializedName("game")
@@ -40,7 +45,7 @@ public class HostTournament {
     private List<Participant> participants;
 
     @SerializedName("hostId")
-    private Host host;
+    private Object hostId;
 
     @SerializedName("room")
     private Room room;
@@ -54,24 +59,9 @@ public class HostTournament {
     @SerializedName("results")
     private List<Result> results;
 
-    // ========================
+    // =====================
     // INNER MODELS
-    // ========================
-
-    public static class Host {
-        @SerializedName("_id")
-        private String id;
-
-        @SerializedName("email")
-        private String email;
-
-        @SerializedName("name")
-        private String name;
-
-        public String getId() { return id; }
-        public String getEmail() { return email; }
-        public String getName() { return name; }
-    }
+    // =====================
 
     public static class Room {
         @SerializedName("roomId")
@@ -81,9 +71,9 @@ public class HostTournament {
         private String password;
 
         public String getRoomId() { return roomId; }
-        public void setRoomId(String roomId) { this.roomId = roomId; }
-
         public String getPassword() { return password; }
+
+        public void setRoomId(String roomId) { this.roomId = roomId; }
         public void setPassword(String password) { this.password = password; }
     }
 
@@ -92,23 +82,24 @@ public class HostTournament {
         @SerializedName("_id")
         private String id;
 
+        @SerializedName("teamName")
+        private String teamName;
+
         @SerializedName("name")
         private String name;
 
         @SerializedName("ign")
         private String ign;
 
-        public String getId() { return id; }
-        public String getName() { return name; }
-        public String getIgn() { return ign; }
-
         public String getDisplayName() {
-            return ign != null && !ign.isEmpty() ? ign : name;
+            if (teamName != null && !teamName.isEmpty()) return teamName;
+            if (ign != null && !ign.isEmpty()) return ign;
+            if (name != null && !name.isEmpty()) return name;
+            return "Team";
         }
     }
 
     public static class Result {
-
         @SerializedName("userId")
         private String userId;
 
@@ -131,9 +122,9 @@ public class HostTournament {
         public boolean isClaimed() { return claimed; }
     }
 
-    // ========================
-    // GETTERS
-    // ========================
+    // =====================
+    // BASIC GETTERS
+    // =====================
 
     public String getId() { return id; }
     public String getGame() { return game; }
@@ -145,25 +136,23 @@ public class HostTournament {
     public String getStartTime() { return startTime; }
     public String getLockTime() { return lockTime; }
     public List<Participant> getParticipants() { return participants; }
-    public Host getHost() { return host; }
     public Room getRoom() { return room; }
     public int getPrizePool() { return prizePool; }
     public String getStatus() { return status; }
     public List<Result> getResults() { return results; }
 
-    // ========================
+    // =====================
     // UI HELPERS
-    // ========================
+    // =====================
 
-    public String getTitle() {
-        return game != null && mode != null
-                ? game + " - " + mode
-                : "Unknown Tournament";
+    public String getHeaderTitle() {
+        String lobbyDisplay = "Lobby";
+        String timeDisplay = startTime != null ? startTime : "--";
+        return lobbyDisplay + " • " + timeDisplay;
     }
 
     public String getModeDisplay() {
-        return (mode != null ? mode : "-") +
-                " - " +
+        return (mode != null ? mode : "-") + " - " +
                 (subMode != null ? subMode : "-");
     }
 
@@ -176,12 +165,8 @@ public class HostTournament {
     }
 
     public String getSlotsDisplay() {
-        int current = participants != null ? participants.size() : 0;
-        return current + "/" + maxPlayers;
-    }
-
-    public String getTimeStatusDisplay() {
-        return status != null ? status.toUpperCase() : "UNKNOWN";
+        int joined = participants != null ? participants.size() : 0;
+        return joined + "/" + maxPlayers;
     }
 
     public String getRoomIdDisplay() {
@@ -196,7 +181,44 @@ public class HostTournament {
                 : "N/A";
     }
 
-    public String getHostName() {
-        return host != null ? host.getName() : "Unknown Host";
+    // =====================
+    // TIME HELPERS (FIXED)
+    // =====================
+
+    public long getStartTimeMillis() {
+        if (lockTime == null || lockTime.isEmpty()) return 0;
+
+        try {
+            SimpleDateFormat sdf =
+                    new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+            Date date = sdf.parse(lockTime);
+            return date != null ? date.getTime() : 0;
+
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    public String getTimeDisplay() {
+        if ("upcoming".equals(status)) {
+            long startMillis = getStartTimeMillis();
+            long diff = startMillis - System.currentTimeMillis();
+
+            if (diff > 0) {
+                long hours = diff / (1000 * 60 * 60);
+                long mins = (diff % (1000 * 60 * 60)) / (1000 * 60);
+                return String.format(Locale.getDefault(), "%02d:%02d", hours, mins);
+            }
+            return "Starting Soon";
+        }
+
+        if ("live".equals(status)) return "LIVE NOW";
+        if ("completed".equals(status)) return "COMPLETED";
+        if ("resultPending".equals(status)) return "RESULT PENDING";
+
+        return "UPCOMING";
     }
 }

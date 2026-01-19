@@ -48,6 +48,7 @@
                     android:layout_marginTop="2dp" />
 
             </LinearLayout>
+
             <TextView
                 android:id="@+id/resultButton"
                 android:layout_width="wrap_content"
@@ -60,7 +61,8 @@
                 android:paddingVertical="8dp"
                 android:background="@drawable/neon_button"
                 android:clickable="true"
-                android:focusable="true" />
+                android:focusable="true"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/rulesButton"
@@ -74,7 +76,8 @@
                 android:paddingVertical="8dp"
                 android:background="@drawable/neon_button"
                 android:clickable="true"
-                android:focusable="true" />
+                android:focusable="true"
+                android:layout_marginStart="10dp" />
 
         </LinearLayout>
 
@@ -274,8 +277,6 @@
 
             </LinearLayout>
 
-
-
         </LinearLayout>
 
         <!-- Action Buttons -->
@@ -298,7 +299,8 @@
                 android:background="@drawable/neon_green"
                 android:layout_marginEnd="5dp"
                 android:clickable="true"
-                android:focusable="true" />
+                android:focusable="true"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/endBtn"
@@ -314,7 +316,8 @@
                 android:background="@drawable/end_button_bg"
                 android:layout_marginStart="5dp"
                 android:clickable="true"
-                android:focusable="true" />
+                android:focusable="true"
+                android:visibility="gone" />
 
         </LinearLayout>
 
