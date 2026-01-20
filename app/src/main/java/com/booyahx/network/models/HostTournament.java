@@ -14,7 +14,7 @@ public class HostTournament {
     // CORE FIELDS (API)
     // =====================
 
-    @SerializedName("id")
+    @SerializedName("_id")
     private String id;
 
     @SerializedName("game")
@@ -59,6 +59,10 @@ public class HostTournament {
     @SerializedName("results")
     private List<Result> results;
 
+    // ✅ CRITICAL FIX: Added teams array to get actual team names
+    @SerializedName("teams")
+    private List<Team> teams;
+
     // =====================
     // INNER MODELS
     // =====================
@@ -77,6 +81,37 @@ public class HostTournament {
         public void setPassword(String password) { this.password = password; }
     }
 
+    // ✅ NEW: Team class to capture team data from API
+    public static class Team {
+        @SerializedName("_id")
+        private String id;
+
+        @SerializedName("leaderUserId")
+        private String leaderUserId;
+
+        @SerializedName("teamName")
+        private String teamName;
+
+        @SerializedName("players")
+        private List<Player> players;
+
+        public String getId() { return id; }
+        public String getLeaderUserId() { return leaderUserId; }
+        public String getTeamName() { return teamName; }
+        public List<Player> getPlayers() { return players; }
+
+        public static class Player {
+            @SerializedName("name")
+            private String name;
+
+            @SerializedName("_id")
+            private String id;
+
+            public String getName() { return name; }
+            public String getId() { return id; }
+        }
+    }
+
     public static class Participant {
 
         @SerializedName("_id")
@@ -92,11 +127,22 @@ public class HostTournament {
         private String ign;
 
         public String getDisplayName() {
-            if (teamName != null && !teamName.isEmpty()) return teamName;
-            if (ign != null && !ign.isEmpty()) return ign;
-            if (name != null && !name.isEmpty()) return name;
+            if (teamName != null && !teamName.trim().isEmpty()) {
+                return teamName.trim();
+            }
+            if (ign != null && !ign.trim().isEmpty()) {
+                return ign.trim();
+            }
+            if (name != null && !name.trim().isEmpty()) {
+                return name.trim();
+            }
             return "Team";
         }
+
+        public String getTeamName() { return teamName; }
+        public String getName() { return name; }
+        public String getIgn() { return ign; }
+        public String getId() { return id; }
     }
 
     public static class Result {
@@ -140,6 +186,7 @@ public class HostTournament {
     public int getPrizePool() { return prizePool; }
     public String getStatus() { return status; }
     public List<Result> getResults() { return results; }
+    public List<Team> getTeams() { return teams; }  // ✅ NEW GETTER
 
     // =====================
     // UI HELPERS
@@ -182,7 +229,7 @@ public class HostTournament {
     }
 
     // =====================
-    // TIME HELPERS (FIXED)
+    // TIME HELPERS
     // =====================
 
     public long getStartTimeMillis() {

@@ -326,20 +326,31 @@ public class HostTournamentFragment extends Fragment {
                 requireContext(), rows).show();
     }
 
-    // ✅ ONLY FIX APPLIED HERE
-    private List<String> getTeamNamesFromTournament(
-            HostTournament tournament) {
+    // ✅ COMPLETELY FIXED: Extract team names from teams array, NOT participants
+    private List<String> getTeamNamesFromTournament(HostTournament tournament) {
+        List<String> teamNames = new ArrayList<>();
 
-        List<String> teams = new ArrayList<>();
-
-        if (tournament.getParticipants() != null) {
-            for (HostTournament.Participant p
-                    : tournament.getParticipants()) {
-                teams.add(p.getDisplayName());
+        // ✅ Use the teams array which contains actual team names
+        if (tournament.getTeams() != null && !tournament.getTeams().isEmpty()) {
+            for (HostTournament.Team team : tournament.getTeams()) {
+                String teamName = team.getTeamName();
+                if (teamName != null && !teamName.trim().isEmpty()) {
+                    teamNames.add(teamName.trim());
+                } else {
+                    // Fallback if team name is somehow empty
+                    teamNames.add("Team " + (teamNames.size() + 1));
+                }
+            }
+        } else {
+            // Fallback to participants if teams array is missing (shouldn't happen)
+            if (tournament.getParticipants() != null) {
+                for (HostTournament.Participant p : tournament.getParticipants()) {
+                    teamNames.add(p.getDisplayName());
+                }
             }
         }
 
-        return teams;
+        return teamNames;
     }
 
     private void showEndTournamentDialog(HostTournament tournament) {

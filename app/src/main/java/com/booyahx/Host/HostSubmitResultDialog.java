@@ -282,10 +282,10 @@ public class HostSubmitResultDialog extends Dialog {
 
         if (matchSaved[currentMatch]) {
             saveMatchBtn.setText("Match " + (currentMatch + 1) + " Saved ✓");
-            saveMatchBtn.setBackgroundColor(Color.parseColor("#00AA00"));
+            saveMatchBtn.setBackgroundResource(R.drawable.neon_green);
         } else {
             saveMatchBtn.setText("Save Match " + (currentMatch + 1));
-            saveMatchBtn.setBackgroundColor(Color.parseColor("#00AAFF"));
+            saveMatchBtn.setBackgroundResource(R.drawable.neon_green);
         }
     }
 
