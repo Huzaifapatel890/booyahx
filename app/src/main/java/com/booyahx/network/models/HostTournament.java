@@ -216,10 +216,36 @@ public class HostTournament {
     }
 
     public String getSlotsDisplay() {
-        int joined = participants != null ? participants.size() : 0;
-        return joined + "/" + maxPlayers;
-    }
+        int joined = 0;
+        int totalSlots = maxPlayers;
 
+        // Calculate joined teams/players
+        if (teams != null && !teams.isEmpty()) {
+            joined = teams.size();
+        } else if (participants != null) {
+            joined = participants.size();
+        }
+
+        // Get total slots from rules if available
+        if (rules != null && rules.has("maxTeams")) {
+            totalSlots = rules.get("maxTeams").getAsInt();
+        } else {
+            // Fallback calculation based on subMode
+            if (subMode != null) {
+                String mode = subMode.toLowerCase();
+
+                if (mode.contains("squad")) {
+                    totalSlots = maxPlayers / 4;
+                } else if (mode.contains("duo")) {
+                    totalSlots = maxPlayers / 2;
+                } else {
+                    totalSlots = maxPlayers; // solo or unknown
+                }
+            }
+        }
+
+        return joined + "/" + totalSlots;
+    }
     public String getRoomIdDisplay() {
         return room != null && room.getRoomId() != null
                 ? room.getRoomId()

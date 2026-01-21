@@ -35,7 +35,7 @@
                     android:layout_height="wrap_content"
                     android:text="Free Fire"
                     android:textColor="#00FFFF"
-                    android:textSize="20sp"
+                    android:textSize="18sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -87,8 +87,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingBottom="15dp"
-            android:layout_marginBottom="15dp"
-            android:background="@drawable/dialog_header_border">
+            android:layout_marginBottom="15dp">
 
             <!-- Entry -->
             <LinearLayout
