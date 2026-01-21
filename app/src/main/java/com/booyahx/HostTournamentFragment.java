@@ -213,8 +213,17 @@ public class HostTournamentFragment extends Fragment {
                         allCompleted.addAll(l.getCompleted());
                         allCancelled.addAll(l.getCancelled());
 
-                        statusSpinner.setSelection(0);
-                        filterTournaments("Live Tournaments");
+                        // Get current selected position to maintain filter
+                        int currentPosition = statusSpinner.getSelectedItemPosition();
+                        String currentStatus = (String) statusSpinner.getSelectedItem();
+
+                        // Only set to Live on first load, otherwise maintain current filter
+                        if (currentStatus != null) {
+                            filterTournaments(currentStatus);
+                        } else {
+                            statusSpinner.setSelection(0);
+                            filterTournaments("Live Tournaments");
+                        }
                     }
 
                     @Override
@@ -363,8 +372,19 @@ public class HostTournamentFragment extends Fragment {
                                     updateResponse.getMessage(),
                                     Toast.LENGTH_LONG).show();
 
+                            // Update the tournament data locally without API call
+                            for (HostTournament tournament : tournamentList) {
+                                if (tournament.getId().equals(tournamentId)) {
+                                    if (tournament.getRoom() != null) {
+                                        tournament.getRoom().setRoomId(roomId);
+                                        tournament.getRoom().setPassword(password);
+                                    }
+                                    break;
+                                }
+                            }
+
+                            adapter.notifyDataSetChanged();
                             dialog.dismiss();
-                            loadTournamentsFromAPI();
                         } else {
                             Toast.makeText(requireContext(),
                                     "Failed to update room",
@@ -536,7 +556,23 @@ public class HostTournamentFragment extends Fragment {
                                     Toast.LENGTH_LONG).show();
 
                             dialog.dismiss();
-                            loadTournamentsFromAPI();
+
+                            // Remove ended tournament from current list
+                            for (int i = 0; i < tournamentList.size(); i++) {
+                                if (tournamentList.get(i).getId().equals(tournamentId)) {
+                                    tournamentList.remove(i);
+                                    adapter.notifyItemRemoved(i);
+                                    break;
+                                }
+                            }
+
+                            // Also remove from allLive list
+                            for (int i = 0; i < allLive.size(); i++) {
+                                if (allLive.get(i).getId().equals(tournamentId)) {
+                                    allLive.remove(i);
+                                    break;
+                                }
+                            }
                         } else {
                             Toast.makeText(requireContext(),
                                     "Failed to end tournament",
