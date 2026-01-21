@@ -54,6 +54,7 @@ public class HostTournamentFragment extends Fragment {
     private List<HostTournament> allLive = new ArrayList<>();
     private List<HostTournament> allResultPending = new ArrayList<>();
     private List<HostTournament> allCompleted = new ArrayList<>();
+    private List<HostTournament> allCancelled = new ArrayList<>();
 
     @Nullable
     @Override
@@ -123,6 +124,7 @@ public class HostTournamentFragment extends Fragment {
         statuses.add("Upcoming Tournaments");
         statuses.add("Completed Tournaments");
         statuses.add("Pending Result Tournaments");
+        statuses.add("Cancelled Tournaments");
 
         ArrayAdapter<String> spinnerAdapter =
                 new ArrayAdapter<String>(requireContext(),
@@ -194,14 +196,16 @@ public class HostTournamentFragment extends Fragment {
                         allLive.clear();
                         allResultPending.clear();
                         allCompleted.clear();
+                        allCancelled.clear();
 
                         allUpcoming.addAll(l.getUpcoming());
                         allLive.addAll(l.getLive());
                         allResultPending.addAll(l.getResultPending());
                         allCompleted.addAll(l.getCompleted());
+                        allCancelled.addAll(l.getCancelled());
 
-                        statusSpinner.setSelection(1);
-                        filterTournaments("Upcoming Tournaments");
+                        statusSpinner.setSelection(0);
+                        filterTournaments("Live Tournaments");
                     }
 
                     @Override
@@ -233,6 +237,9 @@ public class HostTournamentFragment extends Fragment {
                 break;
             case "Pending Result Tournaments":
                 tournamentList.addAll(allResultPending);
+                break;
+            case "Cancelled Tournaments":
+                tournamentList.addAll(allCancelled);
                 break;
         }
 

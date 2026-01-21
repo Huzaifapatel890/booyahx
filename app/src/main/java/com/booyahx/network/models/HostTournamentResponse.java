@@ -3,6 +3,7 @@ package com.booyahx.network.models;
 import com.google.gson.annotations.SerializedName;
 import java.util.List;
 import java.util.ArrayList;
+
 public class HostTournamentResponse {
 
     @SerializedName("status")
@@ -46,6 +47,9 @@ public class HostTournamentResponse {
         @SerializedName("completed")
         private List<HostTournament> completed;
 
+        @SerializedName("cancelled")
+        private List<HostTournament> cancelled;
+
         public List<HostTournament> getUpcoming() {
             return upcoming != null ? upcoming : new ArrayList<>();
         }
@@ -60,6 +64,10 @@ public class HostTournamentResponse {
 
         public List<HostTournament> getCompleted() {
             return completed != null ? completed : new ArrayList<>();
+        }
+
+        public List<HostTournament> getCancelled() {
+            return cancelled != null ? cancelled : new ArrayList<>();
         }
     }
 
