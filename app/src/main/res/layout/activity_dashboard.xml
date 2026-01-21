@@ -22,7 +22,7 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:gravity="center"
-        android:background="#111111">
+        android:background="#000000">
 
         <!-- HOME -->
         <LinearLayout

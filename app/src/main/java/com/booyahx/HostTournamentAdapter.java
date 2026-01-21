@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.booyahx.network.models.HostTournament;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -67,37 +69,8 @@ public class HostTournamentAdapter
         String status = t.getStatus();
         Log.d("HostAdapter", "Tournament: " + t.getHeaderTitle() + ", Status: " + status);
 
-        if ("upcoming".equals(status)) {
-            long startMillis = t.getStartTimeMillis();
-            long diff = startMillis - System.currentTimeMillis();
-
-            if (diff <= 0) {
-                h.time.setText("Starting Soon");
-            } else {
-                CountDownTimer timer = new CountDownTimer(diff, 1000) {
-                    @Override
-                    public void onTick(long millisUntilFinished) {
-                        long hours = millisUntilFinished / (1000 * 60 * 60);
-                        long mins = (millisUntilFinished % (1000 * 60 * 60)) / (1000 * 60);
-                        long secs = (millisUntilFinished % (1000 * 60)) / 1000;
-
-                        h.time.setText(
-                                String.format(Locale.getDefault(),
-                                        "%02d:%02d:%02d", hours, mins, secs)
-                        );
-                    }
-
-                    @Override
-                    public void onFinish() {
-                        h.time.setText("Starting Soon");
-                    }
-                };
-                timer.start();
-                activeTimers.put(pos, timer);
-            }
-        } else {
-            h.time.setText(t.getTimeDisplay());
-        }
+        // Handle countdown logic
+        handleCountdown(t, h, pos);
 
         // ✅ FIX: Show all buttons ONLY for "live" status, hide for others
         // Rules button is always visible for all categories
@@ -121,6 +94,91 @@ public class HostTournamentAdapter
         h.result.setOnClickListener(v -> listener.onViewResult(t));
         h.rules.setOnClickListener(v -> listener.onViewRules(t));
         h.end.setOnClickListener(v -> listener.onEndTournament(t));
+    }
+
+    private void handleCountdown(HostTournament t, ViewHolder h, int pos) {
+        // ================= STATUS OVERRIDE =================
+        if (t.getStatus() != null) {
+            String status = t.getStatus().toLowerCase(Locale.getDefault());
+
+            if (status.contains("completed")) {
+                h.time.setText("COMPLETED");
+                return;
+            }
+
+            if (status.contains("pending") || status.contains("resultpending")) {
+                h.time.setText("PENDING");
+                return;
+            }
+
+            if (status.contains("cancel")) {
+                h.time.setText("CANCELLED");
+                return;
+            }
+
+            if (status.contains("live")) {
+                h.time.setText("LIVE");
+                return;
+            }
+        }
+        // ==================================================
+
+        try {
+            String dateTime = t.getDate() + " " + t.getStartTime();
+            SimpleDateFormat sdf =
+                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
+
+            Date startDate = sdf.parse(dateTime);
+            if (startDate == null) {
+                h.time.setText("--");
+                return;
+            }
+
+            long diff = startDate.getTime() - System.currentTimeMillis();
+
+            if (diff > 0) {
+                CountDownTimer timer = new CountDownTimer(diff, 1000) {
+                    @Override
+                    public void onTick(long ms) {
+                        long totalSeconds = ms / 1000;
+                        long hours = totalSeconds / 3600;
+                        long minutes = (totalSeconds % 3600) / 60;
+                        long seconds = totalSeconds % 60;
+
+                        if (hours > 0) {
+                            h.time.setText(
+                                    String.format(
+                                            Locale.getDefault(),
+                                            "Starts in %dh %dm",
+                                            hours, minutes
+                                    )
+                            );
+                        } else {
+                            h.time.setText(
+                                    String.format(
+                                            Locale.getDefault(),
+                                            "Starts in %02d:%02d",
+                                            minutes, seconds
+                                    )
+                            );
+                        }
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        h.time.setText("LIVE");
+                    }
+                };
+                timer.start();
+                activeTimers.put(pos, timer);
+            } else {
+                h.time.setText("LIVE");
+            }
+
+        } catch (Exception e) {
+            h.time.setText("--");
+            Log.e("HostAdapter", "Error parsing date/time: " + e.getMessage());
+        }
     }
 
     @Override

@@ -57,6 +57,21 @@ public class WalletFragment extends Fragment {
         transactionAdapter = new TransactionAdapter(getContext(), transactionList);
         rvTransactions.setAdapter(transactionAdapter);
 
+        // 🔥 CHECK ROLE AND HIDE TOP-UP FOR HOSTS
+        String role = TokenManager.getRole(requireContext());
+        if ("host".equalsIgnoreCase(role)) {
+            btnTopUp.setVisibility(View.GONE);
+
+            // Center the withdraw button by removing layout weight/gravity constraints
+            ViewGroup.LayoutParams params = btnWithdraw.getLayoutParams();
+            if (params instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams marginParams = (ViewGroup.MarginLayoutParams) params;
+                // Remove any start margin to center it
+                marginParams.setMarginStart(0);
+                btnWithdraw.setLayoutParams(marginParams);
+            }
+        }
+
         // 🔥 LOAD FROM CACHE FIRST (INSTANT), THEN API (BACKGROUND)
         loadBalanceFromCache();
         loadBalanceFromAPI();
