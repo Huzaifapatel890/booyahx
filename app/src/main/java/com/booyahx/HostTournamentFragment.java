@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.os.Parcel;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,7 +19,7 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import com.booyahx.tournament.HostRulesBottomSheet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -33,6 +34,8 @@ import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.HostTournament;
 import com.booyahx.network.models.HostTournamentResponse;
+import com.booyahx.network.models.Tournament;
+import com.booyahx.tournament.RulesBottomSheet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -109,9 +112,7 @@ public class HostTournamentFragment extends Fragment {
 
                     @Override
                     public void onViewRules(HostTournament tournament) {
-                        Toast.makeText(requireContext(),
-                                "Rules: Coming Soon!",
-                                Toast.LENGTH_SHORT).show();
+                        showRulesBottomSheet(tournament);
                     }
                 });
 
@@ -333,23 +334,19 @@ public class HostTournamentFragment extends Fragment {
                 requireContext(), rows).show();
     }
 
-    // ✅ COMPLETELY FIXED: Extract team names from teams array, NOT participants
     private List<String> getTeamNamesFromTournament(HostTournament tournament) {
         List<String> teamNames = new ArrayList<>();
 
-        // ✅ Use the teams array which contains actual team names
         if (tournament.getTeams() != null && !tournament.getTeams().isEmpty()) {
             for (HostTournament.Team team : tournament.getTeams()) {
                 String teamName = team.getTeamName();
                 if (teamName != null && !teamName.trim().isEmpty()) {
                     teamNames.add(teamName.trim());
                 } else {
-                    // Fallback if team name is somehow empty
                     teamNames.add("Team " + (teamNames.size() + 1));
                 }
             }
         } else {
-            // Fallback to participants if teams array is missing (shouldn't happen)
             if (tournament.getParticipants() != null) {
                 for (HostTournament.Participant p : tournament.getParticipants()) {
                     teamNames.add(p.getDisplayName());
@@ -358,6 +355,39 @@ public class HostTournamentFragment extends Fragment {
         }
 
         return teamNames;
+    }
+
+    // ✅ NEW: Show RulesBottomSheet using Parcel to create Tournament object
+    private void showRulesBottomSheet(HostTournament tournament) {
+        HostRulesBottomSheet rulesSheet = HostRulesBottomSheet.newInstance(tournament);
+        rulesSheet.show(getParentFragmentManager(), "HostRulesBottomSheet");
+    }
+
+    // ✅ NEW: Create Tournament using Parcel (since Tournament implements Parcelable)
+    private Tournament createTournamentFromParcel(HostTournament hostTournament) {
+        Parcel parcel = Parcel.obtain();
+        try {
+            // Write basic data to parcel
+            parcel.writeString(hostTournament.getId());
+            parcel.writeString(hostTournament.getGame());
+            parcel.writeString(hostTournament.getMode());
+            parcel.writeString(hostTournament.getSubMode());
+            parcel.writeInt(hostTournament.getEntryFee());
+            parcel.writeInt(hostTournament.getMaxPlayers());
+            parcel.writeString(hostTournament.getDate());
+            parcel.writeString(hostTournament.getStartTime());
+            parcel.writeString(hostTournament.getLockTime());
+            parcel.writeInt(hostTournament.getPrizePool());
+            parcel.writeString(hostTournament.getStatus());
+
+            // Reset parcel position to beginning for reading
+            parcel.setDataPosition(0);
+
+            // Create Tournament from parcel using its CREATOR
+            return Tournament.CREATOR.createFromParcel(parcel);
+        } finally {
+            parcel.recycle();
+        }
     }
 
     private void showEndTournamentDialog(HostTournament tournament) {

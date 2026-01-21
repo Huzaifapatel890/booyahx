@@ -1,5 +1,6 @@
 package com.booyahx.network.models;
 
+import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 
 import java.text.SimpleDateFormat;
@@ -59,9 +60,12 @@ public class HostTournament {
     @SerializedName("results")
     private List<Result> results;
 
-    // ✅ CRITICAL FIX: Added teams array to get actual team names
     @SerializedName("teams")
     private List<Team> teams;
+
+    // ✅ NEW: Rules object from API
+    @SerializedName("rules")
+    private JsonObject rules;
 
     // =====================
     // INNER MODELS
@@ -81,7 +85,6 @@ public class HostTournament {
         public void setPassword(String password) { this.password = password; }
     }
 
-    // ✅ NEW: Team class to capture team data from API
     public static class Team {
         @SerializedName("_id")
         private String id;
@@ -186,7 +189,8 @@ public class HostTournament {
     public int getPrizePool() { return prizePool; }
     public String getStatus() { return status; }
     public List<Result> getResults() { return results; }
-    public List<Team> getTeams() { return teams; }  // ✅ NEW GETTER
+    public List<Team> getTeams() { return teams; }
+    public JsonObject getRules() { return rules; } // ✅ NEW GETTER
 
     // =====================
     // UI HELPERS

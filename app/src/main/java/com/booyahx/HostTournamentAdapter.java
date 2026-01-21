@@ -99,11 +99,22 @@ public class HostTournamentAdapter
             h.time.setText(t.getTimeDisplay());
         }
 
-        // 🔥 CHANGE APPLIED HERE ONLY
-        // Submit & End visible for ALL categories
-        h.submit.setVisibility(View.VISIBLE);
-        h.end.setVisibility(View.VISIBLE);
-        h.result.setVisibility(View.VISIBLE);
+        // ✅ FIX: Show all buttons ONLY for "live" status, hide for others
+        // Rules button is always visible for all categories
+        if ("live".equals(status)) {
+            h.edit.setVisibility(View.VISIBLE);
+            h.submit.setVisibility(View.VISIBLE);
+            h.result.setVisibility(View.VISIBLE);
+            h.end.setVisibility(View.VISIBLE);
+        } else {
+            h.edit.setVisibility(View.GONE);
+            h.submit.setVisibility(View.GONE);
+            h.result.setVisibility(View.GONE);
+            h.end.setVisibility(View.GONE);
+        }
+
+        // Rules button always visible
+        h.rules.setVisibility(View.VISIBLE);
 
         h.edit.setOnClickListener(v -> listener.onEditRoom(t));
         h.submit.setOnClickListener(v -> listener.onSubmitResult(t));
