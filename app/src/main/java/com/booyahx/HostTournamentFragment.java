@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.Parcel;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,9 +33,13 @@ import com.booyahx.Host.FinalRow;
 import com.booyahx.Host.HostSubmitResultDialog;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
+import com.booyahx.network.models.EndTournamentRequest;
+import com.booyahx.network.models.EndTournamentResponse;
 import com.booyahx.network.models.HostTournament;
 import com.booyahx.network.models.HostTournamentResponse;
 import com.booyahx.network.models.Tournament;
+import com.booyahx.network.models.UpdateRoomRequest;
+import com.booyahx.network.models.UpdateRoomResponse;
 import com.booyahx.tournament.RulesBottomSheet;
 
 import java.util.ArrayList;
@@ -187,6 +192,9 @@ public class HostTournamentFragment extends Fragment {
                             Call<HostTournamentResponse> call,
                             Response<HostTournamentResponse> response) {
 
+                        if (progressBar != null)
+                            progressBar.setVisibility(View.GONE);
+
                         if (!response.isSuccessful()
                                 || response.body() == null) return;
 
@@ -212,7 +220,10 @@ public class HostTournamentFragment extends Fragment {
                     @Override
                     public void onFailure(
                             Call<HostTournamentResponse> call,
-                            Throwable t) {}
+                            Throwable t) {
+                        if (progressBar != null)
+                            progressBar.setVisibility(View.GONE);
+                    }
                 });
     }
 
@@ -268,8 +279,24 @@ public class HostTournamentFragment extends Fragment {
         TextView cancelBtn = dialog.findViewById(R.id.cancelBtn);
         TextView updateBtn = dialog.findViewById(R.id.UpdateBtn);
 
-        roomIdInput.setText(tournament.getRoomIdDisplay());
-        passwordInput.setText(tournament.getPasswordDisplay());
+        // Set numeric keyboard
+        roomIdInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        passwordInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+
+        // Get current values or set N/A
+        String currentRoomId = tournament.getRoomIdDisplay();
+        String currentPassword = tournament.getPasswordDisplay();
+
+        if (currentRoomId == null || currentRoomId.isEmpty()) {
+            currentRoomId = "N/A";
+        }
+        if (currentPassword == null || currentPassword.isEmpty()) {
+            currentPassword = "N/A";
+        }
+
+        // Set hint and text color for N/A
+        setupEditTextWithNA(roomIdInput, currentRoomId);
+        setupEditTextWithNA(passwordInput, currentPassword);
 
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
 
@@ -277,23 +304,15 @@ public class HostTournamentFragment extends Fragment {
             String newRoomId = roomIdInput.getText().toString().trim();
             String newPassword = passwordInput.getText().toString().trim();
 
-            if (newRoomId.isEmpty() || newPassword.isEmpty()) {
+            if (newRoomId.isEmpty() || newRoomId.equals("N/A") ||
+                    newPassword.isEmpty() || newPassword.equals("N/A")) {
                 Toast.makeText(requireContext(),
                         "Please fill all fields",
                         Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if (tournament.getRoom() != null) {
-                tournament.getRoom().setRoomId(newRoomId);
-                tournament.getRoom().setPassword(newPassword);
-            }
-
-            adapter.notifyDataSetChanged();
-            Toast.makeText(requireContext(),
-                    "Room updated",
-                    Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
+            updateRoomAPI(tournament.getId(), newRoomId, newPassword, dialog);
         });
 
         dialog.show();
@@ -303,6 +322,65 @@ public class HostTournamentFragment extends Fragment {
             window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT);
         }
+    }
+
+    private void setupEditTextWithNA(EditText editText, String currentValue) {
+        if (currentValue.equals("N/A")) {
+            editText.setText("N/A");
+            editText.setTextColor(Color.parseColor("#808080")); // Gray color
+        } else {
+            editText.setText(currentValue);
+            editText.setTextColor(Color.WHITE);
+        }
+
+        editText.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                if (editText.getText().toString().equals("N/A")) {
+                    editText.setText("");
+                    editText.setTextColor(Color.WHITE);
+                }
+            } else {
+                if (editText.getText().toString().trim().isEmpty()) {
+                    editText.setText("N/A");
+                    editText.setTextColor(Color.parseColor("#808080"));
+                }
+            }
+        });
+    }
+
+    private void updateRoomAPI(String tournamentId, String roomId, String password, Dialog dialog) {
+        UpdateRoomRequest request = new UpdateRoomRequest(roomId, password);
+
+        apiService.updateRoom(tournamentId, request)
+                .enqueue(new Callback<UpdateRoomResponse>() {
+                    @Override
+                    public void onResponse(Call<UpdateRoomResponse> call,
+                                           Response<UpdateRoomResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            UpdateRoomResponse updateResponse = response.body();
+
+                            Toast.makeText(requireContext(),
+                                    updateResponse.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+
+                            dialog.dismiss();
+                            loadTournamentsFromAPI();
+                        } else {
+                            Toast.makeText(requireContext(),
+                                    "Failed to update room",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<UpdateRoomResponse> call,
+                                          Throwable t) {
+                        Toast.makeText(requireContext(),
+                                "Error: " + t.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                        Log.e("UpdateRoom", "API Error", t);
+                    }
+                });
     }
 
     private void showSubmitResultDialog(HostTournament tournament) {
@@ -357,17 +435,14 @@ public class HostTournamentFragment extends Fragment {
         return teamNames;
     }
 
-    // ✅ NEW: Show RulesBottomSheet using Parcel to create Tournament object
     private void showRulesBottomSheet(HostTournament tournament) {
         HostRulesBottomSheet rulesSheet = HostRulesBottomSheet.newInstance(tournament);
         rulesSheet.show(getParentFragmentManager(), "HostRulesBottomSheet");
     }
 
-    // ✅ NEW: Create Tournament using Parcel (since Tournament implements Parcelable)
     private Tournament createTournamentFromParcel(HostTournament hostTournament) {
         Parcel parcel = Parcel.obtain();
         try {
-            // Write basic data to parcel
             parcel.writeString(hostTournament.getId());
             parcel.writeString(hostTournament.getGame());
             parcel.writeString(hostTournament.getMode());
@@ -380,10 +455,8 @@ public class HostTournamentFragment extends Fragment {
             parcel.writeInt(hostTournament.getPrizePool());
             parcel.writeString(hostTournament.getStatus());
 
-            // Reset parcel position to beginning for reading
             parcel.setDataPosition(0);
 
-            // Create Tournament from parcel using its CREATOR
             return Tournament.CREATOR.createFromParcel(parcel);
         } finally {
             parcel.recycle();
@@ -404,23 +477,38 @@ public class HostTournamentFragment extends Fragment {
         TextView cancelBtn = dialog.findViewById(R.id.cancelEndBtn);
         TextView endBtn = dialog.findViewById(R.id.endNowBtn);
 
+        // Set default reason
+        String defaultReason = "Tournament finished.";
+        reasonInput.setText(defaultReason);
+        reasonInput.setTextColor(Color.parseColor("#808080")); // Gray color
+
+        // Handle focus change for default text
+        reasonInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                if (reasonInput.getText().toString().equals(defaultReason)) {
+                    reasonInput.setText("");
+                    reasonInput.setTextColor(Color.WHITE);
+                }
+            } else {
+                if (reasonInput.getText().toString().trim().isEmpty()) {
+                    reasonInput.setText(defaultReason);
+                    reasonInput.setTextColor(Color.parseColor("#808080"));
+                }
+            }
+        });
+
         cancelBtn.setOnClickListener(v -> dialog.dismiss());
 
-        endBtn.setOnClickListener(v ->
-                new androidx.appcompat.app.AlertDialog.Builder(
-                        requireContext())
-                        .setTitle("Confirm")
-                        .setMessage("End this tournament?")
-                        .setPositiveButton("Yes",
-                                (d, w) -> {
-                                    Toast.makeText(requireContext(),
-                                            "Tournament ended",
-                                            Toast.LENGTH_SHORT).show();
-                                    dialog.dismiss();
-                                    loadTournamentsFromAPI();
-                                })
-                        .setNegativeButton("Cancel", null)
-                        .show());
+        endBtn.setOnClickListener(v -> {
+            String reason = reasonInput.getText().toString().trim();
+
+            // If empty or still default, use default message
+            if (reason.isEmpty() || reason.equals(defaultReason)) {
+                reason = defaultReason;
+            }
+
+            endTournamentAPI(tournament.getId(), reason, dialog);
+        });
 
         dialog.show();
 
@@ -430,5 +518,40 @@ public class HostTournamentFragment extends Fragment {
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT);
         }
+    }
+
+    private void endTournamentAPI(String tournamentId, String reason, Dialog dialog) {
+        EndTournamentRequest request = new EndTournamentRequest(reason);
+
+        apiService.endTournament(tournamentId, request)
+                .enqueue(new Callback<EndTournamentResponse>() {
+                    @Override
+                    public void onResponse(Call<EndTournamentResponse> call,
+                                           Response<EndTournamentResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            EndTournamentResponse endResponse = response.body();
+
+                            Toast.makeText(requireContext(),
+                                    endResponse.getMessage(),
+                                    Toast.LENGTH_LONG).show();
+
+                            dialog.dismiss();
+                            loadTournamentsFromAPI();
+                        } else {
+                            Toast.makeText(requireContext(),
+                                    "Failed to end tournament",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<EndTournamentResponse> call,
+                                          Throwable t) {
+                        Toast.makeText(requireContext(),
+                                "Error: " + t.getMessage(),
+                                Toast.LENGTH_SHORT).show();
+                        Log.e("EndTournament", "API Error", t);
+                    }
+                });
     }
 }

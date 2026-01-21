@@ -80,6 +80,11 @@ public interface ApiService {
     @GET("/api/tournament/joined")
     Call<JoinedTournamentResponse> getJoinedTournaments();
 
+    @POST("api/host/tournaments/{tournamentId}/end")
+    Call<EndTournamentResponse> endTournament(
+            @Path("tournamentId") String tournamentId,
+            @Body EndTournamentRequest request
+    );
 
     /* ================= SUPPORT ================= */
 
@@ -104,6 +109,11 @@ public interface ApiService {
             @Body HostApplyRequest request
     );
 
+    @POST("api/host/tournaments/{tournamentId}/update-room")
+    Call<UpdateRoomResponse> updateRoom(
+            @Path("tournamentId") String tournamentId,
+            @Body UpdateRoomRequest request
+    );
     /* ================= PAYMENT ================= */
     @POST("/api/payment/create-qr")
     Call<CreateQRResponse> createQR(@Body CreateQRRequest request);
