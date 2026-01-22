@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat;
 
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
+import com.booyahx.network.models.CsrfResponse;
 import com.booyahx.network.models.ForgotPasswordRequest;
 import com.booyahx.network.models.ResetPasswordRequest;
 import com.booyahx.network.models.SimpleResponse;
@@ -83,9 +84,9 @@ public class ForgotPasswordActivity extends AppCompatActivity {
             startLocalBlockCountdown(blockUntil - now);
         }
 
-        btnSendOtp.setOnClickListener(v -> sendOtp());
+        btnSendOtp.setOnClickListener(v -> fetchCsrfAndSendOtp());
 
-        btnReset.setOnClickListener(v -> resetPassword());
+        btnReset.setOnClickListener(v -> fetchCsrfAndResetPassword());
     }
 
     private void initViews() {
@@ -129,19 +130,40 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         toast.show();
     }
 
-    // ------------------------------------------------------------
-    // SEND OTP WITH LOADER
-    // ------------------------------------------------------------
-    private void sendOtp() {
-
-        LoaderOverlay.show(this);
+    private void fetchCsrfAndSendOtp() {
 
         String email = etForgotEmail.getText().toString().trim();
         if (email.isEmpty()) {
-            LoaderOverlay.hide(this);
             showTopRightToast("Enter email");
             return;
         }
+
+        LoaderOverlay.show(this);
+
+        api.getCsrfToken().enqueue(new Callback<CsrfResponse>() {
+            @Override
+            public void onResponse(Call<CsrfResponse> call, Response<CsrfResponse> response) {
+
+                if (response.isSuccessful() && response.body() != null) {
+                    String csrfToken = response.body().getData().getCsrfToken();
+                    TokenManager.saveCsrf(ForgotPasswordActivity.this, csrfToken);
+
+                    sendOtp(email);
+                } else {
+                    LoaderOverlay.hide(ForgotPasswordActivity.this);
+                    showTopRightToast("Failed to get CSRF token");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CsrfResponse> call, Throwable t) {
+                LoaderOverlay.hide(ForgotPasswordActivity.this);
+                showTopRightToast("Network Error!");
+            }
+        });
+    }
+
+    private void sendOtp(String email) {
 
         Call<SimpleResponse> call = api.forgotPassword(new ForgotPasswordRequest(email));
         call.enqueue(new Callback<SimpleResponse>() {
@@ -186,15 +208,9 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         });
     }
 
-    // ------------------------------------------------------------
-    // RESET PASSWORD WITH LOADER
-    // ------------------------------------------------------------
-    private void resetPassword() {
-
-        LoaderOverlay.show(this);
+    private void fetchCsrfAndResetPassword() {
 
         if (!otpSent) {
-            LoaderOverlay.hide(this);
             showTopRightToast("Send OTP first");
             return;
         }
@@ -207,17 +223,42 @@ public class ForgotPasswordActivity extends AppCompatActivity {
                 otp6.getText().toString();
 
         if (otp.length() != 6) {
-            LoaderOverlay.hide(this);
             showTopRightToast("Enter full OTP");
             return;
         }
 
         String newPass = etNewPassword.getText().toString().trim();
         if (newPass.length() < 8) {
-            LoaderOverlay.hide(this);
             showTopRightToast("Password must be 8+ characters");
             return;
         }
+
+        LoaderOverlay.show(this);
+
+        api.getCsrfToken().enqueue(new Callback<CsrfResponse>() {
+            @Override
+            public void onResponse(Call<CsrfResponse> call, Response<CsrfResponse> response) {
+
+                if (response.isSuccessful() && response.body() != null) {
+                    String csrfToken = response.body().getData().getCsrfToken();
+                    TokenManager.saveCsrf(ForgotPasswordActivity.this, csrfToken);
+
+                    resetPassword(otp, newPass);
+                } else {
+                    LoaderOverlay.hide(ForgotPasswordActivity.this);
+                    showTopRightToast("Failed to get CSRF token");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CsrfResponse> call, Throwable t) {
+                LoaderOverlay.hide(ForgotPasswordActivity.this);
+                showTopRightToast("Network Error!");
+            }
+        });
+    }
+
+    private void resetPassword(String otp, String newPass) {
 
         ResetPasswordRequest req = new ResetPasswordRequest(
                 etForgotEmail.getText().toString().trim(),
@@ -261,9 +302,6 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         });
     }
 
-    // ------------------------------------------------------------
-    // OTP TIMER + HELPERS
-    // ------------------------------------------------------------
     private void startOtpCountdown() {
         btnSendOtp.setEnabled(false);
 

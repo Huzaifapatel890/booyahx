@@ -15,14 +15,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.AuthResponse;
+import com.booyahx.network.models.CsrfResponse;
 import com.booyahx.network.models.RegisterRequest;
 import com.booyahx.network.models.RegisterResponse;
 import com.booyahx.network.models.VerifyOtpRequest;
-
 
 import org.json.JSONObject;
 
@@ -57,12 +56,8 @@ public class RegisterActivity extends AppCompatActivity {
         initViews();
         setupOtpAutoMove();
 
-        // ✅ SEND OTP DIRECTLY (CSRF handled automatically)
-        btnSendOtp.setOnClickListener(v -> sendOtp());
-
-        // ✅ VERIFY OTP & REGISTER DIRECTLY
-        btnRegister.setOnClickListener(v -> verifyOtpAndRegister());
-
+        btnSendOtp.setOnClickListener(v -> fetchCsrfAndSendOtp());
+        btnRegister.setOnClickListener(v -> fetchCsrfAndVerifyOtp());
         txtGoLogin.setOnClickListener(v -> finish());
     }
 
@@ -108,10 +103,7 @@ public class RegisterActivity extends AppCompatActivity {
         toast.show();
     }
 
-    // ----------------------------------------------------
-    // SEND OTP WITH LOADER
-    // ----------------------------------------------------
-    private void sendOtp() {
+    private void fetchCsrfAndSendOtp() {
         String email = etEmail.getText().toString().trim();
         String name = etUsername.getText().toString().trim();
 
@@ -125,6 +117,31 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         LoaderOverlay.show(RegisterActivity.this);
+
+        api.getCsrfToken().enqueue(new Callback<CsrfResponse>() {
+            @Override
+            public void onResponse(Call<CsrfResponse> call, Response<CsrfResponse> response) {
+
+                if (response.isSuccessful() && response.body() != null) {
+                    String csrfToken = response.body().getData().getCsrfToken();
+                    TokenManager.saveCsrf(RegisterActivity.this, csrfToken);
+
+                    sendOtp(email, name);
+                } else {
+                    LoaderOverlay.hide(RegisterActivity.this);
+                    showTopRightToast("Failed to get CSRF token");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CsrfResponse> call, Throwable t) {
+                LoaderOverlay.hide(RegisterActivity.this);
+                showTopRightToast("Network Error!");
+            }
+        });
+    }
+
+    private void sendOtp(String email, String name) {
 
         Call<RegisterResponse> call = api.registerUser(new RegisterRequest(email, name));
         call.enqueue(new Callback<RegisterResponse>() {
@@ -164,10 +181,7 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
-    // ----------------------------------------------------
-    // VERIFY OTP + REGISTER WITH LOADER
-    // ----------------------------------------------------
-    private void verifyOtpAndRegister() {
+    private void fetchCsrfAndVerifyOtp() {
 
         if (!otpSent) {
             showTopRightToast("Send OTP first");
@@ -192,6 +206,31 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         LoaderOverlay.show(RegisterActivity.this);
+
+        api.getCsrfToken().enqueue(new Callback<CsrfResponse>() {
+            @Override
+            public void onResponse(Call<CsrfResponse> call, Response<CsrfResponse> response) {
+
+                if (response.isSuccessful() && response.body() != null) {
+                    String csrfToken = response.body().getData().getCsrfToken();
+                    TokenManager.saveCsrf(RegisterActivity.this, csrfToken);
+
+                    verifyOtpAndRegister(email, otp, pass);
+                } else {
+                    LoaderOverlay.hide(RegisterActivity.this);
+                    showTopRightToast("Failed to get CSRF token");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CsrfResponse> call, Throwable t) {
+                LoaderOverlay.hide(RegisterActivity.this);
+                showTopRightToast("Network Error!");
+            }
+        });
+    }
+
+    private void verifyOtpAndRegister(String email, String otp, String pass) {
 
         Call<AuthResponse> call = api.verifyOtp(new VerifyOtpRequest(email, otp, pass));
         call.enqueue(new Callback<AuthResponse>() {

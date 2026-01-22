@@ -16,12 +16,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.booyahx.TokenManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
+import com.booyahx.network.models.CsrfResponse;
 import com.booyahx.network.models.LoginRequest;
 import com.booyahx.network.models.AuthResponse;
-
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -39,9 +38,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
     ProgressBar loginLoader;
 
     Boolean showPass = false;
-
     ApiService api;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,9 +91,7 @@ public class LoginUsernameActivity extends AppCompatActivity {
                 return;
             }
 
-            // ✅ DIRECT LOGIN
-            // CSRF + cookies are handled automatically by interceptor
-            loginUser(email, pass);
+            fetchCsrfAndLogin(email, pass);
         });
 
         txtForgotPassword.setOnClickListener(v ->
@@ -134,12 +129,34 @@ public class LoginUsernameActivity extends AppCompatActivity {
         toast.show();
     }
 
-    // ----------------------------------------------------
-    // LOGIN USER + FULLSCREEN LOADER
-    // ----------------------------------------------------
-    private void loginUser(String email, String password) {
+    private void fetchCsrfAndLogin(String email, String password) {
 
         LoaderOverlay.show(LoginUsernameActivity.this);
+
+        api.getCsrfToken().enqueue(new Callback<CsrfResponse>() {
+            @Override
+            public void onResponse(Call<CsrfResponse> call, Response<CsrfResponse> response) {
+
+                if (response.isSuccessful() && response.body() != null) {
+                    String csrfToken = response.body().getData().getCsrfToken();
+                    TokenManager.saveCsrf(LoginUsernameActivity.this, csrfToken);
+
+                    loginUser(email, password);
+                } else {
+                    LoaderOverlay.hide(LoginUsernameActivity.this);
+                    showTopRightToast("Failed to get CSRF token");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CsrfResponse> call, Throwable t) {
+                LoaderOverlay.hide(LoginUsernameActivity.this);
+                showTopRightToast("Network Error!");
+            }
+        });
+    }
+
+    private void loginUser(String email, String password) {
 
         Call<AuthResponse> call = api.loginUser(new LoginRequest(email, password));
 
@@ -153,11 +170,9 @@ public class LoginUsernameActivity extends AppCompatActivity {
 
                     AuthResponse resp = response.body();
 
-                    // 🔥 ALWAYS SHOW BACKEND MESSAGE
                     String backendMsg = resp.message != null ? resp.message : "Success";
                     showTopRightToast(backendMsg);
 
-                    // 🔥 If login successful → redirect
                     if (resp.success && resp.data != null) {
 
                         TokenManager.saveTokens(
@@ -181,13 +196,11 @@ public class LoginUsernameActivity extends AppCompatActivity {
                         if (raw != null) {
                             JSONObject obj = new JSONObject(raw);
 
-                            // 1️⃣ Direct "message"
                             if (obj.has("message")) {
                                 showTopRightToast(obj.getString("message"));
                                 return;
                             }
 
-                            // 2️⃣ Validation errors[]
                             if (obj.has("errors")) {
                                 JSONArray arr = obj.getJSONArray("errors");
                                 if (arr.length() > 0) {
