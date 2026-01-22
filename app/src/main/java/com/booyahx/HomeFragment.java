@@ -1,6 +1,7 @@
 package com.booyahx;
 
 import com.booyahx.utils.TopRightToast;
+import com.booyahx.utils.TournamentJoinStateManager;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -30,13 +31,16 @@ import com.booyahx.network.models.TournamentResponse;
 import com.booyahx.network.models.WalletBalanceResponse;
 import com.booyahx.network.models.HostApplyRequest;
 import com.booyahx.network.models.HostApplyResponse;
+import com.booyahx.network.models.HostTournamentsListResponse;
 import com.booyahx.tournament.RulesBottomSheet;
 import com.booyahx.tournament.JoinTournamentDialog;
 import com.booyahx.utils.NotificationPref;
 import com.booyahx.notifications.NotificationActivity;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -61,6 +65,8 @@ public class HomeFragment extends Fragment {
     private View fragmentLoader;
     private ImageView loaderRing, loaderGlow;
     private int pendingCalls = 0;
+
+    private boolean tournamentsLoaded = false;
 
     @Nullable
     @Override
@@ -119,13 +125,21 @@ public class HomeFragment extends Fragment {
                 this,
                 (requestKey, bundle) -> {
                     if (isAdded()) {
-                        // 🔥 REFRESH BALANCE FROM API (BALANCE CHANGED)
+                        // ✅ ONLY UPDATE WALLET & MARK BUTTON
                         loadWalletBalanceFromAPI();
 
                         String tournamentId = bundle.getString("tournament_id");
-                        if (tournamentId != null) {
+                        String userId = ProfileCacheManager.getUserId(requireContext());
+
+                        if (tournamentId != null && userId != null) {
+                            TournamentJoinStateManager.markAsJoined(
+                                    requireContext(),
+                                    userId,
+                                    tournamentId
+                            );
                             markTournamentAsJoined(tournamentId);
                         }
+                        // ❌ NO API RELOAD HERE
                     }
                 }
         );
@@ -135,6 +149,7 @@ public class HomeFragment extends Fragment {
                 this,
                 (requestKey, bundle) -> {
                     if (isAdded()) {
+                        tournamentsLoaded = false;
                         loadTournaments();
                     }
                 }
@@ -145,7 +160,6 @@ public class HomeFragment extends Fragment {
                 this,
                 (requestKey, bundle) -> {
                     if (isAdded()) {
-                        // 🔥 BALANCE UPDATED (TOP-UP/WITHDRAW)
                         loadWalletBalanceFromCache();
                     }
                 }
@@ -158,7 +172,6 @@ public class HomeFragment extends Fragment {
         updateButtonStates(currentMode);
 
         view.post(() -> {
-            // 🔥 LOAD FROM CACHE FIRST, THEN API IF NEEDED
             loadProfileData();
             loadWalletData();
         });
@@ -182,6 +195,7 @@ public class HomeFragment extends Fragment {
                 TournamentStatusAdapter.StatusItem selected = statusAdapter.getItem(position);
                 if (selected != null && !selected.apiValue.equals(currentStatus)) {
                     currentStatus = selected.apiValue;
+                    tournamentsLoaded = false;
                     loadTournaments();
                 }
             }
@@ -199,15 +213,12 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    // 🔥 PROFILE DATA LOADING SYSTEM
     private void loadProfileData() {
-        // 1️⃣ Try to load from cache first
         if (ProfileCacheManager.hasProfile(requireContext())) {
             loadProfileFromCache();
-            // Load tournaments after profile is loaded
+            checkAccountSwitch();
             loadTournaments();
         } else {
-            // 2️⃣ No cache → hit API
             loadProfileFromAPI();
         }
     }
@@ -232,12 +243,11 @@ public class HomeFragment extends Fragment {
 
                     ProfileResponse.Data data = response.body().data;
 
-                    // 🔥 SAVE TO CACHE
                     ProfileCacheManager.saveProfile(requireContext(), data);
 
-                    // 🔥 ALSO SAVE TO OLD TOKEN MANAGER FOR COMPATIBILITY
                     if (data.userId != null) {
                         TokenManager.saveUserId(requireContext(), data.userId);
+                        checkAccountSwitch();
                     }
                     if (data.role != null) {
                         TokenManager.saveRole(requireContext(), data.role);
@@ -259,6 +269,19 @@ public class HomeFragment extends Fragment {
         });
     }
 
+    private void checkAccountSwitch() {
+        String currentUserId = ProfileCacheManager.getUserId(requireContext());
+
+        if (currentUserId != null) {
+            if (TournamentJoinStateManager.hasUserSwitched(requireContext(), currentUserId)) {
+                TournamentJoinStateManager.setCurrentUser(requireContext(), currentUserId);
+                tournamentsLoaded = false;
+            } else {
+                TournamentJoinStateManager.setCurrentUser(requireContext(), currentUserId);
+            }
+        }
+    }
+
     private void updateProfileUI(ProfileResponse.Data data) {
         txtUsername.setText(data.name != null ? data.name : "User");
 
@@ -270,13 +293,10 @@ public class HomeFragment extends Fragment {
         }
     }
 
-    // 🔥 WALLET DATA LOADING SYSTEM
     private void loadWalletData() {
-        // 1️⃣ Try to load from cache first
         if (WalletCacheManager.hasBalance(requireContext())) {
             loadWalletBalanceFromCache();
         } else {
-            // 2️⃣ No cache → hit API
             loadWalletBalanceFromAPI();
         }
     }
@@ -297,10 +317,7 @@ public class HomeFragment extends Fragment {
                         && response.body().data != null) {
 
                     double balance = response.body().data.balanceGC;
-
-                    // 🔥 SAVE TO CACHE
                     WalletCacheManager.saveBalance(requireContext(), balance);
-
                     txtWalletBalance.setText(String.format("%.2f GC", balance));
                 }
             }
@@ -356,6 +373,7 @@ public class HomeFragment extends Fragment {
     private void switchMode(String mode) {
         currentMode = mode;
         updateButtonStates(mode);
+        tournamentsLoaded = false;
         loadTournaments();
     }
 
@@ -370,9 +388,23 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadTournaments() {
+        if (tournamentsLoaded) {
+            return;
+        }
+
         tournamentsContainer.removeAllViews();
         showLoader();
 
+        String role = ProfileCacheManager.getRole(requireContext());
+
+        if ("host".equalsIgnoreCase(role)) {
+            loadHostTournaments();
+        } else {
+            loadUserTournaments();
+        }
+    }
+
+    private void loadUserTournaments() {
         api.getTournaments(currentStatus, currentMode)
                 .enqueue(new Callback<TournamentResponse>() {
                     @Override
@@ -383,9 +415,12 @@ public class HomeFragment extends Fragment {
                                 && response.body().data != null
                                 && response.body().data.tournaments != null) {
 
-                            for (Tournament t : response.body().data.tournaments) {
-                                tournamentsContainer.addView(createTournamentCard(t));
-                            }
+                            List<Tournament> uniqueTournaments = removeDuplicateTournaments(
+                                    response.body().data.tournaments
+                            );
+
+                            renderTournaments(uniqueTournaments);
+                            tournamentsLoaded = true;
                         }
                     }
 
@@ -396,20 +431,90 @@ public class HomeFragment extends Fragment {
                 });
     }
 
+    private void loadHostTournaments() {
+        api.getHostTournaments(currentStatus, currentMode)
+                .enqueue(new Callback<HostTournamentsListResponse>() {
+                    @Override
+                    public void onResponse(Call<HostTournamentsListResponse> call, Response<HostTournamentsListResponse> response) {
+                        hideLoader();
+                        if (response.isSuccessful()
+                                && response.body() != null
+                                && response.body().data != null
+                                && response.body().data.tournaments != null) {
+
+                            List<Tournament> uniqueTournaments = removeDuplicateTournaments(
+                                    response.body().data.tournaments
+                            );
+
+                            renderTournaments(uniqueTournaments);
+                            tournamentsLoaded = true;
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<HostTournamentsListResponse> call, Throwable t) {
+                        hideLoader();
+                    }
+                });
+    }
+
+    private List<Tournament> removeDuplicateTournaments(List<Tournament> tournaments) {
+        if (tournaments == null || tournaments.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Map<String, Tournament> uniqueMap = new LinkedHashMap<>();
+
+        for (Tournament tournament : tournaments) {
+            String tournamentId = tournament.getId();
+
+            if (tournamentId != null && !tournamentId.trim().isEmpty()) {
+                if (!uniqueMap.containsKey(tournamentId)) {
+                    uniqueMap.put(tournamentId, tournament);
+                }
+            }
+        }
+
+        return new ArrayList<>(uniqueMap.values());
+    }
+
+    private void renderTournaments(List<Tournament> tournaments) {
+        if (!isAdded() || tournamentsContainer == null) {
+            return;
+        }
+
+        tournamentsContainer.removeAllViews();
+
+        for (Tournament tournament : tournaments) {
+            View cardView = createTournamentCard(tournament);
+            if (cardView != null) {
+                tournamentsContainer.addView(cardView);
+            }
+        }
+    }
+
     private void markTournamentAsJoined(String tournamentId) {
+        if (tournamentId == null || !isAdded() || tournamentsContainer == null) {
+            return;
+        }
+
         for (int i = 0; i < tournamentsContainer.getChildCount(); i++) {
             View card = tournamentsContainer.getChildAt(i);
             View btnJoin = card.findViewById(R.id.btnT1Join);
+
             if (btnJoin != null && btnJoin.getTag() != null && btnJoin.getTag().equals(tournamentId)) {
                 btnJoin.setEnabled(false);
                 btnJoin.setAlpha(0.5f);
                 ((TextView) btnJoin).setText("Joined");
-                break;
             }
         }
     }
 
     private View createTournamentCard(Tournament t) {
+        if (t == null || t.getId() == null) {
+            return null;
+        }
+
         View card = LayoutInflater.from(getContext())
                 .inflate(R.layout.item_tournament_card, tournamentsContainer, false);
 
@@ -454,7 +559,6 @@ public class HomeFragment extends Fragment {
         if (btnJoin != null) {
             btnJoin.setTag(t.getId());
 
-            // 🔥 USE CACHED ROLE AND USER ID
             String role = ProfileCacheManager.getRole(requireContext());
             String myUserId = ProfileCacheManager.getUserId(requireContext());
 
@@ -473,14 +577,32 @@ public class HomeFragment extends Fragment {
                     btnJoin.setVisibility(View.GONE);
                 }
                 else {
-                    ((TextView) btnJoin).setText("Apply");
-                    btnJoin.setEnabled(true);
-                    btnJoin.setAlpha(1f);
-                    btnJoin.setBackgroundResource(R.drawable.neon_button);
+                    if (t.hasApplied != null && t.hasApplied) {
+                        String appStatus = t.applicationStatus != null ? t.applicationStatus : "pending";
 
-                    btnJoin.setOnClickListener(v ->
-                            applyForHost(t.getId(), btnJoin)
-                    );
+                        if ("pending".equalsIgnoreCase(appStatus)) {
+                            ((TextView) btnJoin).setText("Applied");
+                            btnJoin.setEnabled(false);
+                            btnJoin.setAlpha(0.5f);
+                        } else if ("approved".equalsIgnoreCase(appStatus)) {
+                            ((TextView) btnJoin).setText("Approved");
+                            btnJoin.setEnabled(false);
+                            btnJoin.setAlpha(0.5f);
+                        } else if ("rejected".equalsIgnoreCase(appStatus)) {
+                            ((TextView) btnJoin).setText("Rejected");
+                            btnJoin.setEnabled(false);
+                            btnJoin.setAlpha(0.5f);
+                        }
+                    } else {
+                        ((TextView) btnJoin).setText("Apply");
+                        btnJoin.setEnabled(true);
+                        btnJoin.setAlpha(1f);
+                        btnJoin.setBackgroundResource(R.drawable.neon_button);
+
+                        btnJoin.setOnClickListener(v ->
+                                applyForHost(t.getId(), btnJoin)
+                        );
+                    }
                 }
 
                 return card;
@@ -492,10 +614,19 @@ public class HomeFragment extends Fragment {
 
                 if (!"upcoming".equalsIgnoreCase(t.getStatus())) {
                     btnJoin.setVisibility(View.GONE);
-                } else if (t.isJoinedDerived(myUserId)) {
-                    btnJoin.setEnabled(false);
-                    btnJoin.setAlpha(0.5f);
-                    ((TextView) btnJoin).setText("Joined");
+                } else {
+                    boolean isJoinedLocally = TournamentJoinStateManager.hasJoined(
+                            requireContext(),
+                            myUserId,
+                            t.getId()
+                    );
+                    boolean isJoinedAPI = t.isJoinedDerived(myUserId);
+
+                    if (isJoinedLocally || isJoinedAPI) {
+                        btnJoin.setEnabled(false);
+                        btnJoin.setAlpha(0.5f);
+                        ((TextView) btnJoin).setText("Joined");
+                    }
                 }
             }
         }
@@ -538,5 +669,13 @@ public class HomeFragment extends Fragment {
     private void resetApply(View btn) {
         btn.setEnabled(true);
         btn.setAlpha(1f);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        checkAccountSwitch();
+
     }
 }
