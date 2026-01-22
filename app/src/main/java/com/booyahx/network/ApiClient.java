@@ -25,6 +25,9 @@ public class ApiClient {
 
             OkHttpClient client = new OkHttpClient.Builder()
                     .cookieJar(CookieStore.getInstance())
+                    // 🔥 CRITICAL: Add CSRF Response Interceptor FIRST
+                    .addInterceptor(new CsrfResponseInterceptor(ctx))
+                    // 🔥 Then request interceptors
                     .addInterceptor(new AuthInterceptor(ctx))
                     .addInterceptor(new TokenRefreshInterceptor(ctx))
                     .addInterceptor(log)
@@ -46,13 +49,12 @@ public class ApiClient {
 
         if (refresh == null) {
 
-            // Add logging to debug refresh requests
             HttpLoggingInterceptor log = new HttpLoggingInterceptor();
             log.setLevel(HttpLoggingInterceptor.Level.BODY);
 
             OkHttpClient refreshClient = new OkHttpClient.Builder()
-                    .cookieJar(CookieStore.getInstance()) // ✅ CRITICAL: Must have cookies
-                    .addInterceptor(log) // ✅ Add logging to see what's happening
+                    .cookieJar(CookieStore.getInstance())
+                    .addInterceptor(log)
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)

@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.booyahx.ProfileCacheManager;
 import com.booyahx.R;
 import com.booyahx.network.models.Tournament;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
@@ -58,6 +59,7 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
                 : null;
 
         initViews(view);
+        setupButtonsBasedOnRole();
         setupListeners();
         populateUI();
 
@@ -74,6 +76,37 @@ public class RulesBottomSheet extends BottomSheetDialogFragment {
         btnGotIt = v.findViewById(R.id.btnGotIt);
         btnJoinNow = v.findViewById(R.id.btnJoinNow);
         btnCloseSheet = v.findViewById(R.id.btnCloseSheet);
+    }
+
+    private void setupButtonsBasedOnRole() {
+        String role = ProfileCacheManager.getRole(requireContext());
+
+        if ("host".equalsIgnoreCase(role)) {
+            // 🔥 HOST: HIDE JOIN BUTTON, CENTER GOT IT BUTTON
+            btnJoinNow.setVisibility(View.GONE);
+            btnGotIt.setVisibility(View.VISIBLE);
+
+            // Center the Got It button
+            LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) btnGotIt.getLayoutParams();
+            params.width = LinearLayout.LayoutParams.MATCH_PARENT;
+            btnGotIt.setLayoutParams(params);
+
+        } else {
+            // 🔥 USER: SHOW BOTH BUTTONS SIDE BY SIDE
+            btnGotIt.setVisibility(View.VISIBLE);
+            btnJoinNow.setVisibility(View.VISIBLE);
+
+            // Reset to default side-by-side layout
+            LinearLayout.LayoutParams paramsGotIt = (LinearLayout.LayoutParams) btnGotIt.getLayoutParams();
+            paramsGotIt.width = 0;
+            paramsGotIt.weight = 1;
+            btnGotIt.setLayoutParams(paramsGotIt);
+
+            LinearLayout.LayoutParams paramsJoin = (LinearLayout.LayoutParams) btnJoinNow.getLayoutParams();
+            paramsJoin.width = 0;
+            paramsJoin.weight = 1;
+            btnJoinNow.setLayoutParams(paramsJoin);
+        }
     }
 
     private void setupListeners() {

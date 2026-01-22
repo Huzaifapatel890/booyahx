@@ -78,7 +78,6 @@ public final class TokenRefreshInterceptor implements Interceptor {
                             .getRefreshClient()
                             .create(ApiService.class);
 
-                    // ✅ SEND REFRESH TOKEN IN BODY
                     RefreshRequest refreshRequest = new RefreshRequest(refreshToken);
                     Call<RefreshResponse> call = api.refreshToken(refreshRequest);
 
@@ -94,6 +93,18 @@ public final class TokenRefreshInterceptor implements Interceptor {
                                 r.body().data.accessToken,
                                 r.body().data.refreshToken
                         );
+
+                        // 🔥 EXTRACT AND SAVE NEW CSRF TOKEN FROM REFRESH RESPONSE
+                        String newCsrf = r.headers().get("x-csrf-token");
+                        if (newCsrf == null || newCsrf.isEmpty()) {
+                            newCsrf = r.headers().get("X-CSRF-Token");
+                        }
+
+                        if (newCsrf != null && !newCsrf.isEmpty()) {
+                            Log.d(TAG, "New CSRF token received from refresh: " + newCsrf);
+                            TokenManager.saveCsrf(ctx, newCsrf);
+                        }
+
                     } else {
                         String errorMsg = r.body() != null ? r.body().message : "null body";
                         Log.e(TAG, "Token refresh failed: " + errorMsg);
@@ -129,11 +140,17 @@ public final class TokenRefreshInterceptor implements Interceptor {
 
         Log.d(TAG, "Retrying request with new token");
 
-        Request retry = request.newBuilder()
-                .header("Authorization", "Bearer " + newToken)
-                .header("X-Retry-Count", String.valueOf(retryCount + 1))
-                .build();
+        // 🔥 GET UPDATED CSRF TOKEN FOR RETRY
+        String newCsrf = TokenManager.getCsrf(ctx);
 
-        return chain.proceed(retry);
+        Request.Builder retryBuilder = request.newBuilder()
+                .header("Authorization", "Bearer " + newToken)
+                .header("X-Retry-Count", String.valueOf(retryCount + 1));
+
+        if (newCsrf != null) {
+            retryBuilder.header("X-CSRF-Token", newCsrf);
+        }
+
+        return chain.proceed(retryBuilder.build());
     }
 }

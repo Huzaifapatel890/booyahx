@@ -109,6 +109,12 @@ public interface ApiService {
             @Body HostApplyRequest request
     );
 
+    @GET("/api/host/tournaments/available")
+    Call<HostTournamentsListResponse> getHostTournaments(
+            @Query("status") String status,
+            @Query("mode") String mode
+    );
+
     @POST("api/host/tournaments/{tournamentId}/update-room")
     Call<UpdateRoomResponse> updateRoom(
             @Path("tournamentId") String tournamentId,

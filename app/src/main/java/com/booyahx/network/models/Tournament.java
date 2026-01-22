@@ -58,10 +58,63 @@ public class Tournament implements Parcelable {
         return status;
     }
 
+    /* ================= HOST APPLICATION FIELDS (NEW) ================= */
+
+    @SerializedName("hasApplied")
+    public Boolean hasApplied;
+
+    @SerializedName("applicationStatus")
+    public String applicationStatus;
+
+    @SerializedName("hostApplication")
+    public HostApplication hostApplication;
+
+    public static class HostApplication implements Parcelable {
+        @SerializedName("applicationId")
+        public String applicationId;
+
+        @SerializedName("status")
+        public String status;
+
+        @SerializedName("appliedAt")
+        public String appliedAt;
+
+        protected HostApplication(Parcel in) {
+            applicationId = in.readString();
+            status = in.readString();
+            appliedAt = in.readString();
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeString(applicationId);
+            dest.writeString(status);
+            dest.writeString(appliedAt);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        public static final Creator<HostApplication> CREATOR = new Creator<HostApplication>() {
+            @Override
+            public HostApplication createFromParcel(Parcel in) {
+                return new HostApplication(in);
+            }
+
+            @Override
+            public HostApplication[] newArray(int size) {
+                return new HostApplication[size];
+            }
+        };
+    }
+
     /* ================= TEAMS (DERIVED JOIN LOGIC) ================= */
 
     @SerializedName("teams")
     private List<Team> teams;
+
     @SerializedName("hostId")
     private Host hostId;
 
@@ -69,12 +122,42 @@ public class Tournament implements Parcelable {
         return hostId;
     }
 
-    public static class Host {
+    public static class Host implements Parcelable {
         @SerializedName("_id")
         public String id;
 
         public String name;
         public String ign;
+
+        protected Host(Parcel in) {
+            id = in.readString();
+            name = in.readString();
+            ign = in.readString();
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            dest.writeString(id);
+            dest.writeString(name);
+            dest.writeString(ign);
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        public static final Creator<Host> CREATOR = new Creator<Host>() {
+            @Override
+            public Host createFromParcel(Parcel in) {
+                return new Host(in);
+            }
+
+            @Override
+            public Host[] newArray(int size) {
+                return new Host[size];
+            }
+        };
     }
 
     public boolean isJoinedDerived(String userId) {
@@ -190,6 +273,10 @@ public class Tournament implements Parcelable {
         lobbyName = in.readString();
         rules = in.readParcelable(TournamentRules.class.getClassLoader());
         status = in.readString();
+        hasApplied = (Boolean) in.readValue(Boolean.class.getClassLoader());
+        applicationStatus = in.readString();
+        hostApplication = in.readParcelable(HostApplication.class.getClassLoader());
+        hostId = in.readParcelable(Host.class.getClassLoader());
     }
 
     @Override
@@ -207,6 +294,10 @@ public class Tournament implements Parcelable {
         dest.writeString(lobbyName);
         dest.writeParcelable(rules, flags);
         dest.writeString(status);
+        dest.writeValue(hasApplied);
+        dest.writeString(applicationStatus);
+        dest.writeParcelable(hostApplication, flags);
+        dest.writeParcelable(hostId, flags);
     }
 
     @Override
