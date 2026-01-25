@@ -43,6 +43,8 @@ public interface ApiService {
             @Body ChangePasswordRequest request
     );
 
+
+
     /* ================= PROFILE ================= */
 
     @GET("/api/profile")
@@ -50,6 +52,9 @@ public interface ApiService {
 
     @PUT("/api/profile")
     Call<SimpleResponse> updateProfile(@Body UpdateProfileRequest request);
+
+    @POST("/api/auth/logout")
+    Call<LogoutResponse> logout(@Body LogoutRequest request);
 
 
     /* ================= WALLET ================= */

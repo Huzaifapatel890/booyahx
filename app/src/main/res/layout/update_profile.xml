@@ -126,13 +126,15 @@
                 android:textSize="15sp"
                 android:layout_marginTop="12dp"/>
 
-            <!-- DEFAULT SPINNER, NO CUSTOM DROPDOWN -->
             <Spinner
                 android:id="@+id/spinnerGender"
                 android:layout_width="match_parent"
+                android:textColor="#FFFFFF"
                 android:layout_height="48dp"
-                android:background="@drawable/btn_neon_blue"
-                android:padding="12dp" />
+                android:background="@drawable/bg_spinner_selected"
+                android:popupBackground="@drawable/bg_spinner_dropdown_popup"
+                android:dropDownWidth="match_parent"
+                android:spinnerMode="dropdown" />
 
             <!-- IN-GAME NAME -->
             <TextView
@@ -176,7 +178,7 @@
                 android:hint="Enter phone number"
                 android:textColorHint="#80FFFFFF"/>
 
-            <!-- PAYMENT METHOD -->
+            <!-- PAYMENT METHOD - STATIC TEXT -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -186,13 +188,15 @@
                 android:textSize="15sp"
                 android:layout_marginTop="12dp"/>
 
-            <!-- DEFAULT SPINNER -->
-            <Spinner
-                android:id="@+id/spinnerPaymentMethod"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:background="@drawable/btn_neon_blue"
-                android:padding="12dp" />
+                android:padding="12dp"
+                android:text="UPI   (OTHER COMING SOON)"
+                android:textColor="#BBBBBB"
+                android:textSize="14sp"
+                android:gravity="center_vertical"/>
 
             <!-- UPI ID -->
             <TextView
@@ -219,7 +223,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Email (Not Editable)"
+                android:text="Email"
                 android:textColor="#00C3FF"
                 android:textSize="15sp"
                 android:textStyle="bold"

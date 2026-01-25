@@ -3,7 +3,7 @@ package com.booyahx.settings;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.animation.AlphaAnimation;
-import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Spinner;
@@ -13,13 +13,16 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.booyahx.ProfileCacheManager;
 import com.booyahx.R;
-import com.booyahx.TokenManager;
 import com.booyahx.LoaderOverlay;
+import com.booyahx.adapters.UniversalSpinnerAdapter;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.ProfileResponse;
 import com.booyahx.network.models.UpdateProfileRequest;
 import com.booyahx.network.models.SimpleResponse;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -32,7 +35,8 @@ public class EditProfileActivity extends AppCompatActivity {
     EditText etName, etAge, etGameName, etPhone, etUpiId, etEmail, etRole;
     TextView btnAgePlus, btnAgeMinus, btnCancel, btnUpdate;
 
-    Spinner spinnerGender, spinnerPaymentMethod;
+    Spinner spinnerGender;
+    UniversalSpinnerAdapter genderAdapter;
 
     ApiService api;
 
@@ -48,7 +52,6 @@ public class EditProfileActivity extends AppCompatActivity {
 
         initViews();
         setupGenderSpinner();
-        setupPaymentMethodSpinner();
         setupAgeButtons();
         setupButtons();
 
@@ -72,7 +75,6 @@ public class EditProfileActivity extends AppCompatActivity {
         btnAgeMinus = findViewById(R.id.btnAgeMinus);
 
         spinnerGender = findViewById(R.id.spinnerGender);
-        spinnerPaymentMethod = findViewById(R.id.spinnerPaymentMethod);
 
         btnCancel = findViewById(R.id.btnCancel);
         btnUpdate = findViewById(R.id.btnUpdate);
@@ -144,47 +146,41 @@ public class EditProfileActivity extends AppCompatActivity {
         etRole.setText(d.role != null ? d.role : "user");
 
         setSpinnerSelection(spinnerGender, d.gender);
-        setSpinnerSelection(spinnerPaymentMethod, d.paymentMethod);
     }
 
     private void setSpinnerSelection(Spinner spinner, String value) {
-        ArrayAdapter adapter = (ArrayAdapter) spinner.getAdapter();
+        UniversalSpinnerAdapter adapter = (UniversalSpinnerAdapter) spinner.getAdapter();
         if (adapter == null) return;
+
         int pos = adapter.getPosition(value);
-        if (pos >= 0) spinner.setSelection(pos);
+        if (pos >= 0) {
+            spinner.setSelection(pos);
+        }
     }
 
+    // 🔥 CUSTOM GENDER SPINNER WITH NEON STYLING
     private void setupGenderSpinner() {
-        String[] genders = {"Male", "Female", "Other", "Prefer not to say"};
+        List<UniversalSpinnerAdapter.SpinnerItem> genderItems = new ArrayList<>();
+        genderItems.add(new UniversalSpinnerAdapter.SpinnerItem("male", "Male"));
+        genderItems.add(new UniversalSpinnerAdapter.SpinnerItem("female", "Female"));
+        genderItems.add(new UniversalSpinnerAdapter.SpinnerItem("other", "Other"));
+        genderItems.add(new UniversalSpinnerAdapter.SpinnerItem("prefer not to say", "Prefer not to say"));
 
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                genders
-        );
+        genderAdapter = new UniversalSpinnerAdapter(this, genderItems);
+        spinnerGender.setAdapter(genderAdapter);
 
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerGender.setAdapter(adapter);
-    }
+        // 🔥 FORCE WHITE COLOR ON SPINNER TEXT
+        spinnerGender.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                if (view != null && view instanceof TextView) {
+                    ((TextView) view).setTextColor(0xFFFFFFFF);
+                }
+            }
 
-    private void setupPaymentMethodSpinner() {
-        String[] methods = {
-                "UPI",
-                "Bank Transfer",
-                "Credit Card",
-                "Debit Card",
-                "Wallet",
-                "Other"
-        };
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                methods
-        );
-
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerPaymentMethod.setAdapter(adapter);
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
     private void setupAgeButtons() {
@@ -220,11 +216,14 @@ public class EditProfileActivity extends AppCompatActivity {
 
         String name = etName.getText().toString().trim();
         String ign = etGameName.getText().toString().trim();
-        String genderFixed = spinnerGender.getSelectedItem().toString().toLowerCase();
+
+        UniversalSpinnerAdapter.SpinnerItem selectedGender = genderAdapter.getItem(spinnerGender.getSelectedItemPosition());
+        String genderFixed = selectedGender != null ? selectedGender.apiValue : "male";
+
         int age = Integer.parseInt(etAge.getText().toString().trim());
         String phone = etPhone.getText().toString().trim();
         String upiClean = etUpiId.getText().toString().trim().replace("-", "").replace(" ", "");
-        String paymentMethod = spinnerPaymentMethod.getSelectedItem().toString();
+        String paymentMethod = "UPI"; // 🔥 HARDCODED - NO MORE SPINNER
 
         UpdateProfileRequest req = new UpdateProfileRequest(
                 name, ign, genderFixed, age, phone, upiClean, paymentMethod

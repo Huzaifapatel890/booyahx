@@ -24,8 +24,8 @@ public final class AuthInterceptor implements Interceptor {
         Request original = chain.request();
         String path = original.url().encodedPath();
 
-        // Skip auth endpoints
-        if (path.startsWith("/api/auth/")) {
+        // 🔥 Skip auth endpoints EXCEPT logout (logout needs Bearer token)
+        if (path.startsWith("/api/auth/") && !path.equals("/api/auth/logout")) {
             return chain.proceed(original);
         }
 

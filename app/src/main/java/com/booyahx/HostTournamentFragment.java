@@ -9,18 +9,21 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.text.InputType;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import com.booyahx.tournament.HostRulesBottomSheet;
+import com.booyahx.adapters.UniversalSpinnerAdapter;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -40,7 +43,6 @@ import com.booyahx.network.models.HostTournamentResponse;
 import com.booyahx.network.models.Tournament;
 import com.booyahx.network.models.UpdateRoomRequest;
 import com.booyahx.network.models.UpdateRoomResponse;
-import com.booyahx.tournament.RulesBottomSheet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +57,7 @@ public class HostTournamentFragment extends Fragment {
     private HostTournamentAdapter adapter;
     private List<HostTournament> tournamentList;
     private Spinner statusSpinner;
+    private UniversalSpinnerAdapter statusAdapter;
     private ProgressBar progressBar;
 
     private ApiService apiService;
@@ -125,59 +128,36 @@ public class HostTournamentFragment extends Fragment {
     }
 
     private void setupStatusSpinner() {
-        List<String> statuses = new ArrayList<>();
-        statuses.add("Live Tournaments");
-        statuses.add("Upcoming Tournaments");
-        statuses.add("Completed Tournaments");
-        statuses.add("Pending Result Tournaments");
-        statuses.add("Cancelled Tournaments");
+        List<UniversalSpinnerAdapter.SpinnerItem> statusItems = new ArrayList<>();
+        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("live", "Live Tournaments"));
+        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("upcoming", "Upcoming Tournaments"));
+        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("completed", "Completed Tournaments"));
+        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("pendingResult", "Pending Result Tournaments"));
+        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("cancelled", "Cancelled Tournaments"));
 
-        ArrayAdapter<String> spinnerAdapter =
-                new ArrayAdapter<String>(requireContext(),
-                        android.R.layout.simple_spinner_item, statuses) {
+        statusAdapter = new UniversalSpinnerAdapter(requireContext(), statusItems);
+        statusSpinner.setAdapter(statusAdapter);
 
-                    @NonNull
-                    @Override
-                    public View getView(int position,
-                                        View convertView,
-                                        @NonNull ViewGroup parent) {
-                        View view = super.getView(position, convertView, parent);
-                        TextView tv = (TextView) view;
-                        tv.setTextColor(Color.parseColor("#00FFFF"));
-                        tv.setTextSize(14);
-                        return view;
-                    }
+        // Set default to Live Tournaments
+        statusSpinner.setSelection(0);
 
-                    @Override
-                    public View getDropDownView(int position,
-                                                View convertView,
-                                                @NonNull ViewGroup parent) {
-                        View view = super.getDropDownView(position, convertView, parent);
-                        TextView tv = (TextView) view;
-                        tv.setTextColor(Color.WHITE);
-                        tv.setBackgroundColor(Color.parseColor("#0a0a0a"));
-                        tv.setPadding(30, 30, 30, 30);
-                        return view;
-                    }
-                };
+        // 🔥 FORCE WHITE COLOR ON SPINNER TEXT (EXACT SAME AS GENDER SPINNER)
+        statusSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                if (view != null && view instanceof TextView) {
+                    ((TextView) view).setTextColor(0xFFFFFFFF);
+                }
 
-        spinnerAdapter.setDropDownViewResource(
-                android.R.layout.simple_spinner_dropdown_item);
-        statusSpinner.setAdapter(spinnerAdapter);
+                UniversalSpinnerAdapter.SpinnerItem selectedItem = statusAdapter.getItem(position);
+                if (selectedItem != null) {
+                    filterTournaments(selectedItem.displayName);
+                }
+            }
 
-        statusSpinner.setOnItemSelectedListener(
-                new AdapterView.OnItemSelectedListener() {
-                    @Override
-                    public void onItemSelected(AdapterView<?> parent,
-                                               View view,
-                                               int position,
-                                               long id) {
-                        filterTournaments(statuses.get(position));
-                    }
-
-                    @Override
-                    public void onNothingSelected(AdapterView<?> parent) {}
-                });
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
     private void loadTournamentsFromAPI() {
@@ -215,11 +195,11 @@ public class HostTournamentFragment extends Fragment {
 
                         // Get current selected position to maintain filter
                         int currentPosition = statusSpinner.getSelectedItemPosition();
-                        String currentStatus = (String) statusSpinner.getSelectedItem();
+                        UniversalSpinnerAdapter.SpinnerItem currentItem = statusAdapter.getItem(currentPosition);
 
                         // Only set to Live on first load, otherwise maintain current filter
-                        if (currentStatus != null) {
-                            filterTournaments(currentStatus);
+                        if (currentItem != null) {
+                            filterTournaments(currentItem.displayName);
                         } else {
                             statusSpinner.setSelection(0);
                             filterTournaments("Live Tournaments");

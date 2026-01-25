@@ -16,21 +16,12 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="JOINED TOURNAMENTS"
+            android:text="HOST PANEL"
             android:textColor="#00FFFF"
             android:textSize="28sp"
             android:textStyle="bold"
             android:letterSpacing="0.05" />
 
-        <!-- Status Filter Spinner -->
-        <Spinner
-            android:id="@+id/spinnerTournamentStatus"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="@drawable/neon_card"
-            android:padding="10dp"
-            android:spinnerMode="dropdown"
-            />
     </LinearLayout>
 
     <View
@@ -40,15 +31,39 @@
         android:layout_below="@id/headerLayout"
         android:background="#00FFFF" />
 
+    <!-- Status Filter Spinner -->
+    <Spinner
+        android:id="@+id/spinnerTournamentStatus"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_below="@id/divider"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/neon_card"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:spinnerMode="dropdown"
+        android:dropDownWidth="match_parent" />
+
+    <!-- Progress Bar -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="gone" />
+
     <!-- Tournament List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/tournamentRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/divider"
+        android:layout_below="@id/spinnerTournamentStatus"
+        android:layout_marginTop="16dp"
         android:padding="20dp"
         android:clipToPadding="false" />
 
 </RelativeLayout>
-
-
