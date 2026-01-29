@@ -53,6 +53,7 @@ public class ParticipatedFragment extends Fragment {
             @Nullable ViewGroup container,
             @Nullable Bundle savedInstanceState
     ) {
+        Log.d(TAG, "onCreateView called");
         return inflater.inflate(R.layout.fragment_joined_tournaments, container, false);
     }
 
@@ -61,6 +62,8 @@ public class ParticipatedFragment extends Fragment {
             @NonNull View view,
             @Nullable Bundle savedInstanceState
     ) {
+        Log.d(TAG, "onViewCreated called");
+
         rvTournaments = view.findViewById(R.id.rvTournaments);
         spinnerTournamentStatus = view.findViewById(R.id.spinnerTournamentStatus);
 
@@ -70,17 +73,19 @@ public class ParticipatedFragment extends Fragment {
 
         setupStatusSpinner();
         fetchJoinedTournaments();
+
         getParentFragmentManager().setFragmentResultListener(
                 "joined_refresh",
                 this,
                 (requestKey, bundle) -> {
-                    Log.d("JoinedTrace", "🔄 joined_refresh received, refetching tournaments");
+                    Log.d(TAG, "🔄 joined_refresh received, refetching tournaments");
                     fetchJoinedTournaments();
                 }
         );
     }
 
     private void setupStatusSpinner() {
+        Log.d(TAG, "Setting up status spinner");
 
         List<TournamentStatusAdapter.StatusItem> statusItems = new ArrayList<>();
         statusItems.add(new TournamentStatusAdapter.StatusItem("live", "Live Tournaments"));
@@ -94,12 +99,14 @@ public class ParticipatedFragment extends Fragment {
 
         // ✅ LIVE DEFAULT
         spinnerTournamentStatus.setSelection(0);
+        Log.d(TAG, "Status spinner set to default: live");
 
         spinnerTournamentStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 TournamentStatusAdapter.StatusItem selected = statusAdapter.getItem(position);
                 if (selected != null && !selected.apiValue.equals(currentStatus)) {
+                    Log.d(TAG, "Status changed from " + currentStatus + " to " + selected.apiValue);
                     currentStatus = selected.apiValue;
                     filterTournaments();
                 }
@@ -111,6 +118,7 @@ public class ParticipatedFragment extends Fragment {
     }
 
     private void fetchJoinedTournaments() {
+        Log.d(TAG, "🌐 Fetching joined tournaments from API...");
 
         ApiService api = ApiClient.getClient(requireContext())
                 .create(ApiService.class);
@@ -121,13 +129,42 @@ public class ParticipatedFragment extends Fragment {
                     @NonNull Call<JoinedTournamentResponse> call,
                     @NonNull Response<JoinedTournamentResponse> response
             ) {
-                if (response.body() == null
-                        || response.body().getData() == null
-                        || response.body().getData().getTournaments() == null) {
+                Log.d(TAG, "API Response received: " + response.code());
+
+                if (response.body() == null) {
+                    Log.e(TAG, "❌ Response body is NULL");
+                    return;
+                }
+
+                if (response.body().getData() == null) {
+                    Log.e(TAG, "❌ Response data is NULL");
+                    return;
+                }
+
+                if (response.body().getData().getTournaments() == null) {
+                    Log.e(TAG, "❌ Tournaments list is NULL");
                     return;
                 }
 
                 allTournaments = response.body().getData().getTournaments();
+                Log.d(TAG, "✅ Successfully fetched " + allTournaments.size() + " tournaments");
+
+                // Debug: Print first tournament's participants
+                if (!allTournaments.isEmpty()) {
+                    JoinedTournament firstTournament = allTournaments.get(0);
+                    Log.d(TAG, "First tournament: " + firstTournament.getLobbyName());
+
+                    if (firstTournament.getParticipants() != null) {
+                        Log.d(TAG, "Participants count: " + firstTournament.getParticipants().size());
+                        for (int i = 0; i < firstTournament.getParticipants().size(); i++) {
+                            JoinedTournament.Participant p = firstTournament.getParticipants().get(i);
+                            Log.d(TAG, "Participant[" + i + "]: userId=" + p.userId + ", name=" + p.name + ", ign=" + p.ign);
+                        }
+                    } else {
+                        Log.e(TAG, "❌ First tournament has NULL participants");
+                    }
+                }
+
                 filterTournaments();
             }
 
@@ -136,23 +173,29 @@ public class ParticipatedFragment extends Fragment {
                     @NonNull Call<JoinedTournamentResponse> call,
                     @NonNull Throwable t
             ) {
-                Log.e(TAG, "API FAILED", t);
+                Log.e(TAG, "❌❌❌ API FAILED", t);
+                Log.e(TAG, "Error message: " + t.getMessage());
             }
         });
     }
 
     private void filterTournaments() {
+        Log.d(TAG, "Filtering tournaments for status: " + currentStatus);
 
         List<JoinedTournament> filtered = new ArrayList<>();
 
         for (JoinedTournament t : allTournaments) {
             String status = t.getStatus();
-            if (status == null) continue;
+            if (status == null) {
+                Log.w(TAG, "Tournament " + t.getId() + " has NULL status");
+                continue;
+            }
 
             // ✅ LIVE = upcoming + started
             if (currentStatus.equals("live")) {
                 if (status.equalsIgnoreCase("upcoming") && hasStarted(t)) {
                     filtered.add(t);
+                    Log.d(TAG, "Added to LIVE: " + t.getLobbyName());
                 }
                 continue;
             }
@@ -161,6 +204,7 @@ public class ParticipatedFragment extends Fragment {
             if (currentStatus.equals("upcoming")) {
                 if (status.equalsIgnoreCase("upcoming") && !hasStarted(t)) {
                     filtered.add(t);
+                    Log.d(TAG, "Added to UPCOMING: " + t.getLobbyName());
                 }
                 continue;
             }
@@ -168,10 +212,11 @@ public class ParticipatedFragment extends Fragment {
             // ✅ NORMAL STATUS MATCH
             if (status.equalsIgnoreCase(currentStatus)) {
                 filtered.add(t);
+                Log.d(TAG, "Added to " + currentStatus.toUpperCase() + ": " + t.getLobbyName());
             }
         }
 
-        Log.d(TAG, "Filtered = " + filtered.size() + " | status = " + currentStatus);
+        Log.d(TAG, "Filtered = " + filtered.size() + " tournaments | status = " + currentStatus);
         adapter.updateData(filtered);
     }
 
@@ -182,8 +227,11 @@ public class ParticipatedFragment extends Fragment {
             SimpleDateFormat sdf =
                     new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
             Date start = sdf.parse(dateTime);
-            return System.currentTimeMillis() >= start.getTime();
+            boolean started = System.currentTimeMillis() >= start.getTime();
+            Log.d(TAG, "Tournament " + t.getLobbyName() + " hasStarted: " + started);
+            return started;
         } catch (Exception e) {
+            Log.e(TAG, "Error checking if tournament started: " + e.getMessage());
             return false;
         }
     }

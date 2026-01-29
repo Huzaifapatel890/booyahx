@@ -5,6 +5,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.CountDownTimer;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.booyahx.R;
+import com.booyahx.TokenManager;
 import com.booyahx.network.models.JoinedTournament;
 
 import java.text.SimpleDateFormat;
@@ -25,10 +27,12 @@ import java.util.Locale;
 public class JoinedTournamentAdapter
         extends RecyclerView.Adapter<JoinedTournamentAdapter.TournamentViewHolder> {
 
+    private static final String TAG = "AdapterDebug";
     private List<JoinedTournament> tournaments;
 
     public JoinedTournamentAdapter(List<JoinedTournament> tournaments) {
         this.tournaments = tournaments;
+        Log.d(TAG, "Adapter created with " + (tournaments == null ? "null" : tournaments.size() + " tournaments"));
     }
 
     @NonNull
@@ -47,6 +51,7 @@ public class JoinedTournamentAdapter
             @NonNull TournamentViewHolder holder,
             int position
     ) {
+        Log.d(TAG, "onBindViewHolder called for position: " + position);
         holder.bind(tournaments.get(position));
     }
 
@@ -58,10 +63,13 @@ public class JoinedTournamentAdapter
     // REQUIRED FOR BACKEND UPDATE
     public void updateData(List<JoinedTournament> newTournaments) {
         this.tournaments = newTournaments;
+        Log.d(TAG, "updateData called with " + (newTournaments == null ? "null" : newTournaments.size() + " tournaments"));
         notifyDataSetChanged();
     }
 
     static class TournamentViewHolder extends RecyclerView.ViewHolder {
+
+        private static final String TAG = "ViewHolderDebug";
 
         TextView tvTitle, tvSubtitle, tvEntry, tvPrize,
                 tvPlayers, tvTime, tvSlot,
@@ -86,9 +94,13 @@ public class JoinedTournamentAdapter
 
             btnResults = itemView.findViewById(R.id.btnResults);
             btnRules   = itemView.findViewById(R.id.btnRules);
+
+            Log.d(TAG, "ViewHolder created, tvSlot is " + (tvSlot == null ? "NULL" : "NOT NULL"));
         }
 
         public void bind(JoinedTournament t) {
+            Log.d(TAG, "============ BIND START ============");
+            Log.d(TAG, "Tournament: " + (t == null ? "NULL" : t.getLobbyName()));
 
             // ✅ CHANGED: Show lobby name without entry fee
             String lobbyName = t.getLobbyName();
@@ -121,8 +133,41 @@ public class JoinedTournamentAdapter
             // ✅ FIXED: Use API fields directly for SLOTS display
             tvPlayers.setText(t.getJoinedTeams() + "/" + t.getMaxTeams());
 
-            // ✅ SLOT: Temporarily showing #0
-            tvSlot.setText("#0");
+            // ✅ NEW: Show user's slot number by matching UID WITH DEBUG
+            Log.d(TAG, "========================================");
+            Log.d(TAG, "🔍 SLOT NUMBER LOGIC START");
+            Log.d(TAG, "========================================");
+
+            Context context = itemView.getContext();
+            Log.d(TAG, "Context: " + (context == null ? "NULL" : "OK"));
+
+            String myUserId = TokenManager.getUserId(context);
+            Log.d(TAG, "📌 My User ID from TokenManager: " + myUserId);
+
+            if (myUserId == null || myUserId.isEmpty()) {
+                Log.e(TAG, "❌❌❌ USER ID IS NULL OR EMPTY!");
+                tvSlot.setText("#0");
+            } else {
+                Log.d(TAG, "✅ User ID is valid, calling getUserSlotNumberByUid()");
+
+                int slotNumber = t.getUserSlotNumberByUid(myUserId);
+
+                Log.d(TAG, "📊 Slot number returned: " + slotNumber);
+
+                if (slotNumber > 0) {
+                    Log.d(TAG, "✅✅✅ Setting slot text to: #" + slotNumber);
+                    tvSlot.setText("#" + slotNumber);
+                } else {
+                    Log.e(TAG, "❌ Slot number is 0, setting to #0");
+                    tvSlot.setText("#0");
+                }
+            }
+
+            // Verify what's actually displayed
+            Log.d(TAG, "📺 Slot TextView text after setting: " + tvSlot.getText().toString());
+            Log.d(TAG, "========================================");
+            Log.d(TAG, "🔍 SLOT NUMBER LOGIC END");
+            Log.d(TAG, "========================================");
 
             handleCountdown(t);
             handleRoomAndPassword(t);
@@ -153,6 +198,8 @@ public class JoinedTournamentAdapter
                     );
                 });
             }
+
+            Log.d(TAG, "============ BIND END ============");
         }
 
         private void handleCountdown(JoinedTournament t) {
