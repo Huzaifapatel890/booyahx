@@ -42,8 +42,10 @@ public class HostTournament {
     @SerializedName("lockTime")
     private String lockTime;
 
+    // ✅ FIXED: Changed from List<Participant> to List<String>
+    // API returns participant IDs as strings, not objects
     @SerializedName("participants")
-    private List<Participant> participants;
+    private List<String> participants;
 
     @SerializedName("hostId")
     private Object hostId;
@@ -63,7 +65,6 @@ public class HostTournament {
     @SerializedName("teams")
     private List<Team> teams;
 
-    // ✅ NEW: Rules object from API
     @SerializedName("rules")
     private JsonObject rules;
 
@@ -115,39 +116,6 @@ public class HostTournament {
         }
     }
 
-    public static class Participant {
-
-        @SerializedName("_id")
-        private String id;
-
-        @SerializedName("teamName")
-        private String teamName;
-
-        @SerializedName("name")
-        private String name;
-
-        @SerializedName("ign")
-        private String ign;
-
-        public String getDisplayName() {
-            if (teamName != null && !teamName.trim().isEmpty()) {
-                return teamName.trim();
-            }
-            if (ign != null && !ign.trim().isEmpty()) {
-                return ign.trim();
-            }
-            if (name != null && !name.trim().isEmpty()) {
-                return name.trim();
-            }
-            return "Team";
-        }
-
-        public String getTeamName() { return teamName; }
-        public String getName() { return name; }
-        public String getIgn() { return ign; }
-        public String getId() { return id; }
-    }
-
     public static class Result {
         @SerializedName("userId")
         private String userId;
@@ -184,13 +152,13 @@ public class HostTournament {
     public String getDate() { return date; }
     public String getStartTime() { return startTime; }
     public String getLockTime() { return lockTime; }
-    public List<Participant> getParticipants() { return participants; }
+    public List<String> getParticipants() { return participants; } // ✅ Now returns List<String>
     public Room getRoom() { return room; }
     public int getPrizePool() { return prizePool; }
     public String getStatus() { return status; }
     public List<Result> getResults() { return results; }
     public List<Team> getTeams() { return teams; }
-    public JsonObject getRules() { return rules; } // ✅ NEW GETTER
+    public JsonObject getRules() { return rules; }
 
     // =====================
     // UI HELPERS
@@ -246,6 +214,7 @@ public class HostTournament {
 
         return joined + "/" + totalSlots;
     }
+
     public String getRoomIdDisplay() {
         return room != null && room.getRoomId() != null
                 ? room.getRoomId()

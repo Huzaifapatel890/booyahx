@@ -3,6 +3,7 @@ package com.booyahx.tournament;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.graphics.Color;
 import android.os.CountDownTimer;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -66,7 +67,7 @@ public class JoinedTournamentAdapter
                 tvPlayers, tvTime, tvSlot,
                 tvRoomId, tvPassword;
 
-        TextView btnRules;
+        TextView btnResults, btnRules;
 
         CountDownTimer timer;
 
@@ -83,23 +84,57 @@ public class JoinedTournamentAdapter
             tvRoomId   = itemView.findViewById(R.id.tvRoomId);
             tvPassword = itemView.findViewById(R.id.tvPassword);
 
+            btnResults = itemView.findViewById(R.id.btnResults);
             btnRules   = itemView.findViewById(R.id.btnRules);
         }
 
         public void bind(JoinedTournament t) {
 
-            tvTitle.setText(t.getGame());
+            // ✅ CHANGED: Show lobby name without entry fee
+            String lobbyName = t.getLobbyName();
+            if (lobbyName != null) {
+                // Remove entry fee number (e.g., "Lobby 1 75 3PM" -> "Lobby 1 3PM")
+                // Split by spaces, filter out standalone numbers between lobby name and time
+                String[] parts = lobbyName.split(" ");
+                StringBuilder cleanName = new StringBuilder();
+
+                for (int i = 0; i < parts.length; i++) {
+                    // Skip if it's a pure number and not the first part after "Lobby"
+                    if (i > 1 && parts[i].matches("\\d+") && i < parts.length - 1) {
+                        continue; // Skip the entry fee number
+                    }
+                    if (cleanName.length() > 0) {
+                        cleanName.append(" ");
+                    }
+                    cleanName.append(parts[i]);
+                }
+                lobbyName = cleanName.toString();
+            } else {
+                lobbyName = t.getGame();
+            }
+            tvTitle.setText(lobbyName);
             tvSubtitle.setText(t.getMode() + " - " + t.getSubMode());
 
             tvEntry.setText(t.getEntryFee() + " GC");
             tvPrize.setText(t.getPrizePool() + " GC");
 
-            int teams = calculateTeams(t);
-            tvPlayers.setText(teams + "/" + calculateMaxTeams(t));
-            tvSlot.setText("#" + t.getParticipantCount());
+            // ✅ FIXED: Use API fields directly for SLOTS display
+            tvPlayers.setText(t.getJoinedTeams() + "/" + t.getMaxTeams());
+
+            // ✅ SLOT: Temporarily showing #0
+            tvSlot.setText("#0");
 
             handleCountdown(t);
             handleRoomAndPassword(t);
+
+            // ✅ ADDED: RESULTS button click listener
+            if (btnResults != null) {
+                btnResults.setVisibility(View.VISIBLE);
+                btnResults.setOnClickListener(v -> {
+                    // TODO: Add your results logic here
+                    Toast.makeText(v.getContext(), "Results feature coming soon!", Toast.LENGTH_SHORT).show();
+                });
+            }
 
             if (btnRules != null && t.getRules() != null) {
                 btnRules.setVisibility(View.VISIBLE);
@@ -128,16 +163,19 @@ public class JoinedTournamentAdapter
 
                 if (status.contains("completed")) {
                     tvTime.setText("COMPLETED");
+                    tvTime.setTextColor(Color.parseColor("#FFFFFF")); // White for status
                     return;
                 }
 
                 if (status.contains("pending")) {
                     tvTime.setText("PENDING");
+                    tvTime.setTextColor(Color.parseColor("#FFFFFF")); // White for status
                     return;
                 }
 
                 if (status.contains("cancel")) {
                     tvTime.setText("CANCEL");
+                    tvTime.setTextColor(Color.parseColor("#FFFFFF")); // White for status
                     return;
                 }
             }
@@ -154,44 +192,40 @@ public class JoinedTournamentAdapter
                 if (timer != null) timer.cancel();
 
                 if (diff > 0) {
+                    // Set green color for countdown
+                    tvTime.setTextColor(Color.parseColor("#00FF00"));
+
                     timer = new CountDownTimer(diff, 1000) {
                         @Override
                         public void onTick(long ms) {
-                            long totalSeconds = ms / 1000;
-                            long hours = totalSeconds / 3600;
-                            long minutes = (totalSeconds % 3600) / 60;
-                            long seconds = totalSeconds % 60;
+                            long hours = ms / (1000 * 60 * 60);
+                            long minutes = (ms % (1000 * 60 * 60)) / (1000 * 60);
+                            long seconds = (ms % (1000 * 60)) / 1000;
 
-                            if (hours > 0) {
-                                tvTime.setText(
-                                        String.format(
-                                                Locale.getDefault(),
-                                                "Starts in %dh %dm",
-                                                hours, minutes
-                                        )
-                                );
-                            } else {
-                                tvTime.setText(
-                                        String.format(
-                                                Locale.getDefault(),
-                                                "Starts in %02d:%02d",
-                                                minutes, seconds
-                                        )
-                                );
-                            }
+                            // Format: HH:MM:SS (e.g., 25:35:05)
+                            tvTime.setText(
+                                    String.format(
+                                            Locale.getDefault(),
+                                            "%02d:%02d:%02d",
+                                            hours, minutes, seconds
+                                    )
+                            );
                         }
 
                         @Override
                         public void onFinish() {
                             tvTime.setText("LIVE");
+                            tvTime.setTextColor(Color.parseColor("#FFFFFF")); // Reset to white
                         }
                     }.start();
                 } else {
                     tvTime.setText("LIVE");
+                    tvTime.setTextColor(Color.parseColor("#FFFFFF")); // Reset to white
                 }
 
             } catch (Exception e) {
                 tvTime.setText("--");
+                tvTime.setTextColor(Color.parseColor("#FFFFFF")); // Reset to white
             }
         }
 

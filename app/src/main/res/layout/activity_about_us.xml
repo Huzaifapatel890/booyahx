@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_esports_gradient">
 
-    <!-- TOP BAR WITH BACK BUTTON -->
+    <!-- TOP BAR WITH BACK BUTTON AND LANGUAGE TOGGLE -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
@@ -20,10 +20,27 @@
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:src="@drawable/ic_back_arrow" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- 🔥 LANGUAGE TOGGLE BUTTON (GLOWING) -->
+        <ImageView
+            android:id="@+id/btnLanguageToggle"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/ic_language_toggle"
+            android:padding="8dp"
+            android:background="@drawable/bg_language_button"
+            android:clickable="true"
+            android:focusable="true" />
     </LinearLayout>
 
     <!-- SCROLL CONTENT -->
     <ScrollView
+        android:id="@+id/contentContainer"
         android:layout_below="@id/topBar"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -37,6 +54,7 @@
 
             <!-- Top Title -->
             <TextView
+                android:id="@+id/tvTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="About Us – BooyahX"
@@ -50,6 +68,7 @@
 
             <!-- Main Description -->
             <TextView
+                android:id="@+id/tvDescription"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
@@ -58,6 +77,7 @@
                 android:text="BooyahX ek next-gen esports platform hai jo Free Fire players ko paid lobbies, custom rooms, daily matches, tournaments, aur LAN events ka best experience provide karta hai.\n\nHumara mission simple hai — India ke competitive gamers ko ek safe, fair aur transparent battleground dena jahan wo apne skills dikha sakein aur esports me grow kar sakein." />
 
             <TextView
+                android:id="@+id/tvDesignedFor"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="BooyahX specially design kiya gaya hai:"
@@ -78,6 +98,7 @@
                 android:elevation="8dp">
 
                 <TextView
+                    android:id="@+id/tvFeature1Title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="🎮 Free Fire Paid Lobbies and Custom Rooms"
@@ -87,6 +108,7 @@
                     android:layout_marginBottom="8dp" />
 
                 <TextView
+                    android:id="@+id/tvFeature1Desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="• Fast aur secure room access\n• Verified and trusted hosts\n• Fair gameplay and anti-cheat focus\n• Instant results and payouts"
@@ -106,6 +128,7 @@
                 android:elevation="8dp">
 
                 <TextView
+                    android:id="@+id/tvFeature2Title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="🏆 Tournament Organizer"
@@ -115,6 +138,7 @@
                     android:layout_marginBottom="8dp" />
 
                 <TextView
+                    android:id="@+id/tvFeature2Desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="• Daily and weekly online tournaments\n• 100% transparency in match rules\n• Auto bracket, results and leaderboard\n• Smooth registration system"
@@ -134,6 +158,7 @@
                 android:elevation="8dp">
 
                 <TextView
+                    android:id="@+id/tvFeature3Title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="🖥 LAN Tournament Organizer (Prepaid Only)"
@@ -143,6 +168,7 @@
                     android:layout_marginBottom="8dp" />
 
                 <TextView
+                    android:id="@+id/tvFeature3Desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="• On-ground esports experience\n• Fully managed event support\n• Professional match handling\n• Competitive stage environment"
@@ -153,6 +179,7 @@
 
             <!-- Final Mission -->
             <TextView
+                android:id="@+id/tvMissionTitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="🚀 Working to Promote Esports"
@@ -163,6 +190,7 @@
                 android:layout_marginBottom="12dp" />
 
             <TextView
+                android:id="@+id/tvMissionDesc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="BooyahX ka main goal India ke young gamers ko esports ka real exposure dena hai. Hum community events, paid lobbies aur tournaments ke through grassroot esports ko promote kar rahe hain — taaki har player ko bada hone ka equal chance mile."
@@ -171,7 +199,7 @@
                 android:lineSpacingExtra="7dp"
                 android:layout_marginBottom="30dp" />
 
-            <!-- 🔥 FOLLOW US SECTION (FIXED) -->
+            <!-- 🔥 FOLLOW US SECTION -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -182,6 +210,7 @@
                 android:elevation="10dp">
 
                 <TextView
+                    android:id="@+id/tvFollowTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="📱 Follow Us"
@@ -192,6 +221,7 @@
                     android:layout_marginBottom="16dp" />
 
                 <TextView
+                    android:id="@+id/tvFollowDesc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Stay connected with BooyahX for latest updates, tournaments, and community events!"

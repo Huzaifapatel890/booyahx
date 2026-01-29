@@ -1,8 +1,10 @@
 package com.booyahx.network;
 
 import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 
+import com.booyahx.LoginActivity;
 import com.booyahx.TokenManager;
 import com.booyahx.network.models.RefreshRequest;
 import com.booyahx.network.models.RefreshResponse;
@@ -69,6 +71,7 @@ public final class TokenRefreshInterceptor implements Interceptor {
                     String refreshToken = TokenManager.getRefreshToken(ctx);
                     if (refreshToken == null) {
                         Log.e(TAG, "No refresh token available");
+                        redirectToLogin();
                         return response;
                     }
 
@@ -109,11 +112,12 @@ public final class TokenRefreshInterceptor implements Interceptor {
                         String errorMsg = r.body() != null ? r.body().message : "null body";
                         Log.e(TAG, "Token refresh failed: " + errorMsg);
 
-                        TokenManager.clearTokens(ctx);
+                        redirectToLogin();
                         return response;
                     }
                 } catch (Exception e) {
                     Log.e(TAG, "Token refresh exception", e);
+                    redirectToLogin();
                     return response;
                 } finally {
                     refreshing = false;
@@ -133,6 +137,7 @@ public final class TokenRefreshInterceptor implements Interceptor {
         String newToken = TokenManager.getAccessToken(ctx);
         if (newToken == null) {
             Log.e(TAG, "No token after refresh attempt");
+            redirectToLogin();
             return response;
         }
 
@@ -152,5 +157,15 @@ public final class TokenRefreshInterceptor implements Interceptor {
         }
 
         return chain.proceed(retryBuilder.build());
+    }
+
+    private void redirectToLogin() {
+        TokenManager.clearTokens(ctx);
+
+        Intent intent = new Intent(ctx, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        ctx.startActivity(intent);
+
+        Log.d(TAG, "Redirected to LoginActivity");
     }
 }

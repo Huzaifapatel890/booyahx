@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 
+import com.booyahx.network.ApiClient;
 import com.booyahx.socket.SocketManager;
 
 import org.json.JSONObject;
@@ -34,6 +35,9 @@ public class DashboardActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) getSupportActionBar().hide();
 
         Log.d("SOCKET_FLOW", "Dashboard onCreate");
+
+        // ✅ INITIALIZE GLOBAL API LOADER (ONLY NEW LINE)
+        ApiClient.initialize(this);
 
         navHome = findViewById(R.id.navHome);
         navParticipated = findViewById(R.id.navParticipated);
@@ -140,6 +144,9 @@ public class DashboardActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         applyRoleLabel();
+
+        // ✅ UPDATE API LOADER ACTIVITY REFERENCE (ONLY NEW LINE)
+        ApiClient.updateActivity(this);
     }
 
     // 🔥 SINGLE SOURCE OF TRUTH FOR LABEL

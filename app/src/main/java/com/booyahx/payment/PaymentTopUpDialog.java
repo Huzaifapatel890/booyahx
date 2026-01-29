@@ -4,6 +4,8 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,7 +13,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.CountDownTimer;
+import android.os.Environment;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
@@ -21,6 +25,7 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,6 +44,9 @@ import com.google.zxing.BarcodeFormat;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.common.BitMatrix;
 
+import java.io.File;
+import java.io.FileOutputStream;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -46,10 +54,12 @@ import retrofit2.Response;
 public class PaymentTopUpDialog extends Dialog {
 
     private static final String TAG = "PaymentDialog";
+    private static final String UPI_ID = "9429297152-2@ybl";
 
     private EditText etAmount, etUTR;
-    private TextView btnContinue, btnSubmit, btnDone, tvTimer, tvAmount;
+    private TextView btnContinue, btnSubmit, btnDone, tvTimer, tvAmount, tvUpiId, btnCopyUpi;
     private ImageView ivQR, btnClose;
+    private LinearLayout btnDownloadQr;
     private View layoutAmount, layoutQR, layoutDone;
     private View loaderStep1, loaderStep2;
     private View step1Circle, step2Circle, stepConnector;
@@ -60,6 +70,7 @@ public class PaymentTopUpDialog extends Dialog {
 
     private String qrCodeId;
     private int paymentAmount;
+    private Bitmap currentQrBitmap;
 
     public PaymentTopUpDialog(@NonNull Context context, WalletFragment parent) {
         super(context);
@@ -97,14 +108,20 @@ public class PaymentTopUpDialog extends Dialog {
         btnSubmit = findViewById(R.id.btnSubmit);
         btnDone = findViewById(R.id.btnDone);
         btnClose = findViewById(R.id.btnClose);
+        btnDownloadQr = findViewById(R.id.btnDownloadQr);
+        btnCopyUpi = findViewById(R.id.btnCopyUpi);
 
         ivQR = findViewById(R.id.ivQR);
         tvTimer = findViewById(R.id.tvTimer);
         tvAmount = findViewById(R.id.tvAmount);
+        tvUpiId = findViewById(R.id.tvUpiId);
 
         step1Circle = findViewById(R.id.step1Circle);
         step2Circle = findViewById(R.id.step2Circle);
         stepConnector = findViewById(R.id.stepConnector);
+
+        // Set UPI ID
+        tvUpiId.setText(UPI_ID);
     }
 
     private void setupListeners() {
@@ -119,11 +136,57 @@ public class PaymentTopUpDialog extends Dialog {
             dismiss();
         });
 
+        btnDownloadQr.setOnClickListener(v -> downloadQrCode());
+        btnCopyUpi.setOnClickListener(v -> copyUpiId());
+
         // Quick-pay buttons - only open the apps
         findViewById(R.id.btnGPay).setOnClickListener(v -> openUpiApp("com.google.android.apps.nbu.paisa.user"));
         findViewById(R.id.btnPhonePe).setOnClickListener(v -> openUpiApp("com.phonepe.app"));
         findViewById(R.id.btnPaytm).setOnClickListener(v -> openUpiApp("net.one97.paytm"));
         findViewById(R.id.btnFampay).setOnClickListener(v -> openUpiApp("in.fampay.app"));
+    }
+
+    private void copyUpiId() {
+        ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("UPI ID", UPI_ID);
+        clipboard.setPrimaryClip(clip);
+        Toast.makeText(getContext(), "UPI ID copied to clipboard", Toast.LENGTH_SHORT).show();
+    }
+
+    private void downloadQrCode() {
+        if (currentQrBitmap == null) {
+            Toast.makeText(getContext(), "QR code not available", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+            File qrDir = new File(picturesDir, "BooyahX");
+            if (!qrDir.exists()) {
+                qrDir.mkdirs();
+            }
+
+            String fileName = "QR_Code_" + System.currentTimeMillis() + ".png";
+            File qrFile = new File(qrDir, fileName);
+
+            FileOutputStream fos = new FileOutputStream(qrFile);
+            currentQrBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            fos.flush();
+            fos.close();
+
+            // Notify media scanner
+            Intent mediaScanIntent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            Uri contentUri = Uri.fromFile(qrFile);
+            mediaScanIntent.setData(contentUri);
+            getContext().sendBroadcast(mediaScanIntent);
+
+            Toast.makeText(getContext(), "QR code saved to Pictures/BooyahX", Toast.LENGTH_LONG).show();
+            Log.d(TAG, "QR code saved: " + qrFile.getAbsolutePath());
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving QR code", e);
+            Toast.makeText(getContext(), "Failed to save QR code", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void animateStepTransition(int fromStep, int toStep) {
@@ -349,6 +412,7 @@ public class PaymentTopUpDialog extends Dialog {
             Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
 
             if (bitmap != null) {
+                currentQrBitmap = bitmap;
                 ivQR.setImageBitmap(bitmap);
                 ivQR.setVisibility(View.VISIBLE);
                 Log.d(TAG, "Base64 image loaded successfully");
@@ -385,6 +449,7 @@ public class PaymentTopUpDialog extends Dialog {
                 }
             }
 
+            currentQrBitmap = bmp;
             ivQR.setImageBitmap(bmp);
             ivQR.setVisibility(View.VISIBLE);
             Log.d(TAG, "QR bitmap generated successfully");

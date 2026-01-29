@@ -13,6 +13,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.booyahx.network.models.HostTournament;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +22,8 @@ import java.util.Map;
 
 public class HostTournamentAdapter
         extends RecyclerView.Adapter<HostTournamentAdapter.ViewHolder> {
+
+    private static final String TAG = "HostAdapter";
 
     private Context context;
     private List<HostTournament> list;
@@ -45,66 +49,51 @@ public class HostTournamentAdapter
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup p, int v) {
-        return new ViewHolder(LayoutInflater.from(context)
-                .inflate(R.layout.item_host_tournament_card, p, false));
+        View view = LayoutInflater.from(context)
+                .inflate(R.layout.item_host_tournament_card, p, false);
+        return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder h, int pos) {
+        if (list == null || list.isEmpty()) {
+            return;
+        }
+
+        if (pos >= list.size()) {
+            return;
+        }
+
         HostTournament t = list.get(pos);
 
+        if (t == null) {
+            return;
+        }
+
+        // ✅ Show ALL buttons for ALL categories
+        h.edit.setVisibility(View.VISIBLE);
+        h.submit.setVisibility(View.VISIBLE);
+        h.result.setVisibility(View.VISIBLE);
+        h.end.setVisibility(View.VISIBLE);
+        h.rules.setVisibility(View.VISIBLE);
+
+        // Set text values
         h.title.setText(t.getHeaderTitle());
         h.mode.setText(t.getModeDisplay());
         h.slots.setText(t.getSlotsDisplay());
         h.roomId.setText(t.getRoomIdDisplay());
         h.password.setText(t.getPasswordDisplay());
 
+        // Cancel existing timer for this position
         if (activeTimers.containsKey(pos)) {
             activeTimers.get(pos).cancel();
             activeTimers.remove(pos);
         }
 
-        String status = t.getStatus();
-        Log.d("HostAdapter", "Tournament: " + t.getHeaderTitle() + ", Status: " + status);
+        // Handle countdown logic
+        handleCountdown(t, h, pos);
 
-        if ("upcoming".equals(status)) {
-            long startMillis = t.getStartTimeMillis();
-            long diff = startMillis - System.currentTimeMillis();
-
-            if (diff <= 0) {
-                h.time.setText("Starting Soon");
-            } else {
-                CountDownTimer timer = new CountDownTimer(diff, 1000) {
-                    @Override
-                    public void onTick(long millisUntilFinished) {
-                        long hours = millisUntilFinished / (1000 * 60 * 60);
-                        long mins = (millisUntilFinished % (1000 * 60 * 60)) / (1000 * 60);
-                        long secs = (millisUntilFinished % (1000 * 60)) / 1000;
-
-                        h.time.setText(
-                                String.format(Locale.getDefault(),
-                                        "%02d:%02d:%02d", hours, mins, secs)
-                        );
-                    }
-
-                    @Override
-                    public void onFinish() {
-                        h.time.setText("Starting Soon");
-                    }
-                };
-                timer.start();
-                activeTimers.put(pos, timer);
-            }
-        } else {
-            h.time.setText(t.getTimeDisplay());
-        }
-
-        // 🔥 CHANGE APPLIED HERE ONLY
-        // Submit & End visible for ALL categories
-        h.submit.setVisibility(View.VISIBLE);
-        h.end.setVisibility(View.VISIBLE);
-        h.result.setVisibility(View.VISIBLE);
-
+        // Set click listeners
         h.edit.setOnClickListener(v -> listener.onEditRoom(t));
         h.submit.setOnClickListener(v -> listener.onSubmitResult(t));
         h.result.setOnClickListener(v -> listener.onViewResult(t));
@@ -112,15 +101,101 @@ public class HostTournamentAdapter
         h.end.setOnClickListener(v -> listener.onEndTournament(t));
     }
 
+    private void handleCountdown(HostTournament t, ViewHolder h, int pos) {
+        // Check status first
+        if (t.getStatus() != null) {
+            String status = t.getStatus().toLowerCase(Locale.getDefault());
+
+            if (status.contains("completed")) {
+                h.time.setText("COMPLETED");
+                return;
+            }
+
+            if (status.contains("pending") || status.contains("resultpending")) {
+                h.time.setText("PENDING");
+                return;
+            }
+
+            if (status.contains("cancel")) {
+                h.time.setText("CANCELLED");
+                return;
+            }
+
+            if (status.contains("live")) {
+                h.time.setText("LIVE");
+                return;
+            }
+        }
+
+        // If status is "upcoming", calculate countdown
+        try {
+            String dateTime = t.getDate() + " " + t.getStartTime();
+            SimpleDateFormat sdf =
+                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
+
+            Date startDate = sdf.parse(dateTime);
+            if (startDate == null) {
+                h.time.setText("--");
+                return;
+            }
+
+            long diff = startDate.getTime() - System.currentTimeMillis();
+
+            if (diff > 0) {
+                CountDownTimer timer = new CountDownTimer(diff, 1000) {
+                    @Override
+                    public void onTick(long ms) {
+                        long totalSeconds = ms / 1000;
+                        long hours = totalSeconds / 3600;
+                        long minutes = (totalSeconds % 3600) / 60;
+                        long seconds = totalSeconds % 60;
+
+                        if (hours > 0) {
+                            h.time.setText(
+                                    String.format(
+                                            Locale.getDefault(),
+                                            "Starts in %dh %dm",
+                                            hours, minutes
+                                    )
+                            );
+                        } else {
+                            h.time.setText(
+                                    String.format(
+                                            Locale.getDefault(),
+                                            "Starts in %02d:%02d",
+                                            minutes, seconds
+                                    )
+                            );
+                        }
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        h.time.setText("LIVE");
+                    }
+                };
+                timer.start();
+                activeTimers.put(pos, timer);
+            } else {
+                h.time.setText("LIVE");
+            }
+
+        } catch (Exception e) {
+            h.time.setText("--");
+            Log.e(TAG, "Error parsing date/time: " + e.getMessage());
+        }
+    }
+
     @Override
     public int getItemCount() {
-        return list.size();
+        return list != null ? list.size() : 0;
     }
 
     @Override
     public void onViewRecycled(@NonNull ViewHolder holder) {
         super.onViewRecycled(holder);
         int position = holder.getAdapterPosition();
+
         if (position != RecyclerView.NO_POSITION && activeTimers.containsKey(position)) {
             activeTimers.get(position).cancel();
             activeTimers.remove(position);

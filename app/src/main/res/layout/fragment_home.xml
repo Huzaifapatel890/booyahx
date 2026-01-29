@@ -184,7 +184,8 @@
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:layout_marginTop="6dp"
-        android:spinnerMode="dropdown" />
+        android:spinnerMode="dropdown"
+        android:background="@null"/>
 
     <!-- ================= ONLY TOURNAMENTS SCROLL ================= -->
     <ScrollView

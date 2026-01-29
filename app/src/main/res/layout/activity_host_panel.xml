@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- Header Section -->
     <LinearLayout
         android:id="@+id/headerLayout"
         android:layout_width="match_parent"
@@ -21,7 +19,6 @@
             android:textSize="28sp"
             android:textStyle="bold"
             android:letterSpacing="0.05" />
-
     </LinearLayout>
 
     <View
@@ -31,24 +28,17 @@
         android:layout_below="@id/headerLayout"
         android:background="#00FFFF" />
 
-    <!-- Status Filter Spinner -->
     <Spinner
         android:id="@+id/spinnerTournamentStatus"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="56dp"
         android:layout_below="@id/divider"
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:layout_marginTop="16dp"
-        android:background="@drawable/neon_card"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:spinnerMode="dropdown"
-        android:dropDownWidth="match_parent" />
+        android:background="@drawable/host_spinner"
+        android:spinnerMode="dropdown" />
 
-    <!-- Progress Bar -->
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
@@ -56,7 +46,6 @@
         android:layout_centerInParent="true"
         android:visibility="gone" />
 
-    <!-- Tournament List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/tournamentRecyclerView"
         android:layout_width="match_parent"
@@ -65,5 +54,4 @@
         android:layout_marginTop="16dp"
         android:padding="20dp"
         android:clipToPadding="false" />
-
 </RelativeLayout>

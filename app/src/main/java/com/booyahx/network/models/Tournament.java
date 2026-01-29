@@ -31,8 +31,15 @@ public class Tournament implements Parcelable {
     @SerializedName("maxPlayers")
     private int maxPlayers;
 
-    @SerializedName("joinedCount")
-    private int joinedCount;
+    // ✅ FIXED: Use correct API field names
+    @SerializedName("joinedTeams")
+    private int joinedTeams;
+
+    @SerializedName("maxTeams")
+    private int maxTeams;
+
+    @SerializedName("playersPerTeam")
+    private int playersPerTeam;
 
     @SerializedName("prizePool")
     private int prizePool;
@@ -203,24 +210,21 @@ public class Tournament implements Parcelable {
         return prizePool;
     }
 
+    // ✅ FIXED: Calculate current prize pool from joined teams
     public int getCurrentPP() {
-        return joinedCount * entryFee;
+        return joinedTeams * entryFee;
     }
 
-    /* ================= SLOT LOGIC ================= */
+    /* ================= SLOT LOGIC - FIXED ================= */
 
-    private int getPlayersPerTeam() {
-        if ("squad".equalsIgnoreCase(subMode)) return 4;
-        if ("duo".equalsIgnoreCase(subMode)) return 2;
-        return 1;
-    }
-
+    // ✅ FIXED: Return total number of team slots directly from API
     public int getTotalSlots() {
-        return maxPlayers / getPlayersPerTeam();
+        return maxTeams;  // Use maxTeams from API instead of calculating
     }
 
+    // ✅ FIXED: Return joined teams directly from API
     public int getUsedSlots() {
-        return joinedCount / getPlayersPerTeam();
+        return joinedTeams;  // Use joinedTeams from API instead of calculating
     }
 
     public String getDisplayMode() {
@@ -266,7 +270,9 @@ public class Tournament implements Parcelable {
         subMode = in.readString();
         entryFee = in.readInt();
         maxPlayers = in.readInt();
-        joinedCount = in.readInt();
+        joinedTeams = in.readInt();  // ✅ FIXED
+        maxTeams = in.readInt();      // ✅ FIXED
+        playersPerTeam = in.readInt(); // ✅ FIXED
         prizePool = in.readInt();
         date = in.readString();
         startTime = in.readString();
@@ -287,7 +293,9 @@ public class Tournament implements Parcelable {
         dest.writeString(subMode);
         dest.writeInt(entryFee);
         dest.writeInt(maxPlayers);
-        dest.writeInt(joinedCount);
+        dest.writeInt(joinedTeams);    // ✅ FIXED
+        dest.writeInt(maxTeams);        // ✅ FIXED
+        dest.writeInt(playersPerTeam);  // ✅ FIXED
         dest.writeInt(prizePool);
         dest.writeString(date);
         dest.writeString(startTime);

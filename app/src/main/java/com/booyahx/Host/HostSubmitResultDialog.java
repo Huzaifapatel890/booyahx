@@ -142,14 +142,27 @@ public class HostSubmitResultDialog extends Dialog {
             Spinner posSpinner = row.findViewById(R.id.positionSpinner);
             TextView totalView = row.findViewById(R.id.totalPoints);
 
-            teamName.setText((i + 1) + ". " + teamsList.get(i));
+            // =========================
+            // HARD BLOCK QUICK FILL / AUTOFILL / SUGGESTIONS
+            // =========================
+            killInput.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
+            killInput.setAutofillHints(new String[]{});
+            killInput.setLongClickable(false);
+            killInput.setTextIsSelectable(false);
+            killInput.setSaveEnabled(false);
+            killInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
 
-            killInput.setHint("0");
-            killInput.setHintTextColor(Color.parseColor("#777777"));
+            // DO NOT set hint dynamically (causes preview on some keyboards)
+       //   killInput.setHint("0");
+         // killInput.setHintTextColor(Color.parseColor("#777777"));
+
+            teamName.setText((i + 1) + ". " + teamsList.get(i));
 
             List<String> posList = new ArrayList<>();
             posList.add("Select");
-            for (int p = 1; p <= teamsList.size(); p++) posList.add(String.valueOf(p));
+            for (int p = 1; p <= teamsList.size(); p++) {
+                posList.add(String.valueOf(p));
+            }
 
             ArrayAdapter<String> spinnerAdapter =
                     new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, posList);
@@ -167,6 +180,7 @@ public class HostSubmitResultDialog extends Dialog {
             killInput.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
                 @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
+
                 @Override
                 public void afterTextChanged(Editable s) {
                     try {
@@ -174,9 +188,9 @@ public class HostSubmitResultDialog extends Dialog {
                         if (val.isEmpty()) {
                             data[0] = 0;
                         } else {
-                            long parsed = Long.parseLong(val);
+                            int parsed = Integer.parseInt(val);
                             if (parsed > 100) parsed = 100;
-                            data[0] = (int) parsed;
+                            data[0] = parsed;
                         }
                     } catch (Exception e) {
                         data[0] = 0;
@@ -221,7 +235,6 @@ public class HostSubmitResultDialog extends Dialog {
 
         calculateTotals();
     }
-
     private void saveCurrentMatch() {
         for (int[] row : matchScores.get(currentMatch)) {
             if (row[1] == 0) {

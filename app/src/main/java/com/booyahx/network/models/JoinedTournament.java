@@ -17,15 +17,26 @@ public class JoinedTournament implements Serializable {
     private int maxPlayers;
 
     @SerializedName("date")
-    private String rawDate; // ISO string from backend
+    private String rawDate;
 
     private String startTime;
     private String lockTime;
 
     @SerializedName("participants")
-    private List<Object> participants;
+    private List<Participant> participants;
 
-    // ✅ FIX: hostId is NOT always a String
+    @SerializedName("teams")
+    private List<Team> teams;
+
+    @SerializedName("joinedTeams")
+    private int joinedTeams;
+
+    @SerializedName("maxTeams")
+    private int maxTeams;
+
+    @SerializedName("playersPerTeam")
+    private int playersPerTeam;
+
     @SerializedName("hostId")
     private Host host;
 
@@ -33,20 +44,45 @@ public class JoinedTournament implements Serializable {
     private int prizePool;
     private String status;
 
-    // ✅ ADDED — rules from joined tournaments API
+    @SerializedName("lobbyName")
+    private String lobbyName;
+
     @SerializedName("rules")
     private JoinedRules rules;
 
-    /* ================= DERIVED / SAFE ================= */
+    /* ================= EXISTING METHODS ================= */
 
     public int getParticipantCount() {
         return participants == null ? 0 : participants.size();
     }
 
-    // 🔥 Adapter expects yyyy-MM-dd
     public String getDate() {
         if (rawDate == null) return "";
         return rawDate.split("T")[0];
+    }
+
+    /* =====================================================
+       ✅ NEW SIMPLE SLOT LOGIC (ONLY ADDITION)
+       ===================================================== */
+
+    public int getUserSlotNumberByName(String myNameOrIgn) {
+
+        if (participants == null || participants.isEmpty() || myNameOrIgn == null)
+            return 0;
+
+        for (int i = 0; i < participants.size(); i++) {
+            Participant p = participants.get(i);
+            if (p == null) continue;
+
+            if (
+                    (p.ign != null && p.ign.equalsIgnoreCase(myNameOrIgn)) ||
+                            (p.name != null && p.name.equalsIgnoreCase(myNameOrIgn))
+            ) {
+                return i + 1; // SLOT FOUND
+            }
+        }
+
+        return 0;
     }
 
     /* ================= GETTERS ================= */
@@ -60,23 +96,47 @@ public class JoinedTournament implements Serializable {
     public String getStartTime() { return startTime; }
     public String getLockTime() { return lockTime; }
 
-    // ✅ Backward-safe: keep same method name
+    public int getJoinedTeams() { return joinedTeams; }
+    public int getMaxTeams() { return maxTeams; }
+    public int getPlayersPerTeam() { return playersPerTeam; }
+
     public String getHostId() {
         return host == null ? null : host.id;
     }
 
-    public Host getHost() {
-        return host;
-    }
-
+    public Host getHost() { return host; }
     public Room getRoom() { return room; }
     public int getPrizePool() { return prizePool; }
     public String getStatus() { return status; }
-
-    // ✅ NEW — rules getter
+    public String getLobbyName() { return lobbyName; }
     public JoinedRules getRules() { return rules; }
 
     /* ================= INNER MODELS ================= */
+
+    public static class Participant implements Serializable {
+        @SerializedName("userId")
+        public String userId;
+
+        @SerializedName("name")
+        public String name;
+
+        @SerializedName("ign")
+        public String ign;
+    }
+
+    public static class Team implements Serializable {
+        @SerializedName("_id")
+        public String id;
+
+        @SerializedName("leaderUserId")
+        public String leaderUserId;
+
+        @SerializedName("teamName")
+        public String teamName;
+
+        @SerializedName("members")
+        public List<String> members;
+    }
 
     public static class Host implements Serializable {
         @SerializedName("_id")
@@ -96,8 +156,6 @@ public class JoinedTournament implements Serializable {
         public String getRoomId() { return roomId; }
         public String getPassword() { return password; }
     }
-
-    /* ================= RULES MODEL (JOINED) ================= */
 
     public static class JoinedRules implements Serializable {
 

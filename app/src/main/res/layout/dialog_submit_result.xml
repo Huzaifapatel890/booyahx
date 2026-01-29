@@ -15,8 +15,7 @@
         android:textSize="20sp"
         android:textStyle="bold"
         android:paddingBottom="15dp"
-        android:layout_marginBottom="15dp"
-        android:background="@drawable/dialog_header_border" />
+        android:layout_marginBottom="15dp" />
     <TextView
         android:id="@+id/matchStatusIndicator"
         android:layout_width="match_parent"

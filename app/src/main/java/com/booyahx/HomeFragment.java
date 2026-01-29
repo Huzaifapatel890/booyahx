@@ -393,7 +393,7 @@ public class HomeFragment extends Fragment {
         }
 
         tournamentsContainer.removeAllViews();
-        showLoader();
+
 
         String role = ProfileCacheManager.getRole(requireContext());
 
@@ -585,7 +585,7 @@ public class HomeFragment extends Fragment {
                             btnJoin.setEnabled(false);
                             btnJoin.setAlpha(0.5f);
                         } else if ("approved".equalsIgnoreCase(appStatus)) {
-                            ((TextView) btnJoin).setText("Approved");
+                            ((TextView) btnJoin).setText("You are Host");
                             btnJoin.setEnabled(false);
                             btnJoin.setAlpha(0.5f);
                         } else if ("rejected".equalsIgnoreCase(appStatus)) {

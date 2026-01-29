@@ -6,10 +6,8 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
-import android.os.Parcel;
 import android.text.InputType;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +20,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.booyahx.tournament.HostRulesBottomSheet;
-import com.booyahx.adapters.UniversalSpinnerAdapter;
+import com.booyahx.adapters.HostStatusSpinnerAdapter;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -40,7 +38,6 @@ import com.booyahx.network.models.EndTournamentRequest;
 import com.booyahx.network.models.EndTournamentResponse;
 import com.booyahx.network.models.HostTournament;
 import com.booyahx.network.models.HostTournamentResponse;
-import com.booyahx.network.models.Tournament;
 import com.booyahx.network.models.UpdateRoomRequest;
 import com.booyahx.network.models.UpdateRoomResponse;
 
@@ -53,11 +50,13 @@ import retrofit2.Response;
 
 public class HostTournamentFragment extends Fragment {
 
+    private static final String TAG = "HostFragment_DEBUG";
+
     private RecyclerView tournamentRecyclerView;
     private HostTournamentAdapter adapter;
     private List<HostTournament> tournamentList;
     private Spinner statusSpinner;
-    private UniversalSpinnerAdapter statusAdapter;
+    private HostStatusSpinnerAdapter statusAdapter;
     private ProgressBar progressBar;
 
     private ApiService apiService;
@@ -72,28 +71,45 @@ public class HostTournamentFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.activity_host_panel, container, false);
+        Log.d(TAG, "🔥 onCreateView called");
+        View view = inflater.inflate(R.layout.activity_host_panel, container, false);
+        Log.d(TAG, "✅ Layout inflated successfully");
+        return view;
     }
 
     @Override
     public void onViewCreated(@NonNull View view,
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        Log.d(TAG, "🔥 onViewCreated called");
 
         apiService = ApiClient.getClient(requireContext())
                 .create(ApiService.class);
+        Log.d(TAG, "✅ ApiService created");
+
         initViews(view);
         setupStatusSpinner();
         loadTournamentsFromAPI();
     }
 
     private void initViews(View view) {
+        Log.d(TAG, "🔥 initViews called");
+
         tournamentRecyclerView = view.findViewById(R.id.tournamentRecyclerView);
         statusSpinner = view.findViewById(R.id.spinnerTournamentStatus);
         progressBar = view.findViewById(R.id.progressBar);
 
-        tournamentRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        Log.d(TAG, "RecyclerView null? " + (tournamentRecyclerView == null));
+        Log.d(TAG, "Spinner null? " + (statusSpinner == null));
+        Log.d(TAG, "ProgressBar null? " + (progressBar == null));
+
+        if (tournamentRecyclerView != null) {
+            tournamentRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+            Log.d(TAG, "✅ LayoutManager set");
+        }
+
         tournamentList = new ArrayList<>();
+        Log.d(TAG, "✅ Tournament list initialized: " + tournamentList.size());
 
         adapter = new HostTournamentAdapter(requireContext(), tournamentList,
                 new HostTournamentAdapter.OnItemClickListener() {
@@ -124,45 +140,58 @@ public class HostTournamentFragment extends Fragment {
                     }
                 });
 
-        tournamentRecyclerView.setAdapter(adapter);
+        Log.d(TAG, "✅ Adapter created");
+
+        if (tournamentRecyclerView != null) {
+            tournamentRecyclerView.setAdapter(adapter);
+            Log.d(TAG, "✅ Adapter set to RecyclerView");
+        }
     }
 
     private void setupStatusSpinner() {
-        List<UniversalSpinnerAdapter.SpinnerItem> statusItems = new ArrayList<>();
-        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("live", "Live Tournaments"));
-        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("upcoming", "Upcoming Tournaments"));
-        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("completed", "Completed Tournaments"));
-        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("pendingResult", "Pending Result Tournaments"));
-        statusItems.add(new UniversalSpinnerAdapter.SpinnerItem("cancelled", "Cancelled Tournaments"));
+        Log.d(TAG, "🔥 setupStatusSpinner called");
 
-        statusAdapter = new UniversalSpinnerAdapter(requireContext(), statusItems);
-        statusSpinner.setAdapter(statusAdapter);
+        List<String> statusItems = new ArrayList<>();
+        statusItems.add("Live Tournaments");
+        statusItems.add("Upcoming Tournaments");
+        statusItems.add("Completed Tournaments");
+        statusItems.add("Pending Result Tournaments");
+        statusItems.add("Cancelled Tournaments");
 
-        // Set default to Live Tournaments
-        statusSpinner.setSelection(0);
+        statusAdapter = new HostStatusSpinnerAdapter(requireContext(), statusItems);
 
-        // 🔥 FORCE WHITE COLOR ON SPINNER TEXT (EXACT SAME AS GENDER SPINNER)
-        statusSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
-                if (view != null && view instanceof TextView) {
-                    ((TextView) view).setTextColor(0xFFFFFFFF);
+        if (statusSpinner != null) {
+            statusSpinner.setAdapter(statusAdapter);
+            statusSpinner.setSelection(0);
+            Log.d(TAG, "✅ Spinner setup complete, default: Live Tournaments");
+
+            statusSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
+                    String selectedStatus = statusAdapter.getItem(position);
+                    Log.d(TAG, "📱 Spinner selection changed to: " + selectedStatus);
+                    if (selectedStatus != null) {
+                        filterTournaments(selectedStatus);
+                    }
                 }
 
-                UniversalSpinnerAdapter.SpinnerItem selectedItem = statusAdapter.getItem(position);
-                if (selectedItem != null) {
-                    filterTournaments(selectedItem.displayName);
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                    Log.d(TAG, "⚠️ Spinner: nothing selected");
                 }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
+            });
+        } else {
+            Log.e(TAG, "❌ statusSpinner is NULL!");
+        }
     }
 
     private void loadTournamentsFromAPI() {
-        if (progressBar != null)
+        Log.d(TAG, "🔥 loadTournamentsFromAPI called");
+
+        if (progressBar != null) {
             progressBar.setVisibility(View.VISIBLE);
+            Log.d(TAG, "✅ ProgressBar shown");
+        }
 
         apiService.getHostMyLobbies()
                 .enqueue(new Callback<HostTournamentResponse>() {
@@ -172,14 +201,30 @@ public class HostTournamentFragment extends Fragment {
                             Call<HostTournamentResponse> call,
                             Response<HostTournamentResponse> response) {
 
-                        if (progressBar != null)
-                            progressBar.setVisibility(View.GONE);
+                        Log.d(TAG, "🌐 API Response received");
+                        Log.d(TAG, "Response code: " + response.code());
+                        Log.d(TAG, "Response successful: " + response.isSuccessful());
+                        Log.d(TAG, "Response body null? " + (response.body() == null));
 
-                        if (!response.isSuccessful()
-                                || response.body() == null) return;
+                        if (progressBar != null) {
+                            progressBar.setVisibility(View.GONE);
+                            Log.d(TAG, "✅ ProgressBar hidden");
+                        }
+
+                        if (!response.isSuccessful() || response.body() == null) {
+                            Log.e(TAG, "❌ Response unsuccessful or body is null");
+                            return;
+                        }
 
                         HostTournamentResponse.Lobbies l =
                                 response.body().getData().getLobbies();
+
+                        Log.d(TAG, "📦 Raw API data:");
+                        Log.d(TAG, "  - Upcoming: " + (l.getUpcoming() != null ? l.getUpcoming().size() : "null"));
+                        Log.d(TAG, "  - Live: " + (l.getLive() != null ? l.getLive().size() : "null"));
+                        Log.d(TAG, "  - ResultPending: " + (l.getResultPending() != null ? l.getResultPending().size() : "null"));
+                        Log.d(TAG, "  - Completed: " + (l.getCompleted() != null ? l.getCompleted().size() : "null"));
+                        Log.d(TAG, "  - Cancelled: " + (l.getCancelled() != null ? l.getCancelled().size() : "null"));
 
                         allUpcoming.clear();
                         allLive.clear();
@@ -187,20 +232,57 @@ public class HostTournamentFragment extends Fragment {
                         allCompleted.clear();
                         allCancelled.clear();
 
-                        allUpcoming.addAll(l.getUpcoming());
-                        allLive.addAll(l.getLive());
-                        allResultPending.addAll(l.getResultPending());
-                        allCompleted.addAll(l.getCompleted());
-                        allCancelled.addAll(l.getCancelled());
+                        // Add tournaments from API response
+                        if (l.getUpcoming() != null) allUpcoming.addAll(l.getUpcoming());
+                        if (l.getLive() != null) allLive.addAll(l.getLive());
+                        if (l.getResultPending() != null) allResultPending.addAll(l.getResultPending());
+
+                        // Separate completed and cancelled tournaments
+                        List<HostTournament> completedList = l.getCompleted();
+                        if (completedList != null) {
+                            Log.d(TAG, "🔍 Processing " + completedList.size() + " completed tournaments");
+
+                            for (int i = 0; i < completedList.size(); i++) {
+                                HostTournament tournament = completedList.get(i);
+                                String status = tournament.getStatus();
+
+                                Log.d(TAG, "  Tournament #" + (i+1) + ": status = '" + status + "', title = " + tournament.getHeaderTitle());
+
+                                if (status != null && status.equalsIgnoreCase("cancelled")) {
+                                    allCancelled.add(tournament);
+                                    Log.d(TAG, "    ➡️ Added to CANCELLED");
+                                } else {
+                                    allCompleted.add(tournament);
+                                    Log.d(TAG, "    ➡️ Added to COMPLETED");
+                                }
+                            }
+                        }
+
+                        // Also add from cancelled list if API provides it
+                        if (l.getCancelled() != null && !l.getCancelled().isEmpty()) {
+                            Log.d(TAG, "➕ Adding " + l.getCancelled().size() + " from API cancelled list");
+                            allCancelled.addAll(l.getCancelled());
+                        }
+
+                        Log.d(TAG, "📊 Final counts after processing:");
+                        Log.d(TAG, "  - Live: " + allLive.size());
+                        Log.d(TAG, "  - Upcoming: " + allUpcoming.size());
+                        Log.d(TAG, "  - Completed: " + allCompleted.size());
+                        Log.d(TAG, "  - Cancelled: " + allCancelled.size());
+                        Log.d(TAG, "  - Pending: " + allResultPending.size());
 
                         // Get current selected position to maintain filter
                         int currentPosition = statusSpinner.getSelectedItemPosition();
-                        UniversalSpinnerAdapter.SpinnerItem currentItem = statusAdapter.getItem(currentPosition);
+                        String currentStatus = statusAdapter.getItem(currentPosition);
 
-                        // Only set to Live on first load, otherwise maintain current filter
-                        if (currentItem != null) {
-                            filterTournaments(currentItem.displayName);
+                        Log.d(TAG, "Current spinner position: " + currentPosition);
+                        Log.d(TAG, "Current spinner status: " + currentStatus);
+
+                        // Filter based on current selection
+                        if (currentStatus != null) {
+                            filterTournaments(currentStatus);
                         } else {
+                            Log.d(TAG, "⚠️ Current status is null, defaulting to Live");
                             statusSpinner.setSelection(0);
                             filterTournaments("Live Tournaments");
                         }
@@ -210,46 +292,72 @@ public class HostTournamentFragment extends Fragment {
                     public void onFailure(
                             Call<HostTournamentResponse> call,
                             Throwable t) {
-                        if (progressBar != null)
+                        Log.e(TAG, "❌ API CALL FAILED!");
+                        Log.e(TAG, "Error: " + t.getMessage(), t);
+
+                        if (progressBar != null) {
                             progressBar.setVisibility(View.GONE);
+                        }
+
+                        Toast.makeText(requireContext(),
+                                "Failed to load tournaments: " + t.getMessage(),
+                                Toast.LENGTH_LONG).show();
                     }
                 });
     }
 
-    private String getAuthToken() {
-        SharedPreferences prefs =
-                requireContext().getSharedPreferences(
-                        "AppPrefs", Context.MODE_PRIVATE);
-        return "Bearer " + prefs.getString("auth_token", "");
-    }
-
     private void filterTournaments(String status) {
+        Log.d(TAG, "🔥 filterTournaments called with: " + status);
+
+        int previousSize = tournamentList.size();
         tournamentList.clear();
+        Log.d(TAG, "  Cleared list (was " + previousSize + " items)");
 
         switch (status) {
             case "Live Tournaments":
                 tournamentList.addAll(allLive);
+                Log.d(TAG, "  Added " + allLive.size() + " live tournaments");
                 break;
             case "Upcoming Tournaments":
                 tournamentList.addAll(allUpcoming);
+                Log.d(TAG, "  Added " + allUpcoming.size() + " upcoming tournaments");
                 break;
             case "Completed Tournaments":
                 tournamentList.addAll(allCompleted);
+                Log.d(TAG, "  Added " + allCompleted.size() + " completed tournaments");
                 break;
             case "Pending Result Tournaments":
                 tournamentList.addAll(allResultPending);
+                Log.d(TAG, "  Added " + allResultPending.size() + " pending tournaments");
                 break;
             case "Cancelled Tournaments":
                 tournamentList.addAll(allCancelled);
+                Log.d(TAG, "  Added " + allCancelled.size() + " cancelled tournaments");
+
+                // Extra debug for cancelled
+                for (int i = 0; i < allCancelled.size(); i++) {
+                    HostTournament t = allCancelled.get(i);
+                    Log.d(TAG, "    Cancelled #" + (i+1) + ": " + t.getHeaderTitle() + " | Status: " + t.getStatus());
+                }
                 break;
         }
 
-        adapter.notifyDataSetChanged();
+        Log.d(TAG, "📋 Tournament list now has " + tournamentList.size() + " items");
+        Log.d(TAG, "Adapter null? " + (adapter == null));
+
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+            Log.d(TAG, "✅ Adapter.notifyDataSetChanged() called");
+        } else {
+            Log.e(TAG, "❌ ADAPTER IS NULL!");
+        }
 
         if (tournamentList.isEmpty()) {
-            Toast.makeText(requireContext(),
-                    "No " + status.toLowerCase(),
-                    Toast.LENGTH_SHORT).show();
+            String message = "No " + status.toLowerCase();
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "⚠️ List empty, showing toast: " + message);
+        } else {
+            Log.d(TAG, "✅ List has items, should be rendering now!");
         }
     }
 
@@ -268,11 +376,9 @@ public class HostTournamentFragment extends Fragment {
         TextView cancelBtn = dialog.findViewById(R.id.cancelBtn);
         TextView updateBtn = dialog.findViewById(R.id.UpdateBtn);
 
-        // Set numeric keyboard
         roomIdInput.setInputType(InputType.TYPE_CLASS_NUMBER);
         passwordInput.setInputType(InputType.TYPE_CLASS_NUMBER);
 
-        // Get current values or set N/A
         String currentRoomId = tournament.getRoomIdDisplay();
         String currentPassword = tournament.getPasswordDisplay();
 
@@ -283,7 +389,6 @@ public class HostTournamentFragment extends Fragment {
             currentPassword = "N/A";
         }
 
-        // Set hint and text color for N/A
         setupEditTextWithNA(roomIdInput, currentRoomId);
         setupEditTextWithNA(passwordInput, currentPassword);
 
@@ -316,7 +421,7 @@ public class HostTournamentFragment extends Fragment {
     private void setupEditTextWithNA(EditText editText, String currentValue) {
         if (currentValue.equals("N/A")) {
             editText.setText("N/A");
-            editText.setTextColor(Color.parseColor("#808080")); // Gray color
+            editText.setTextColor(Color.parseColor("#808080"));
         } else {
             editText.setText(currentValue);
             editText.setTextColor(Color.WHITE);
@@ -352,7 +457,6 @@ public class HostTournamentFragment extends Fragment {
                                     updateResponse.getMessage(),
                                     Toast.LENGTH_LONG).show();
 
-                            // Update the tournament data locally without API call
                             for (HostTournament tournament : tournamentList) {
                                 if (tournament.getId().equals(tournamentId)) {
                                     if (tournament.getRoom() != null) {
@@ -378,7 +482,7 @@ public class HostTournamentFragment extends Fragment {
                         Toast.makeText(requireContext(),
                                 "Error: " + t.getMessage(),
                                 Toast.LENGTH_SHORT).show();
-                        Log.e("UpdateRoom", "API Error", t);
+                        Log.e(TAG, "UpdateRoom API Error", t);
                     }
                 });
     }
@@ -412,9 +516,11 @@ public class HostTournamentFragment extends Fragment {
                 requireContext(), rows).show();
     }
 
+    // ✅ FIXED: Updated to work with List<String> participants
     private List<String> getTeamNamesFromTournament(HostTournament tournament) {
         List<String> teamNames = new ArrayList<>();
 
+        // Get team names from teams array (this is the primary source)
         if (tournament.getTeams() != null && !tournament.getTeams().isEmpty()) {
             for (HostTournament.Team team : tournament.getTeams()) {
                 String teamName = team.getTeamName();
@@ -424,13 +530,9 @@ public class HostTournamentFragment extends Fragment {
                     teamNames.add("Team " + (teamNames.size() + 1));
                 }
             }
-        } else {
-            if (tournament.getParticipants() != null) {
-                for (HostTournament.Participant p : tournament.getParticipants()) {
-                    teamNames.add(p.getDisplayName());
-                }
-            }
         }
+        // Note: participants is now just a List<String> of IDs
+        // If you need actual participant names, you'd need to fetch them separately
 
         return teamNames;
     }
@@ -438,29 +540,6 @@ public class HostTournamentFragment extends Fragment {
     private void showRulesBottomSheet(HostTournament tournament) {
         HostRulesBottomSheet rulesSheet = HostRulesBottomSheet.newInstance(tournament);
         rulesSheet.show(getParentFragmentManager(), "HostRulesBottomSheet");
-    }
-
-    private Tournament createTournamentFromParcel(HostTournament hostTournament) {
-        Parcel parcel = Parcel.obtain();
-        try {
-            parcel.writeString(hostTournament.getId());
-            parcel.writeString(hostTournament.getGame());
-            parcel.writeString(hostTournament.getMode());
-            parcel.writeString(hostTournament.getSubMode());
-            parcel.writeInt(hostTournament.getEntryFee());
-            parcel.writeInt(hostTournament.getMaxPlayers());
-            parcel.writeString(hostTournament.getDate());
-            parcel.writeString(hostTournament.getStartTime());
-            parcel.writeString(hostTournament.getLockTime());
-            parcel.writeInt(hostTournament.getPrizePool());
-            parcel.writeString(hostTournament.getStatus());
-
-            parcel.setDataPosition(0);
-
-            return Tournament.CREATOR.createFromParcel(parcel);
-        } finally {
-            parcel.recycle();
-        }
     }
 
     private void showEndTournamentDialog(HostTournament tournament) {
@@ -477,12 +556,10 @@ public class HostTournamentFragment extends Fragment {
         TextView cancelBtn = dialog.findViewById(R.id.cancelEndBtn);
         TextView endBtn = dialog.findViewById(R.id.endNowBtn);
 
-        // Set default reason
         String defaultReason = "Tournament finished.";
         reasonInput.setText(defaultReason);
-        reasonInput.setTextColor(Color.parseColor("#808080")); // Gray color
+        reasonInput.setTextColor(Color.parseColor("#808080"));
 
-        // Handle focus change for default text
         reasonInput.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
                 if (reasonInput.getText().toString().equals(defaultReason)) {
@@ -502,7 +579,6 @@ public class HostTournamentFragment extends Fragment {
         endBtn.setOnClickListener(v -> {
             String reason = reasonInput.getText().toString().trim();
 
-            // If empty or still default, use default message
             if (reason.isEmpty() || reason.equals(defaultReason)) {
                 reason = defaultReason;
             }
@@ -537,7 +613,6 @@ public class HostTournamentFragment extends Fragment {
 
                             dialog.dismiss();
 
-                            // Remove ended tournament from current list
                             for (int i = 0; i < tournamentList.size(); i++) {
                                 if (tournamentList.get(i).getId().equals(tournamentId)) {
                                     tournamentList.remove(i);
@@ -546,7 +621,6 @@ public class HostTournamentFragment extends Fragment {
                                 }
                             }
 
-                            // Also remove from allLive list
                             for (int i = 0; i < allLive.size(); i++) {
                                 if (allLive.get(i).getId().equals(tournamentId)) {
                                     allLive.remove(i);
@@ -566,8 +640,18 @@ public class HostTournamentFragment extends Fragment {
                         Toast.makeText(requireContext(),
                                 "Error: " + t.getMessage(),
                                 Toast.LENGTH_SHORT).show();
-                        Log.e("EndTournament", "API Error", t);
+                        Log.e(TAG, "EndTournament API Error", t);
                     }
                 });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        Log.d(TAG, "🔥 onDestroyView called");
+        if (adapter != null) {
+            adapter.cancelAllTimers();
+            Log.d(TAG, "✅ All timers cancelled");
+        }
     }
 }

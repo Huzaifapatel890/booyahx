@@ -2,6 +2,8 @@ package com.booyahx.network;
 
 import android.content.Context;
 
+import androidx.fragment.app.FragmentActivity;
+
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
@@ -13,8 +15,26 @@ public class ApiClient {
 
     private static Retrofit api;
     private static Retrofit refresh;
+    private static GlobalLoadingInterceptor loadingInterceptor;
 
     private static final String BASE_URL = "https://api.gaminghuballday.buzz";
+
+    /**
+     * Initialize the API client with global loading
+     * Call this from your MainActivity or Application class
+     */
+    public static void initialize(FragmentActivity activity) {
+        loadingInterceptor = new GlobalLoadingInterceptor(activity);
+    }
+
+    /**
+     * Update the activity reference (call when switching activities)
+     */
+    public static void updateActivity(FragmentActivity newActivity) {
+        if (loadingInterceptor != null) {
+            loadingInterceptor.updateActivity(newActivity);
+        }
+    }
 
     public static Retrofit getClient(Context ctx) {
 
@@ -23,7 +43,7 @@ public class ApiClient {
             HttpLoggingInterceptor log = new HttpLoggingInterceptor();
             log.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-            OkHttpClient client = new OkHttpClient.Builder()
+            OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
                     .cookieJar(CookieStore.getInstance())
                     // 🔥 CRITICAL: Add CSRF Response Interceptor FIRST
                     .addInterceptor(new CsrfResponseInterceptor(ctx))
@@ -33,8 +53,14 @@ public class ApiClient {
                     .addInterceptor(log)
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
-                    .build();
+                    .writeTimeout(30, TimeUnit.SECONDS);
+
+            // ✅ ADD GLOBAL LOADING INTERCEPTOR (if initialized)
+            if (loadingInterceptor != null) {
+                clientBuilder.addInterceptor(loadingInterceptor);
+            }
+
+            OkHttpClient client = clientBuilder.build();
 
             api = new Retrofit.Builder()
                     .baseUrl(BASE_URL)
@@ -52,6 +78,8 @@ public class ApiClient {
             HttpLoggingInterceptor log = new HttpLoggingInterceptor();
             log.setLevel(HttpLoggingInterceptor.Level.BODY);
 
+            // ❌ NO LOADING INTERCEPTOR for refresh client
+            // (to avoid showing loader during token refresh)
             OkHttpClient refreshClient = new OkHttpClient.Builder()
                     .cookieJar(CookieStore.getInstance())
                     .addInterceptor(log)
@@ -73,5 +101,6 @@ public class ApiClient {
     public static void reset() {
         api = null;
         refresh = null;
+        loadingInterceptor = null;
     }
 }
