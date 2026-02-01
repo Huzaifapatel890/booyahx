@@ -13,12 +13,17 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.WalletBalanceResponse;
+import com.booyahx.network.models.TopUpHistoryResponse;
 import com.booyahx.payment.PaymentTopUpDialog;
-import com.booyahx.payment.Transaction;
+import com.booyahx.network.models.Transaction;
 import com.booyahx.payment.TransactionAdapter;
+import com.booyahx.payment.WithdrawDialog;
+import com.booyahx.TokenManager;
+import com.booyahx.WalletCacheManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +41,13 @@ public class WalletFragment extends Fragment {
     private List<Transaction> transactionList;
     private ApiService api;
 
+
+    // Pagination
+    private int currentSkip = 0;
+    private int limitPerPage = 50;
+    private boolean isLoading = false;
+    private boolean hasMore = true;
+
     @Nullable
     @Override
     public View onCreateView(
@@ -49,6 +61,8 @@ public class WalletFragment extends Fragment {
         btnTopUp = view.findViewById(R.id.btnTopUp);
         btnWithdraw = view.findViewById(R.id.btnWithdraw);
         rvTransactions = view.findViewById(R.id.rvTransactions);
+
+
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
@@ -76,16 +90,41 @@ public class WalletFragment extends Fragment {
         loadBalanceFromCache();
         loadBalanceFromAPI();
 
-        loadFakeTransactions(); // remove after real API
+        // 🔥 LOAD REAL TRANSACTIONS FROM API
+        loadTransactionsFromAPI();
 
         btnTopUp.setOnClickListener(v -> {
             PaymentTopUpDialog dialog = new PaymentTopUpDialog(requireContext(), WalletFragment.this);
             dialog.show();
         });
 
-        btnWithdraw.setOnClickListener(v ->
-                Toast.makeText(getContext(), "Withdraw coming soon", Toast.LENGTH_SHORT).show()
-        );
+        // 🔥 OPEN WITHDRAW DIALOG
+        btnWithdraw.setOnClickListener(v -> {
+            WithdrawDialog dialog = new WithdrawDialog(requireContext());
+            dialog.show();
+        });
+
+        // 🔥 SWIPE TO REFRESH (Optional)
+
+        // 🔥 PAGINATION - Load more when scrolling to bottom
+        rvTransactions.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                if (layoutManager != null && !isLoading && hasMore) {
+                    int visibleItemCount = layoutManager.getChildCount();
+                    int totalItemCount = layoutManager.getItemCount();
+                    int firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition();
+
+                    if ((visibleItemCount + firstVisibleItemPosition) >= totalItemCount - 5
+                            && firstVisibleItemPosition >= 0) {
+                        loadMoreTransactions();
+                    }
+                }
+            }
+        });
 
         // 🔥 LISTEN FOR BALANCE UPDATES FROM OTHER FRAGMENTS
         getParentFragmentManager().setFragmentResultListener(
@@ -94,6 +133,7 @@ public class WalletFragment extends Fragment {
                 (requestKey, bundle) -> {
                     if (isAdded()) {
                         loadBalanceFromCache();
+                        refreshData(); // Also refresh transactions
                     }
                 }
         );
@@ -138,23 +178,78 @@ public class WalletFragment extends Fragment {
 
             @Override
             public void onFailure(Call<WalletBalanceResponse> call, Throwable t) {
-                Toast.makeText(getContext(), "Failed to load balance", Toast.LENGTH_SHORT).show();
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Failed to load balance", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
 
-    private void loadFakeTransactions() {
-        transactionList.add(new Transaction("Dec 23", "Top Up", "+500 GC", "Completed", "Card", true));
-        transactionList.add(new Transaction("Dec 22", "Withdraw", "-250 GC", "Completed", "Bank", false));
-        transactionAdapter.notifyDataSetChanged();
+    // 🔥 LOAD TRANSACTIONS FROM API
+    private void loadTransactionsFromAPI() {
+        if (isLoading) return;
+
+        isLoading = true;
+
+        api.getTopUpHistory(limitPerPage, currentSkip).enqueue(new Callback<TopUpHistoryResponse>() {
+            @Override
+            public void onResponse(Call<TopUpHistoryResponse> call, Response<TopUpHistoryResponse> response) {
+                isLoading = false;
+
+                if (response.isSuccessful() && response.body() != null) {
+                    TopUpHistoryResponse.TopUpHistoryData data = response.body().data;
+
+                    if (data != null && data.history != null) {
+                        if (currentSkip == 0) {
+                            // First load - replace all
+                            transactionList.clear();
+                        }
+
+                        transactionList.addAll(data.history);
+                        transactionAdapter.notifyDataSetChanged();
+
+                        // Check if there's more data
+                        hasMore = data.history.size() >= limitPerPage;
+                    }
+                } else {
+                    if (isAdded()) {
+                        Toast.makeText(getContext(), "Failed to load transactions", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<TopUpHistoryResponse> call, Throwable t) {
+                isLoading = false;
+
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
+    // 🔥 LOAD MORE TRANSACTIONS (PAGINATION)
+    private void loadMoreTransactions() {
+        currentSkip += limitPerPage;
+        loadTransactionsFromAPI();
+    }
+
+    // 🔥 REFRESH ALL DATA
+    private void refreshData() {
+        currentSkip = 0;
+        hasMore = true;
+        loadBalanceFromAPI();
+        loadTransactionsFromAPI();
+    }
+
+    // 🔥 CALLED WHEN USER ADDS A PENDING TOP-UP (OPTIMISTIC UI UPDATE)
     public void addPendingTopup(int amount) {
         Transaction t = new Transaction(
                 "Just Now",
-                "Top Up",
+                "topup",
                 "+" + amount + " GC",
-                "Pending",
+                "pending",
                 "Processing...",
                 true
         );
@@ -166,5 +261,6 @@ public class WalletFragment extends Fragment {
     // 🔥 CALLED AFTER SUCCESSFUL TOP-UP
     public void refreshBalance() {
         loadBalanceFromAPI(); // Force refresh from API
+        refreshData(); // Refresh transactions too
     }
 }

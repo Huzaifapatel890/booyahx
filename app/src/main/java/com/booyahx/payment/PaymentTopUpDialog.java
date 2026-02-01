@@ -54,7 +54,7 @@ import retrofit2.Response;
 public class PaymentTopUpDialog extends Dialog {
 
     private static final String TAG = "PaymentDialog";
-    private static final String UPI_ID = "9429297152-2@ybl";
+    private static final String UPI_ID = "9429297152@ybl";
 
     private EditText etAmount, etUTR;
     private TextView btnContinue, btnSubmit, btnDone, tvTimer, tvAmount, tvUpiId, btnCopyUpi;

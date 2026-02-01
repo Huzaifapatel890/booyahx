@@ -19,20 +19,13 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import com.booyahx.R;
 
 public class GlobalLoadingDialog extends DialogFragment {
 
     private static final String TAG = "GlobalLoadingDialog";
-    private static GlobalLoadingDialog instance;
-
-    public static GlobalLoadingDialog getInstance() {
-        if (instance == null) {
-            instance = new GlobalLoadingDialog();
-        }
-        return instance;
-    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -111,29 +104,52 @@ public class GlobalLoadingDialog extends DialogFragment {
         }
     }
 
-    public void show(FragmentManager fragmentManager) {
-        if (!isAdded() && !isVisible()) {
-            try {
-                super.show(fragmentManager, TAG);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+    /**
+     * Shows the loading dialog. This method handles all edge cases and prevents crashes.
+     * @param fragmentManager The FragmentManager to use
+     */
+    public static void show(FragmentManager fragmentManager) {
+        if (fragmentManager == null) {
+            return;
         }
-    }
 
-    public void hide() {
         try {
-            if (isAdded() && isVisible()) {
-                dismissAllowingStateLoss();
+            // Remove any existing instance first
+            DialogFragment existingDialog = (DialogFragment) fragmentManager.findFragmentByTag(TAG);
+            if (existingDialog != null) {
+                existingDialog.dismissAllowingStateLoss();
             }
+
+            // Execute pending transactions to ensure old dialog is fully removed
+            fragmentManager.executePendingTransactions();
+
+            // Create and show new instance
+            GlobalLoadingDialog dialog = new GlobalLoadingDialog();
+            FragmentTransaction transaction = fragmentManager.beginTransaction();
+            transaction.add(dialog, TAG);
+            transaction.commitAllowingStateLoss();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        instance = null;
+    /**
+     * Hides the loading dialog
+     * @param fragmentManager The FragmentManager to use
+     */
+    public static void hide(FragmentManager fragmentManager) {
+        if (fragmentManager == null) {
+            return;
+        }
+
+        try {
+            DialogFragment dialog = (DialogFragment) fragmentManager.findFragmentByTag(TAG);
+            if (dialog != null) {
+                dialog.dismissAllowingStateLoss();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -64,6 +64,11 @@ public interface ApiService {
             @Query("limit") int limit,
             @Query("skip") int skip
     );
+    @GET("/api/wallet/topup-history")
+    Call<TopUpHistoryResponse> getTopUpHistory(
+            @Query("limit") int limit,
+            @Query("skip") int skip
+    );
 
     @GET("/api/wallet/balance")
     Call<WalletBalanceResponse> getWalletBalance();
@@ -120,7 +125,7 @@ public interface ApiService {
             @Query("mode") String mode
     );
 
-    @POST("api/host/tournaments/{tournamentId}/update-room")
+    @POST("/api/host/tournaments/{tournamentId}/update-room")
     Call<UpdateRoomResponse> updateRoom(
             @Path("tournamentId") String tournamentId,
             @Body UpdateRoomRequest request
