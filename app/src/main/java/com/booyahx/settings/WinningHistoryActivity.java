@@ -3,6 +3,7 @@ package com.booyahx.settings;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.View;
 import android.view.animation.AlphaAnimation;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,6 +29,7 @@ import retrofit2.Response;
 public class WinningHistoryActivity extends AppCompatActivity {
 
     RecyclerView recyclerWinningHistory;
+    TextView tvEmptyState;
     WinningHistoryAdapter adapter;
     List<WinningHistoryItem> list = new ArrayList<>();
     ApiService api;
@@ -42,6 +44,8 @@ public class WinningHistoryActivity extends AppCompatActivity {
         api = ApiClient.getClient(this).create(ApiService.class);
 
         recyclerWinningHistory = findViewById(R.id.recyclerWinningHistory);
+        tvEmptyState = findViewById(R.id.tvEmptyState);
+
         recyclerWinningHistory.setLayoutManager(new LinearLayoutManager(this));
 
         adapter = new WinningHistoryAdapter(list);
@@ -92,8 +96,12 @@ public class WinningHistoryActivity extends AppCompatActivity {
 
                     adapter.notifyDataSetChanged();
 
+                    // Show/hide empty state based on data
+                    updateEmptyState();
+
                 } else {
                     showTopRightToast("No history found");
+                    updateEmptyState();
                 }
             }
 
@@ -105,8 +113,19 @@ public class WinningHistoryActivity extends AppCompatActivity {
 
                 Log.e("WIN_HISTORY", "Request failed", t);
                 showTopRightToast("Something went wrong. Try again.");
+                updateEmptyState();
             }
         });
+    }
+
+    private void updateEmptyState() {
+        if (list.isEmpty()) {
+            tvEmptyState.setVisibility(View.VISIBLE);
+            recyclerWinningHistory.setVisibility(View.GONE);
+        } else {
+            tvEmptyState.setVisibility(View.GONE);
+            recyclerWinningHistory.setVisibility(View.VISIBLE);
+        }
     }
 
     private String formatDate(String isoDate) {

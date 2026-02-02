@@ -2,6 +2,7 @@ package com.booyahx;
 
 import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -27,6 +29,7 @@ import com.booyahx.settings.ChangePasswordActivity;
 import com.booyahx.settings.EditProfileActivity;
 import com.booyahx.settings.HelpSupportActivity;
 import com.booyahx.settings.WinningHistoryActivity;
+import com.booyahx.utils.AvatarGenerator;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -36,6 +39,7 @@ public class SettingsFragment extends Fragment {
 
     private static final String TAG = "SettingsFragment";
     private TextView txtUserName, txtEmail;
+    private ImageView ivProfilePic;
     private Dialog logoutDialog;
 
     @Nullable
@@ -53,6 +57,7 @@ public class SettingsFragment extends Fragment {
 
         txtUserName = view.findViewById(R.id.txtUserName);
         txtEmail = view.findViewById(R.id.txtEmail);
+        ivProfilePic = view.findViewById(R.id.imgAvatar);
 
         // 🔥 LOAD FROM CACHE (NO API CALL)
         loadProfileFromCache();
@@ -107,10 +112,30 @@ public class SettingsFragment extends Fragment {
         if (profile != null) {
             txtUserName.setText(profile.name != null ? profile.name : "Unknown");
             txtEmail.setText(profile.email != null ? profile.email : "No Email");
+
+            // 🔥 Generate neon avatar using AvatarGenerator
+            loadAvatar(profile.name);
         } else {
             // If no cache exists, show defaults
             txtUserName.setText("Unknown");
             txtEmail.setText("No Email");
+            loadAvatar("Unknown");
+        }
+    }
+
+    // 🔥 GENERATE AND SET NEON AVATAR
+    private void loadAvatar(String name) {
+        try {
+            // Use the same method as in your app - generates neon-style avatar
+            Bitmap avatarBitmap = AvatarGenerator.generateAvatar(
+                    name != null ? name : "U",
+                    80,  // Size in dp
+                    requireContext()
+            );
+            ivProfilePic.setImageBitmap(avatarBitmap);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to generate avatar: " + e.getMessage());
+            // Keep default image if generation fails
         }
     }
 

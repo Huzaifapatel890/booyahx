@@ -172,51 +172,46 @@ public class AboutActivity {
             } else {
                 // Switch to English
                 tvTitle.setText("About Us – BooyahX");
-                tvDescription.setText("BooyahX ek next-gen esports platform hai jo Free Fire players ko paid lobbies, custom rooms, daily matches, tournaments, aur LAN events ka best experience provide karta hai.\n\nHumara mission simple hai — India ke competitive gamers ko ek safe, fair aur transparent battleground dena jahan wo apne skills dikha sakein aur esports me grow kar sakein.");
-                tvDesignedFor.setText("BooyahX specially design kiya gaya hai:");
+                tvDescription.setText("BooyahX is a next-gen esports platform built for Free Fire players, offering the ultimate experience in paid lobbies, custom rooms, daily matches, tournaments, and LAN events.\n\nOur mission is simple — to give India's competitive gamers a secure, fair, and transparent battleground where they can showcase their skills and level up in esports.");
+                tvDesignedFor.setText("BooyahX is designed specifically for:");
 
-                tvFeature1Title.setText("🎮 Free Fire Paid Lobbies and Custom Rooms");
-                tvFeature1Desc.setText("• Fast aur secure room access\n• Verified and trusted hosts\n• Fair gameplay and anti-cheat focus\n• Instant results and payouts");
+                tvFeature1Title.setText("🎮 Free Fire Paid Lobbies & Custom Rooms");
+                tvFeature1Desc.setText("• Fast and secure room access\n• Verified and trusted hosts\n• Fair gameplay and anti-cheat focus\n• Instant results and payouts");
 
-                tvFeature2Title.setText("🏆 Tournament Organizer");
-                tvFeature2Desc.setText("• Daily and weekly online tournaments\n• 100% transparency in match rules\n• Auto bracket, results and leaderboard\n• Smooth registration system");
+                tvFeature2Title.setText("🏆 Tournament Organizers");
+                tvFeature2Desc.setText("• Daily and weekly online tournaments\n• 100% transparency in match rules\n• Auto brackets, results, and leaderboards\n• Seamless registration system");
 
                 tvFeature3Title.setText("🖥 LAN Tournament Organizer (Prepaid Only)");
                 tvFeature3Desc.setText("• On-ground esports experience\n• Fully managed event support\n• Professional match handling\n• Competitive stage environment");
 
                 tvMissionTitle.setText("🚀 Working to Promote Esports");
-                tvMissionDesc.setText("BooyahX ka main goal India ke young gamers ko esports ka real exposure dena hai. Hum community events, paid lobbies aur tournaments ke through grassroot esports ko promote kar rahe hain — taaki har player ko bada hone ka equal chance mile.");
+                tvMissionDesc.setText("BooyahX's main goal is to give India's young gamers real exposure to esports. We are promoting grassroot esports through community events, paid lobbies, and tournaments — so that every player gets an equal chance to grow big.");
 
                 tvFollowTitle.setText("📱 Follow Us");
                 tvFollowDesc.setText("Stay connected with BooyahX for latest updates, tournaments, and community events!");
             }
         }
 
-        // 🔥 SETUP SOCIAL MEDIA CLICK LISTENERS
+        // 🔥 SETUP SOCIAL MEDIA BUTTONS
         private void setupSocialMediaButtons() {
             LinearLayout btnInstagram = findViewById(R.id.btnInstagram);
             LinearLayout btnWhatsApp = findViewById(R.id.btnWhatsApp);
             LinearLayout btnTelegram = findViewById(R.id.btnTelegram);
             LinearLayout btnDiscord = findViewById(R.id.btnDiscord);
 
-            btnInstagram.setOnClickListener(v -> openSocialMedia(INSTAGRAM_URL, "Instagram"));
-            btnWhatsApp.setOnClickListener(v -> openSocialMedia(WHATSAPP_URL, "WhatsApp"));
-            btnTelegram.setOnClickListener(v -> openSocialMedia(TELEGRAM_URL, "Telegram"));
-            btnDiscord.setOnClickListener(v -> openSocialMedia(DISCORD_URL, "Discord"));
+            btnInstagram.setOnClickListener(v -> openUrl(INSTAGRAM_URL));
+            btnWhatsApp.setOnClickListener(v -> openUrl(WHATSAPP_URL));
+            btnTelegram.setOnClickListener(v -> openUrl(TELEGRAM_URL));
+            btnDiscord.setOnClickListener(v -> openUrl(DISCORD_URL));
         }
 
-        // 🔥 OPEN SOCIAL MEDIA LINK
-        private void openSocialMedia(String url, String platformName) {
+        // 🔥 OPEN SOCIAL MEDIA LINKS
+        private void openUrl(String url) {
             try {
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(url));
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                 startActivity(intent);
             } catch (Exception e) {
-                Toast.makeText(
-                        this,
-                        "Unable to open " + platformName + ". Please try again.",
-                        Toast.LENGTH_SHORT
-                ).show();
+                Toast.makeText(this, "Unable to open link", Toast.LENGTH_SHORT).show();
             }
         }
 
@@ -228,12 +223,6 @@ public class AboutActivity {
                 return true;
             }
             return super.onOptionsItemSelected(item);
-        }
-
-        @Override
-        public void finish() {
-            super.finish();
-            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
         }
     }
 }

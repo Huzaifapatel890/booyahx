@@ -24,7 +24,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Winninng History"
+            android:text="Winning History"
             android:textColor="#00C3FF"
             android:textSize="22sp"
             android:textStyle="bold"
@@ -38,10 +38,29 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerWinningHistory"
+        <!-- Container for RecyclerView and Empty State -->
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerWinningHistory"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <!-- Empty State TextView -->
+            <TextView
+                android:id="@+id/tvEmptyState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="NO WINNING HISTORY"
+                android:textColor="#808080"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+        </FrameLayout>
 
     </LinearLayout>
     <include layout="@layout/loader_overlay"/>

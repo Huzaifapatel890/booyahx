@@ -4,6 +4,7 @@ import com.booyahx.utils.TopRightToast;
 import com.booyahx.utils.TournamentJoinStateManager;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,6 +37,7 @@ import com.booyahx.tournament.RulesBottomSheet;
 import com.booyahx.tournament.JoinTournamentDialog;
 import com.booyahx.utils.NotificationPref;
 import com.booyahx.notifications.NotificationActivity;
+import com.booyahx.utils.AvatarGenerator;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -51,6 +53,7 @@ public class HomeFragment extends Fragment {
     private TextView txtUsername, txtWalletBalance;
     private TextView txtHostBadge;
     private ImageView btnNotification;
+    private ImageView ivProfilePic;
 
     private LinearLayout tournamentsContainer;
     private LinearLayout btnBermuda, btnClashSquad, btnSpecial;
@@ -86,6 +89,7 @@ public class HomeFragment extends Fragment {
         txtHostBadge = view.findViewById(R.id.txtHostBadge);
         txtWalletBalance = view.findViewById(R.id.txtWalletBalance);
         btnNotification = view.findViewById(R.id.btnNotification);
+        ivProfilePic = view.findViewById(R.id.imgAvatar);
 
         tournamentsContainer = view.findViewById(R.id.tournamentsContainer);
         btnBermuda = view.findViewById(R.id.btnBermuda);
@@ -284,6 +288,15 @@ public class HomeFragment extends Fragment {
 
     private void updateProfileUI(ProfileResponse.Data data) {
         txtUsername.setText(data.name != null ? data.name : "User");
+
+        // Generate avatar
+        try {
+            Bitmap avatarBitmap = AvatarGenerator.generateAvatar(
+                    data.name != null ? data.name : "U", 48, requireContext());
+            ivProfilePic.setImageBitmap(avatarBitmap);
+        } catch (Exception e) {
+            // Keep default if fails
+        }
 
         String role = data.role != null ? data.role : "user";
         if ("host".equalsIgnoreCase(role)) {

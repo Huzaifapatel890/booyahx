@@ -74,13 +74,13 @@
                 android:textSize="16sp"
                 android:textColor="#E0FFFFFF"
                 android:lineSpacingExtra="6dp"
-                android:text="BooyahX ek next-gen esports platform hai jo Free Fire players ko paid lobbies, custom rooms, daily matches, tournaments, aur LAN events ka best experience provide karta hai.\n\nHumara mission simple hai — India ke competitive gamers ko ek safe, fair aur transparent battleground dena jahan wo apne skills dikha sakein aur esports me grow kar sakein." />
+                android:text="BooyahX is a next-gen esports platform built for Free Fire players, offering the ultimate experience in paid lobbies, custom rooms, daily matches, tournaments, and LAN events.\n\nOur mission is simple — to give India's competitive gamers a secure, fair, and transparent battleground where they can showcase their skills and level up in esports." />
 
             <TextView
                 android:id="@+id/tvDesignedFor"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="BooyahX specially design kiya gaya hai:"
+                android:text="BooyahX is designed specifically for:"
                 android:textColor="#00FFA3"
                 android:textSize="20sp"
                 android:textStyle="bold"
@@ -101,7 +101,7 @@
                     android:id="@+id/tvFeature1Title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🎮 Free Fire Paid Lobbies and Custom Rooms"
+                    android:text="🎮 Free Fire Paid Lobbies &amp; Custom Rooms"
                     android:textColor="#00C8FF"
                     android:textSize="18sp"
                     android:textStyle="bold"
@@ -111,7 +111,7 @@
                     android:id="@+id/tvFeature1Desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="• Fast aur secure room access\n• Verified and trusted hosts\n• Fair gameplay and anti-cheat focus\n• Instant results and payouts"
+                    android:text="• Fast and secure room access\n• Verified and trusted hosts\n• Fair gameplay and anti-cheat focus\n• Instant results and payouts"
                     android:textColor="#B0FFFFFF"
                     android:textSize="15sp"
                     android:lineSpacingExtra="4dp" />
@@ -131,7 +131,7 @@
                     android:id="@+id/tvFeature2Title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="🏆 Tournament Organizer"
+                    android:text="🏆 Tournament Organizers"
                     android:textColor="#00C8FF"
                     android:textSize="18sp"
                     android:textStyle="bold"
@@ -141,7 +141,7 @@
                     android:id="@+id/tvFeature2Desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="• Daily and weekly online tournaments\n• 100% transparency in match rules\n• Auto bracket, results and leaderboard\n• Smooth registration system"
+                    android:text="• Daily and weekly online tournaments\n• 100% transparency in match rules\n• Auto brackets, results, and leaderboards\n• Seamless registration system"
                     android:textColor="#B0FFFFFF"
                     android:textSize="15sp"
                     android:lineSpacingExtra="4dp" />
@@ -193,7 +193,7 @@
                 android:id="@+id/tvMissionDesc"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="BooyahX ka main goal India ke young gamers ko esports ka real exposure dena hai. Hum community events, paid lobbies aur tournaments ke through grassroot esports ko promote kar rahe hain — taaki har player ko bada hone ka equal chance mile."
+                android:text="BooyahX's main goal is to give India's young gamers real exposure to esports. We are promoting grassroot esports through community events, paid lobbies, and tournaments — so that every player gets an equal chance to grow big."
                 android:textColor="#D0FFFFFF"
                 android:textSize="16sp"
                 android:lineSpacingExtra="7dp"
