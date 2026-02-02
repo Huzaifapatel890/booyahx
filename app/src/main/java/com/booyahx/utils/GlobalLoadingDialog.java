@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,23 +20,25 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 
 import com.booyahx.R;
 
 public class GlobalLoadingDialog extends DialogFragment {
 
-    private static final String TAG = "GlobalLoadingDialog";
+    private static final String TAG = "LoadingDialog_DEBUG";
+    private static GlobalLoadingDialog currentInstance = null;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "🟢 onCreate() called");
         setCancelable(false);
     }
 
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+        Log.d(TAG, "🟢 onCreateDialog() called");
         Dialog dialog = super.onCreateDialog(savedInstanceState);
         if (dialog.getWindow() != null) {
             dialog.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
@@ -47,6 +50,7 @@ public class GlobalLoadingDialog extends DialogFragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        Log.d(TAG, "🟢 onCreateView() called");
         View view = inflater.inflate(R.layout.dialog_global_loading, container, false);
 
         View blurLayer = view.findViewById(R.id.blurLayer);
@@ -88,12 +92,14 @@ public class GlobalLoadingDialog extends DialogFragment {
         pulse.setRepeatMode(Animation.REVERSE);
         glow.startAnimation(pulse);
 
+        Log.d(TAG, "✅ View created with animations");
         return view;
     }
 
     @Override
     public void onStart() {
         super.onStart();
+        Log.d(TAG, "🟢 onStart() called");
         Dialog dialog = getDialog();
         if (dialog != null && dialog.getWindow() != null) {
             dialog.getWindow().setLayout(
@@ -102,54 +108,134 @@ public class GlobalLoadingDialog extends DialogFragment {
             );
             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         }
+        Log.d(TAG, "✅ Dialog started and visible");
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        Log.d(TAG, "🔴 onDestroyView() called");
+        if (currentInstance == this) {
+            Log.d(TAG, "   Clearing currentInstance");
+            currentInstance = null;
+        }
     }
 
     /**
-     * Shows the loading dialog. This method handles all edge cases and prevents crashes.
-     * @param fragmentManager The FragmentManager to use
+     * Shows the loading dialog with extensive logging
      */
     public static void show(FragmentManager fragmentManager) {
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "🔵 show() called");
+        Log.d(TAG, "   FragmentManager: " + (fragmentManager != null ? "EXISTS" : "NULL"));
+
         if (fragmentManager == null) {
+            Log.e(TAG, "   ❌ FragmentManager is NULL - CANNOT SHOW");
+            return;
+        }
+
+        Log.d(TAG, "   FragmentManager.isDestroyed(): " + fragmentManager.isDestroyed());
+
+        if (fragmentManager.isDestroyed()) {
+            Log.e(TAG, "   ❌ FragmentManager is DESTROYED - CANNOT SHOW");
             return;
         }
 
         try {
-            // Remove any existing instance first
+            // Check if already showing
+            if (currentInstance != null) {
+                Log.d(TAG, "   currentInstance exists");
+                Log.d(TAG, "      isAdded: " + currentInstance.isAdded());
+                Log.d(TAG, "      isVisible: " + currentInstance.isVisible());
+                Log.d(TAG, "      isResumed: " + currentInstance.isResumed());
+
+                if (currentInstance.isAdded()) {
+                    Log.d(TAG, "   ℹ️ Dialog already showing - SKIPPING");
+                    return;
+                }
+            }
+
+            // Remove any existing dialog by tag
             DialogFragment existingDialog = (DialogFragment) fragmentManager.findFragmentByTag(TAG);
             if (existingDialog != null) {
+                Log.d(TAG, "   Found existing dialog by tag - dismissing");
                 existingDialog.dismissAllowingStateLoss();
             }
 
-            // Execute pending transactions to ensure old dialog is fully removed
+            // Clear reference
+            currentInstance = null;
+
+            // Execute pending transactions
+            Log.d(TAG, "   Executing pending transactions...");
             fragmentManager.executePendingTransactions();
+            Log.d(TAG, "   ✅ Pending transactions executed");
 
-            // Create and show new instance
-            GlobalLoadingDialog dialog = new GlobalLoadingDialog();
-            FragmentTransaction transaction = fragmentManager.beginTransaction();
-            transaction.add(dialog, TAG);
-            transaction.commitAllowingStateLoss();
+            // Create and show
+            Log.d(TAG, "   Creating new dialog instance...");
+            currentInstance = new GlobalLoadingDialog();
+            Log.d(TAG, "   Calling show()...");
+            currentInstance.show(fragmentManager, TAG);
+            Log.d(TAG, "   ✅✅✅ DIALOG SHOW CALLED SUCCESSFULLY");
 
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "   ❌ IllegalStateException: " + e.getMessage());
+            e.printStackTrace();
         } catch (Exception e) {
+            Log.e(TAG, "   ❌ Exception: " + e.getMessage());
             e.printStackTrace();
         }
+        Log.d(TAG, "========================================");
     }
 
     /**
-     * Hides the loading dialog
-     * @param fragmentManager The FragmentManager to use
+     * Hides the loading dialog with extensive logging
      */
     public static void hide(FragmentManager fragmentManager) {
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "🔴 hide() called");
+        Log.d(TAG, "   FragmentManager: " + (fragmentManager != null ? "EXISTS" : "NULL"));
+
         if (fragmentManager == null) {
+            Log.e(TAG, "   ⚠️ FragmentManager is NULL");
+            return;
+        }
+
+        Log.d(TAG, "   FragmentManager.isDestroyed(): " + fragmentManager.isDestroyed());
+
+        if (fragmentManager.isDestroyed()) {
+            Log.e(TAG, "   ⚠️ FragmentManager is DESTROYED");
             return;
         }
 
         try {
+            // Dismiss current instance
+            if (currentInstance != null) {
+                Log.d(TAG, "   Dismissing currentInstance");
+                Log.d(TAG, "      isAdded: " + currentInstance.isAdded());
+                Log.d(TAG, "      isVisible: " + currentInstance.isVisible());
+                currentInstance.dismissAllowingStateLoss();
+                currentInstance = null;
+                Log.d(TAG, "   ✅ currentInstance dismissed");
+            } else {
+                Log.d(TAG, "   ℹ️ No currentInstance to dismiss");
+            }
+
+            // Also remove by tag as fallback
             DialogFragment dialog = (DialogFragment) fragmentManager.findFragmentByTag(TAG);
             if (dialog != null) {
+                Log.d(TAG, "   Found dialog by tag - dismissing");
                 dialog.dismissAllowingStateLoss();
+                Log.d(TAG, "   ✅ Dialog dismissed by tag");
+            } else {
+                Log.d(TAG, "   ℹ️ No dialog found by tag");
             }
+
+            Log.d(TAG, "   ✅✅✅ HIDE COMPLETED");
+
         } catch (Exception e) {
+            Log.e(TAG, "   ❌ Exception during hide: " + e.getMessage());
             e.printStackTrace();
         }
+        Log.d(TAG, "========================================");
     }
 }

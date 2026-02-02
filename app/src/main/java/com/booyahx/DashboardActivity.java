@@ -37,7 +37,7 @@ public class DashboardActivity extends AppCompatActivity {
         Log.d("SOCKET_FLOW", "Dashboard onCreate");
 
         // ✅ INITIALIZE GLOBAL API LOADER (ONLY NEW LINE)
-        ApiClient.initialize(this);
+        ApiClient.updateActivity(this);
 
         navHome = findViewById(R.id.navHome);
         navParticipated = findViewById(R.id.navParticipated);

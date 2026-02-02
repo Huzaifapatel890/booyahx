@@ -28,8 +28,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class
-LoginActivity extends AppCompatActivity {
+public class LoginActivity extends AppCompatActivity {
 
     LinearLayout btnGoogle, btnMobile;
     GoogleSignInClient mGoogleSignInClient;
@@ -39,6 +38,11 @@ LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        // 🔥🔥🔥 CRITICAL FIX — INITIALIZE API CLIENT HERE
+        ApiClient.initialize(this);
+        ApiClient.updateActivity(this);
+        // 🔥🔥🔥 END FIX
 
         btnGoogle = findViewById(R.id.btnGoogle);
         btnMobile = findViewById(R.id.btnMobile);
@@ -53,7 +57,7 @@ LoginActivity extends AppCompatActivity {
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         btnGoogle.setOnClickListener(v -> {
-            LoaderOverlay.show(LoginActivity.this);   // 🔵 SHOW LOADER BEFORE GOOGLE POPUP
+            LoaderOverlay.show(LoginActivity.this);
             Intent signInIntent = mGoogleSignInClient.getSignInIntent();
             startActivityForResult(signInIntent, RC_GOOGLE);
         });
@@ -126,7 +130,7 @@ LoginActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<GoogleLoginResponse> call, Response<GoogleLoginResponse> response) {
 
-                LoaderOverlay.hide(LoginActivity.this);  // 🔵 ALWAYS HIDE LOADER
+                LoaderOverlay.hide(LoginActivity.this);
 
                 if (response.isSuccessful() && response.body() != null) {
                     GoogleLoginResponse resp = response.body();
