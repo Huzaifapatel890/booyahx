@@ -69,6 +69,18 @@ public interface ApiService {
             @Query("limit") int limit,
             @Query("skip") int skip
     );
+    @GET("/api/wallet/withdraw-limit")
+    Call<WithdrawalLimitResponse> getWithdrawLimit();
+
+    /**
+     * Request withdrawal (cash-out)
+     * User requests withdrawal. Amount is deducted immediately;
+     * status is pending until admin does manual payment and marks as success.
+     * Enforces wagering limit - user can only withdraw up to 50% of total deposits
+     * (minus already withdrawn).
+     */
+    @POST("/api/wallet/withdraw")
+    Call<WithdrawalResponse> requestWithdrawal(@Body WithdrawalRequest request);
 
     @GET("/api/wallet/balance")
     Call<WalletBalanceResponse> getWalletBalance();

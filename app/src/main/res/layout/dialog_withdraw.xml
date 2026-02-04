@@ -175,38 +175,39 @@
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
                             android:gravity="center_vertical"
-                            android:layout_marginBottom="8dp">
+                            android:layout_marginBottom="12dp">
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="⚠️"
                                 android:textSize="24sp"
-                                android:layout_marginEnd="8dp" />
+                                android:layout_marginEnd="12dp" />
 
                             <TextView
-                                android:layout_width="wrap_content"
+                                android:layout_width="0dp"
                                 android:layout_height="wrap_content"
+                                android:layout_weight="1"
                                 android:text="UPI ID Required"
-                                android:textColor="#FFB84D"
+                                android:textColor="#ff9900"
                                 android:textSize="16sp"
                                 android:textStyle="bold" />
                         </LinearLayout>
 
                         <TextView
-                            android:id="@+id/tvUpdateProfileWarning"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Please update your profile from settings to add your UPI ID and enable withdrawals"
-                            android:textColor="#FFFFFF"
-                            android:textSize="14sp"
-                            android:lineSpacingExtra="2dp"
-                            android:layout_marginBottom="8dp" />
-
-                        <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="👆 Tap here to Update Profile"
+                            android:text="Please add your UPI ID in profile settings to withdraw money."
+                            android:textColor="#cccccc"
+                            android:textSize="14sp"
+                            android:lineSpacingExtra="2dp"
+                            android:layout_marginBottom="14dp" />
+
+                        <TextView
+                            android:id="@+id/tvUpdateProfileWarning"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="👉 Update Profile"
                             android:textColor="#00d9ff"
                             android:textSize="13sp"
                             android:textStyle="bold" />
@@ -243,6 +244,17 @@
                         android:layout_height="wrap_content"
                         android:text="Please enter a valid amount"
                         android:textColor="#ff5555"
+                        android:textSize="13sp"
+                        android:visibility="gone"
+                        android:layout_marginBottom="6dp" />
+
+                    <!-- Weger Warning Message -->
+                    <TextView
+                        android:id="@+id/tvWegerWarning"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Warning message"
+                        android:textColor="#ff9900"
                         android:textSize="13sp"
                         android:visibility="gone"
                         android:layout_marginBottom="6dp" />

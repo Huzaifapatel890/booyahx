@@ -1,6 +1,7 @@
 package com.booyahx.payment;
 
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -8,6 +9,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -21,10 +23,21 @@ import androidx.annotation.NonNull;
 import com.airbnb.lottie.LottieAnimationView;
 import com.booyahx.ProfileCacheManager;
 import com.booyahx.R;
+import com.booyahx.network.ApiService;
+import com.booyahx.network.ApiClient;
+import com.booyahx.network.models.WithdrawalLimitResponse;
+import com.booyahx.network.models.WithdrawalRequest;
+import com.booyahx.network.models.WithdrawalResponse;
 import com.booyahx.settings.EditProfileActivity;
 import com.booyahx.WalletCacheManager;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
 public class WithdrawDialog extends Dialog {
+
+    private static final String TAG = "WithdrawDialog";
 
     private Context context;
 
@@ -52,11 +65,16 @@ public class WithdrawDialog extends Dialog {
     private TextView btnDone;
 
     private double currentBalance;
+    private int maxWithdrawableGC;
     private String upiId;
 
     // Withdrawal limits
     private static final int MIN_WITHDRAW = 40;
     private static final int MAX_WITHDRAW = 9999;
+
+    // API
+    private ApiService apiService;
+    private ProgressDialog progressDialog;
 
     public WithdrawDialog(@NonNull Context context) {
         super(context);
@@ -81,8 +99,10 @@ public class WithdrawDialog extends Dialog {
         }
 
         initViews();
+        initApi();
         loadData();
         setupListeners();
+        fetchWithdrawLimit();
     }
 
     private void initViews() {
@@ -110,13 +130,21 @@ public class WithdrawDialog extends Dialog {
         btnDone = findViewById(R.id.btnDone);
     }
 
+    private void initApi() {
+        // Initialize ApiService using ApiClient with context for AuthInterceptor
+        apiService = ApiClient.getClient(context).create(ApiService.class);
+
+        progressDialog = new ProgressDialog(context);
+        progressDialog.setMessage("Processing...");
+        progressDialog.setCancelable(false);
+    }
+
     private void loadData() {
         // Load balance from WalletCacheManager
         currentBalance = WalletCacheManager.getBalance(context);
         int balanceInt = (int) Math.round(currentBalance);
 
         tvCurrentBalance.setText(balanceInt + " GC");
-        tvWithdrawableBalance.setText(balanceInt + " GC");
 
         // Load UPI ID from ProfileCacheManager
         upiId = ProfileCacheManager.getProfile(context) != null
@@ -136,6 +164,48 @@ public class WithdrawDialog extends Dialog {
             btnWithdraw.setEnabled(false);
             btnWithdraw.setAlpha(0.5f);
         }
+    }
+
+    private void fetchWithdrawLimit() {
+        apiService.getWithdrawLimit().enqueue(new Callback<WithdrawalLimitResponse>() {
+            @Override
+            public void onResponse(Call<WithdrawalLimitResponse> call, Response<WithdrawalLimitResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    WithdrawalLimitResponse limitResponse = response.body();
+
+                    if (limitResponse.isSuccess() && limitResponse.getData() != null) {
+                        maxWithdrawableGC = limitResponse.getData().getMaxWithdrawableGC();
+                        int balanceGC = limitResponse.getData().getBalanceGC();
+
+                        // Update UI with server data
+                        tvCurrentBalance.setText(balanceGC + " GC");
+                        tvWithdrawableBalance.setText(maxWithdrawableGC + " GC");
+                        currentBalance = balanceGC;
+
+                        Log.d(TAG, "Withdrawal limit fetched: " + maxWithdrawableGC + " GC");
+                    } else {
+                        // Use cached balance as fallback
+                        handleLimitFetchError(limitResponse.getMessage());
+                    }
+                } else {
+                    // On error, use cached balance
+                    handleLimitFetchError("Failed to fetch limits");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<WithdrawalLimitResponse> call, Throwable t) {
+                // On failure, use cached balance
+                handleLimitFetchError("Network error: " + t.getMessage());
+            }
+        });
+    }
+
+    private void handleLimitFetchError(String error) {
+        maxWithdrawableGC = (int) Math.round(currentBalance);
+        tvWithdrawableBalance.setText(maxWithdrawableGC + " GC");
+        Log.e(TAG, "Error fetching withdrawal limit: " + error);
+        Toast.makeText(context, "Using cached balance", Toast.LENGTH_SHORT).show();
     }
 
     private void setupListeners() {
@@ -185,6 +255,9 @@ public class WithdrawDialog extends Dialog {
             } else if (amount > MAX_WITHDRAW) {
                 tvAmountError.setText("Maximum withdrawal amount is " + MAX_WITHDRAW + " GC");
                 tvAmountError.setVisibility(View.VISIBLE);
+            } else if (amount > maxWithdrawableGC) {
+                tvAmountError.setText("Maximum withdrawable amount is " + maxWithdrawableGC + " GC");
+                tvAmountError.setVisibility(View.VISIBLE);
             } else if (amount > currentBalance) {
                 tvAmountError.setText("Amount cannot exceed " + (int) Math.round(currentBalance) + " GC");
                 tvAmountError.setVisibility(View.VISIBLE);
@@ -207,7 +280,7 @@ public class WithdrawDialog extends Dialog {
         }
 
         try {
-            double amount = Double.parseDouble(amountStr);
+            int amount = Integer.parseInt(amountStr);
 
             // Validation
             if (amount <= 0) {
@@ -228,19 +301,88 @@ public class WithdrawDialog extends Dialog {
                 return;
             }
 
+            if (amount > maxWithdrawableGC) {
+                tvAmountError.setText("Maximum withdrawable amount is " + maxWithdrawableGC + " GC");
+                tvAmountError.setVisibility(View.VISIBLE);
+                return;
+            }
+
             if (amount > currentBalance) {
                 tvAmountError.setText("Insufficient balance");
                 tvAmountError.setVisibility(View.VISIBLE);
                 return;
             }
 
-            // All validations passed - show success
-            showSuccess(amount);
+            // All validations passed - make API call
+            submitWithdrawalRequest(amount);
 
         } catch (NumberFormatException e) {
             tvAmountError.setText("Invalid amount");
             tvAmountError.setVisibility(View.VISIBLE);
         }
+    }
+
+    private void submitWithdrawalRequest(int amount) {
+        progressDialog.show();
+
+        WithdrawalRequest request = new WithdrawalRequest(amount, "UPI payout");
+
+        apiService.requestWithdrawal(request).enqueue(new Callback<WithdrawalResponse>() {
+            @Override
+            public void onResponse(Call<WithdrawalResponse> call, Response<WithdrawalResponse> response) {
+                progressDialog.dismiss();
+
+                if (response.isSuccessful() && response.body() != null) {
+                    WithdrawalResponse withdrawalResponse = response.body();
+
+                    if (withdrawalResponse.isSuccess()) {
+                        // Update local balance cache
+                        currentBalance -= amount;
+                        WalletCacheManager.updateBalance(context, currentBalance);
+
+                        // Show success screen
+                        showSuccess(amount);
+
+                        Log.d(TAG, "Withdrawal successful: " + amount + " GC");
+                        Toast.makeText(context, withdrawalResponse.getMessage(), Toast.LENGTH_LONG).show();
+                    } else {
+                        // API returned error
+                        Log.e(TAG, "Withdrawal failed: " + withdrawalResponse.getMessage());
+                        Toast.makeText(context, withdrawalResponse.getMessage(), Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    handleWithdrawalError(response.code());
+                }
+            }
+
+            @Override
+            public void onFailure(Call<WithdrawalResponse> call, Throwable t) {
+                progressDialog.dismiss();
+                Log.e(TAG, "Withdrawal request failed", t);
+                Toast.makeText(context, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void handleWithdrawalError(int code) {
+        String message;
+
+        switch (code) {
+            case 400:
+                message = "Validation error or withdrawal limit exceeded";
+                Log.e(TAG, "Withdrawal error 400: " + message);
+                break;
+            case 401:
+                message = "Unauthorized. Please login again.";
+                Log.e(TAG, "Withdrawal error 401: " + message);
+                break;
+            default:
+                message = "Failed to process withdrawal";
+                Log.e(TAG, "Withdrawal error " + code + ": " + message);
+                break;
+        }
+
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show();
     }
 
     private void showSuccess(double amount) {
