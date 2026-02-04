@@ -132,6 +132,34 @@
                     android:textSize="16sp"
                     android:inputType="number"/>
 
+                <!-- Warning Message -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="@drawable/warning_background"
+                    android:padding="12dp"
+                    android:layout_marginTop="16dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⚠"
+                        android:textSize="20sp"
+                        android:textColor="#FFA500"
+                        android:layout_marginEnd="8dp"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="To keep matches fair and active, at least 50% of your deposited amount must be used in match entries before withdrawal."
+                        android:textColor="#FFA500"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="2dp"/>
+                </LinearLayout>
+
                 <TextView
                     android:id="@+id/btnContinue"
                     android:layout_width="match_parent"

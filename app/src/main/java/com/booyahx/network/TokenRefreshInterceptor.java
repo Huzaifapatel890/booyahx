@@ -39,9 +39,18 @@ public final class TokenRefreshInterceptor implements Interceptor {
 
         Response response = chain.proceed(request);
 
+        // 🔥 FIX: Allow change-password endpoint to use token refresh
+        String path = request.url().encodedPath();
+        boolean isChangePassword = path.equals("/api/auth/change-password");
+
+        // Skip token refresh for:
+        // - Non-401 responses
+        // - Requests without Authorization header
+        // - Public /api/auth/* endpoints (EXCEPT change-password)
+        // - Max retries reached
         if (response.code() != 401
                 || request.header("Authorization") == null
-                || request.url().encodedPath().startsWith("/api/auth/")
+                || (path.startsWith("/api/auth/") && !isChangePassword)  // 🔥 FIXED
                 || retryCount >= MAX_RETRIES) {
             return response;
         }
@@ -57,16 +66,33 @@ public final class TokenRefreshInterceptor implements Interceptor {
                 Log.d(TAG, "Token already refreshed by another thread");
                 response.close();
 
-                Request retry = request.newBuilder()
-                        .header("Authorization", "Bearer " + currentToken)
-                        .header("X-Retry-Count", String.valueOf(retryCount + 1))
-                        .build();
+                String newToken = TokenManager.getAccessToken(ctx);
+                if (newToken == null) {
+                    Log.e(TAG, "No token after other thread refresh");
+                    redirectToLogin();
+                    return response;
+                }
 
-                return chain.proceed(retry);
+                Log.d(TAG, "Retrying with token from other thread");
+
+                // 🔥 GET UPDATED CSRF TOKEN FOR RETRY
+                String newCsrf = TokenManager.getCsrf(ctx);
+
+                Request.Builder retryBuilder = request.newBuilder()
+                        .header("Authorization", "Bearer " + newToken)
+                        .header("X-Retry-Count", String.valueOf(retryCount + 1));
+
+                if (newCsrf != null) {
+                    retryBuilder.header("X-CSRF-Token", newCsrf);
+                }
+
+                return chain.proceed(retryBuilder.build());
             }
 
             if (!refreshing) {
                 refreshing = true;
+                Log.d(TAG, "Starting token refresh...");
+
                 try {
                     String refreshToken = TokenManager.getRefreshToken(ctx);
                     if (refreshToken == null) {
@@ -75,20 +101,18 @@ public final class TokenRefreshInterceptor implements Interceptor {
                         return response;
                     }
 
-                    Log.d(TAG, "Calling refresh endpoint with refresh token...");
-
-                    ApiService api = ApiClient
-                            .getRefreshClient()
+                    ApiService refreshApi = ApiClient.getRefreshClient()
                             .create(ApiService.class);
 
-                    RefreshRequest refreshRequest = new RefreshRequest(refreshToken);
-                    Call<RefreshResponse> call = api.refreshToken(refreshRequest);
+                    Call<RefreshResponse> call = refreshApi.refreshToken(
+                            new RefreshRequest(refreshToken)
+                    );
 
                     retrofit2.Response<RefreshResponse> r = call.execute();
 
-                    Log.d(TAG, "Refresh response code: " + r.code());
+                    if (r.isSuccessful() && r.body() != null
+                            && r.body().success && r.body().data != null) {
 
-                    if (r.isSuccessful() && r.body() != null && r.body().success) {
                         Log.d(TAG, "Token refresh successful");
 
                         TokenManager.saveTokens(
