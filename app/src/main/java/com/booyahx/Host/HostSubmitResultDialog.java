@@ -22,9 +22,18 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 
 import com.booyahx.R;
+import com.booyahx.network.ApiService;
+import com.booyahx.network.models.FinalResultRequest;
+import com.booyahx.network.models.FinalResultResponse;
+import com.booyahx.network.models.MatchResultRequest;
+import com.booyahx.network.models.MatchResultResponse;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class HostSubmitResultDialog extends Dialog {
 
@@ -35,11 +44,12 @@ public class HostSubmitResultDialog extends Dialog {
     private final int totalMatches;
     private final List<String> teamsList;
     private final String tournamentId;
+    private final ApiService api;
 
     /**
-     * [0] KP
+     * [0] KP (Kill Points)
      * [1] POSITION
-     * [2] PP
+     * [2] PP (Position Points)
      * [3] TOTAL
      * [4] BOOYAH
      */
@@ -48,6 +58,7 @@ public class HostSubmitResultDialog extends Dialog {
 
     private int currentMatch = 0;
     private boolean internalChange = false;
+    private boolean finalCalculationDone = false;
 
     private Spinner matchSelector;
     private LinearLayout teamsContainer;
@@ -58,13 +69,15 @@ public class HostSubmitResultDialog extends Dialog {
             @NonNull Context context,
             String tournamentId,
             int totalMatches,
-            List<String> teams
+            List<String> teams,
+            ApiService api
     ) {
         super(context);
         this.context = context;
         this.tournamentId = tournamentId;
         this.totalMatches = totalMatches;
         this.teamsList = teams;
+        this.api = api;
 
         matchSaved = new boolean[totalMatches];
 
@@ -98,7 +111,7 @@ public class HostSubmitResultDialog extends Dialog {
         saveMatchBtn = findViewById(R.id.saveMatchBtn);
         submitFinalBtn = findViewById(R.id.submitFinalBtn);
         cancelBtn = findViewById(R.id.cancelBtn);
-        matchStatusIndicator = findViewById(R.id.matchStatusIndicator); // FIX ADDED
+        matchStatusIndicator = findViewById(R.id.matchStatusIndicator);
 
         setupMatchSelector();
         loadTeamsUI();
@@ -142,19 +155,13 @@ public class HostSubmitResultDialog extends Dialog {
             Spinner posSpinner = row.findViewById(R.id.positionSpinner);
             TextView totalView = row.findViewById(R.id.totalPoints);
 
-            // =========================
             // HARD BLOCK QUICK FILL / AUTOFILL / SUGGESTIONS
-            // =========================
             killInput.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
             killInput.setAutofillHints(new String[]{});
             killInput.setLongClickable(false);
             killInput.setTextIsSelectable(false);
             killInput.setSaveEnabled(false);
             killInput.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-
-            // DO NOT set hint dynamically (causes preview on some keyboards)
-       //   killInput.setHint("0");
-         // killInput.setHintTextColor(Color.parseColor("#777777"));
 
             teamName.setText((i + 1) + ". " + teamsList.get(i));
 
@@ -235,6 +242,8 @@ public class HostSubmitResultDialog extends Dialog {
 
         calculateTotals();
     }
+
+    // ⭐ MODIFIED: Calls API after saving, calculates on Match 6
     private void saveCurrentMatch() {
         for (int[] row : matchScores.get(currentMatch)) {
             if (row[1] == 0) {
@@ -248,22 +257,119 @@ public class HostSubmitResultDialog extends Dialog {
         matchSaved[currentMatch] = true;
         saveToStorage();
 
-        Toast.makeText(context,
-                "Match " + (currentMatch + 1) + " saved!",
-                Toast.LENGTH_SHORT).show();
+        // Disable button during API call
+        saveMatchBtn.setEnabled(false);
+        saveMatchBtn.setText("Submitting to server...");
 
-        setupMatchSelector();
-        matchSelector.setSelection(currentMatch);
+        // ⭐ Call API to submit this match result
+        submitMatchToAPI(currentMatch);
+    }
 
-        updateUIState();
+    // ⭐ NEW: API call for submitting individual match
+    private void submitMatchToAPI(int matchIndex) {
+        // Prepare teams data for API
+        List<MatchResultRequest.TeamMatchData> teamsData = new ArrayList<>();
 
-        if (currentMatch < totalMatches - 1) {
-            for (int i = currentMatch + 1; i < totalMatches; i++) {
-                if (!matchSaved[i]) {
-                    matchSelector.setSelection(i);
-                    return;
+        List<int[]> matchData = matchScores.get(matchIndex);
+        for (int i = 0; i < teamsList.size(); i++) {
+            int[] teamScores = matchData.get(i);
+
+            MatchResultRequest.TeamMatchData teamData = new MatchResultRequest.TeamMatchData(
+                    teamsList.get(i),    // teamName
+                    teamScores[4],       // booyah (0 or 1)
+                    teamScores[0],       // kills
+                    teamScores[1],       // position
+                    teamScores[3]        // totalPoint
+            );
+            teamsData.add(teamData);
+        }
+
+        // Create request
+        MatchResultRequest request = new MatchResultRequest(
+                tournamentId,
+                matchIndex,
+                teamsData
+        );
+
+        // Make API call
+        api.submitMatchResult(request).enqueue(new Callback<MatchResultResponse>() {
+            @Override
+            public void onResponse(Call<MatchResultResponse> call, Response<MatchResultResponse> response) {
+                saveMatchBtn.setEnabled(true);
+
+                if (response.isSuccessful() && response.body() != null) {
+                    MatchResultResponse apiResponse = response.body();
+
+                    Toast.makeText(context,
+                            "Match " + (matchIndex + 1) + " submitted successfully!",
+                            Toast.LENGTH_SHORT).show();
+
+                    // ⭐ If this is match 6 (last match), calculate final points
+                    if (matchIndex == totalMatches - 1 && !finalCalculationDone) {
+                        calculateAndSaveFinalPoints();
+                    }
+
+                    setupMatchSelector();
+                    matchSelector.setSelection(matchIndex);
+                    updateUIState();
+
+                    // Auto-navigate to next unsaved match
+                    if (matchIndex < totalMatches - 1) {
+                        for (int i = matchIndex + 1; i < totalMatches; i++) {
+                            if (!matchSaved[i]) {
+                                matchSelector.setSelection(i);
+                                return;
+                            }
+                        }
+                    }
+                } else {
+                    // API call failed
+                    matchSaved[matchIndex] = false;
+                    saveToStorage();
+
+                    Toast.makeText(context,
+                            "Failed to submit match " + (matchIndex + 1) + ". Please try again.",
+                            Toast.LENGTH_LONG).show();
+
+                    updateUIState();
                 }
             }
+
+            @Override
+            public void onFailure(Call<MatchResultResponse> call, Throwable t) {
+                saveMatchBtn.setEnabled(true);
+                matchSaved[matchIndex] = false;
+                saveToStorage();
+
+                Toast.makeText(context,
+                        "Network error: " + t.getMessage(),
+                        Toast.LENGTH_LONG).show();
+
+                updateUIState();
+            }
+        });
+    }
+
+    // ⭐ Calculate and save final points (happens on Match 6 save)
+    private void calculateAndSaveFinalPoints() {
+        try {
+            // Calculate final standings
+            List<FinalRow> finalTable =
+                    FinalResultCalculator.calculate(matchScores, teamsList);
+
+            // Save to SharedPrefs
+            FinalResultStore.save(context, tournamentId, finalTable);
+
+            finalCalculationDone = true;
+
+            Toast.makeText(context,
+                    "Final points calculated successfully!",
+                    Toast.LENGTH_LONG).show();
+
+        } catch (Exception e) {
+            Toast.makeText(context,
+                    "Error calculating points: " + e.getMessage(),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -282,7 +388,7 @@ public class HostSubmitResultDialog extends Dialog {
             }
         }
 
-        // FIXED VISIBILITY LOGIC
+        // Show submit final button only when all matches saved
         if (savedCount == totalMatches) {
             submitFinalBtn.setVisibility(View.VISIBLE);
             submitFinalBtn.setEnabled(true);
@@ -399,7 +505,9 @@ public class HostSubmitResultDialog extends Dialog {
     private void setupButtons() {
         saveMatchBtn.setOnClickListener(v -> saveCurrentMatch());
 
+        // ⭐ Submit final result button - just calls API
         submitFinalBtn.setOnClickListener(v -> {
+            // Validate all matches saved
             for (int m = 0; m < totalMatches; m++) {
                 if (!matchSaved[m]) {
                     Toast.makeText(context,
@@ -409,18 +517,61 @@ public class HostSubmitResultDialog extends Dialog {
                 }
             }
 
-            List<FinalRow> finalTable =
-                    FinalResultCalculator.calculate(matchScores, teamsList);
+            // Check if final calculation is done
+            if (!finalCalculationDone) {
+                Toast.makeText(context,
+                        "Please wait for final calculation to complete.",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-            FinalResultStore.save(context, tournamentId, finalTable);
+            // Disable button during API call
+            submitFinalBtn.setEnabled(false);
+            submitFinalBtn.setText("Submitting Final Result...");
 
-            Toast.makeText(context,
-                    "Final result calculated & saved successfully!",
-                    Toast.LENGTH_LONG).show();
-
-            dismiss();
+            // ⭐ Call API to submit final result
+            submitFinalResultToAPI();
         });
 
         cancelBtn.setOnClickListener(v -> dismiss());
+    }
+
+    // ⭐ NEW: API call for submitting final result
+    private void submitFinalResultToAPI() {
+        FinalResultRequest request = new FinalResultRequest(tournamentId);
+
+        api.submitFinalResult(request).enqueue(new Callback<FinalResultResponse>() {
+            @Override
+            public void onResponse(Call<FinalResultResponse> call, Response<FinalResultResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    FinalResultResponse apiResponse = response.body();
+
+                    Toast.makeText(context,
+                            "Final result submitted successfully!",
+                            Toast.LENGTH_LONG).show();
+
+                    // ⭐ Close dialog on success
+                    dismiss();
+                } else {
+                    // API call failed
+                    submitFinalBtn.setEnabled(true);
+                    submitFinalBtn.setText("Submit Final Result");
+
+                    Toast.makeText(context,
+                            "Failed to submit final result. Please try again.",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<FinalResultResponse> call, Throwable t) {
+                submitFinalBtn.setEnabled(true);
+                submitFinalBtn.setText("Submit Final Result");
+
+                Toast.makeText(context,
+                        "Network error: " + t.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+        });
     }
 }

@@ -142,6 +142,17 @@ public interface ApiService {
             @Path("tournamentId") String tournamentId,
             @Body UpdateRoomRequest request
     );
+    @POST("/api/tournament/submit-match-result")
+    Call<MatchResultResponse> submitMatchResult(@Body MatchResultRequest request);
+
+    /**
+     * Submit final tournament result (called after all 6 matches)
+     * Endpoint: POST /api/tournament/submit-final-result
+     */
+    @POST("/api/tournament/submit-final-result")
+    Call<FinalResultResponse> submitFinalResult(@Body FinalResultRequest request);
+
+
     /* ================= PAYMENT ================= */
     @POST("/api/payment/create-qr")
     Call<CreateQRResponse> createQR(@Body CreateQRRequest request);

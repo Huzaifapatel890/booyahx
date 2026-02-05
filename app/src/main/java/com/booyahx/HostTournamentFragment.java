@@ -497,7 +497,8 @@ public class HostTournamentFragment extends Fragment {
         new HostSubmitResultDialog(requireContext(),
                 tournament.getId(),
                 totalMatches,
-                teamNames).show();
+                teamNames,
+                apiService).show();
     }
 
     private void showFinalResultDialog(HostTournament tournament) {
