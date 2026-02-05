@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Spinner;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -14,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.booyahx.R;
 import com.booyahx.adapters.TournamentStatusAdapter;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
@@ -23,6 +25,8 @@ import com.booyahx.tournament.JoinedTournamentAdapter;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -37,12 +41,13 @@ public class ParticipatedFragment extends Fragment {
 
     RecyclerView rvTournaments;
     JoinedTournamentAdapter adapter;
+    TextView tvEmptyState;
 
-    private Spinner spinnerTournamentStatus;
-    private TournamentStatusAdapter statusAdapter;
+    private Spinner spinnerMode;
+    private TournamentStatusAdapter modeAdapter;
 
-    // ✅ LIVE IS DEFAULT (DERIVED LOCALLY)
-    private String currentStatus = "live";
+    // ✅ ALL MODES IS DEFAULT
+    private String currentSubMode = "all";
 
     private List<JoinedTournament> allTournaments = new ArrayList<>();
 
@@ -65,13 +70,14 @@ public class ParticipatedFragment extends Fragment {
         Log.d(TAG, "onViewCreated called");
 
         rvTournaments = view.findViewById(R.id.rvTournaments);
-        spinnerTournamentStatus = view.findViewById(R.id.spinnerTournamentStatus);
+        spinnerMode = view.findViewById(R.id.spinnerMode);
+        tvEmptyState = view.findViewById(R.id.tvEmptyState);
 
         rvTournaments.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new JoinedTournamentAdapter(null);
         rvTournaments.setAdapter(adapter);
 
-        setupStatusSpinner();
+        setupModeSpinner();
         fetchJoinedTournaments();
 
         getParentFragmentManager().setFragmentResultListener(
@@ -84,31 +90,30 @@ public class ParticipatedFragment extends Fragment {
         );
     }
 
-    private void setupStatusSpinner() {
-        Log.d(TAG, "Setting up status spinner");
+    private void setupModeSpinner() {
+        Log.d(TAG, "Setting up mode spinner");
 
-        List<TournamentStatusAdapter.StatusItem> statusItems = new ArrayList<>();
-        statusItems.add(new TournamentStatusAdapter.StatusItem("live", "Live Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("upcoming", "Upcoming Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("completed", "Completed Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("pending", "Pending Result Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("cancelled", "Cancelled Tournaments"));
+        List<TournamentStatusAdapter.StatusItem> modeItems = new ArrayList<>();
+        modeItems.add(new TournamentStatusAdapter.StatusItem("all", "All Modes"));
+        modeItems.add(new TournamentStatusAdapter.StatusItem("solo", "Solo"));
+        modeItems.add(new TournamentStatusAdapter.StatusItem("duo", "Duo"));
+        modeItems.add(new TournamentStatusAdapter.StatusItem("squad", "Squad"));
 
-        statusAdapter = new TournamentStatusAdapter(requireContext(), statusItems);
-        spinnerTournamentStatus.setAdapter(statusAdapter);
+        modeAdapter = new TournamentStatusAdapter(requireContext(), modeItems);
+        spinnerMode.setAdapter(modeAdapter);
 
-        // ✅ LIVE DEFAULT
-        spinnerTournamentStatus.setSelection(0);
-        Log.d(TAG, "Status spinner set to default: live");
+        // ✅ ALL MODES DEFAULT
+        spinnerMode.setSelection(0);
+        Log.d(TAG, "Mode spinner set to default: all");
 
-        spinnerTournamentStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        spinnerMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                TournamentStatusAdapter.StatusItem selected = statusAdapter.getItem(position);
-                if (selected != null && !selected.apiValue.equals(currentStatus)) {
-                    Log.d(TAG, "Status changed from " + currentStatus + " to " + selected.apiValue);
-                    currentStatus = selected.apiValue;
-                    filterTournaments();
+                TournamentStatusAdapter.StatusItem selected = modeAdapter.getItem(position);
+                if (selected != null && !selected.apiValue.equals(currentSubMode)) {
+                    Log.d(TAG, "SubMode changed from " + currentSubMode + " to " + selected.apiValue);
+                    currentSubMode = selected.apiValue;
+                    filterAndSortTournaments();
                 }
             }
 
@@ -165,7 +170,7 @@ public class ParticipatedFragment extends Fragment {
                     }
                 }
 
-                filterTournaments();
+                filterAndSortTournaments();
             }
 
             @Override
@@ -179,60 +184,75 @@ public class ParticipatedFragment extends Fragment {
         });
     }
 
-    private void filterTournaments() {
-        Log.d(TAG, "Filtering tournaments for status: " + currentStatus);
+    private void filterAndSortTournaments() {
+        Log.d(TAG, "Filtering and sorting tournaments for subMode: " + currentSubMode);
 
         List<JoinedTournament> filtered = new ArrayList<>();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        String todayDate = dateFormat.format(new Date());
 
         for (JoinedTournament t : allTournaments) {
-            String status = t.getStatus();
-            if (status == null) {
-                Log.w(TAG, "Tournament " + t.getId() + " has NULL status");
+            // ✅ FILTER 1: Only current date tournaments (no older tournaments)
+            String tournamentDate = t.getDate();
+            if (tournamentDate == null || tournamentDate.isEmpty()) {
+                Log.w(TAG, "Tournament " + t.getId() + " has NULL or empty date");
                 continue;
             }
 
-            // ✅ LIVE = upcoming + started
-            if (currentStatus.equals("live")) {
-                if (status.equalsIgnoreCase("upcoming") && hasStarted(t)) {
-                    filtered.add(t);
-                    Log.d(TAG, "Added to LIVE: " + t.getLobbyName());
+            // Compare dates - only include today and future tournaments
+            if (tournamentDate.compareTo(todayDate) < 0) {
+                Log.d(TAG, "Skipping old tournament: " + t.getLobbyName() + " (date: " + tournamentDate + ")");
+                continue;
+            }
+
+            // ✅ FILTER 2: SubMode filter (solo, duo, squad, or all)
+            if (!currentSubMode.equals("all")) {
+                String subMode = t.getSubMode();
+                if (subMode == null || !subMode.equalsIgnoreCase(currentSubMode)) {
+                    Log.d(TAG, "Skipping tournament " + t.getLobbyName() + " - subMode mismatch (has: " + subMode + ", need: " + currentSubMode + ")");
+                    continue;
                 }
-                continue;
             }
 
-            // ✅ UPCOMING = upcoming BUT NOT started (🔥 FIX)
-            if (currentStatus.equals("upcoming")) {
-                if (status.equalsIgnoreCase("upcoming") && !hasStarted(t)) {
-                    filtered.add(t);
-                    Log.d(TAG, "Added to UPCOMING: " + t.getLobbyName());
-                }
-                continue;
-            }
-
-            // ✅ NORMAL STATUS MATCH
-            if (status.equalsIgnoreCase(currentStatus)) {
-                filtered.add(t);
-                Log.d(TAG, "Added to " + currentStatus.toUpperCase() + ": " + t.getLobbyName());
-            }
+            // Add tournament to filtered list
+            filtered.add(t);
+            Log.d(TAG, "Added tournament: " + t.getLobbyName() + " (date: " + tournamentDate + ", mode: " + t.getMode() + ", subMode: " + t.getSubMode() + ")");
         }
 
-        Log.d(TAG, "Filtered = " + filtered.size() + " tournaments | status = " + currentStatus);
+        // ✅ SORT BY TIME: Closest tournament first (ascending order)
+        Collections.sort(filtered, new Comparator<JoinedTournament>() {
+            @Override
+            public int compare(JoinedTournament t1, JoinedTournament t2) {
+                try {
+                    String dateTime1 = t1.getDate() + " " + t1.getStartTime();
+                    String dateTime2 = t2.getDate() + " " + t2.getStartTime();
+
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
+                    Date date1 = sdf.parse(dateTime1);
+                    Date date2 = sdf.parse(dateTime2);
+
+                    if (date1 == null || date2 == null) return 0;
+
+                    // Ascending order - closest tournament first
+                    return date1.compareTo(date2);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error comparing tournament times: " + e.getMessage());
+                    return 0;
+                }
+            }
+        });
+
+        Log.d(TAG, "Filtered and sorted = " + filtered.size() + " tournaments | subMode = " + currentSubMode);
+
+        // ✅ SHOW EMPTY STATE if no tournaments
+        if (filtered.isEmpty()) {
+            tvEmptyState.setVisibility(View.VISIBLE);
+            rvTournaments.setVisibility(View.GONE);
+        } else {
+            tvEmptyState.setVisibility(View.GONE);
+            rvTournaments.setVisibility(View.VISIBLE);
+        }
+
         adapter.updateData(filtered);
-    }
-
-    // ✅ SAFE TIME CHECK
-    private boolean hasStarted(JoinedTournament t) {
-        try {
-            String dateTime = t.getDate() + " " + t.getStartTime();
-            SimpleDateFormat sdf =
-                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
-            Date start = sdf.parse(dateTime);
-            boolean started = System.currentTimeMillis() >= start.getTime();
-            Log.d(TAG, "Tournament " + t.getLobbyName() + " hasStarted: " + started);
-            return started;
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking if tournament started: " + e.getMessage());
-            return false;
-        }
     }
 }

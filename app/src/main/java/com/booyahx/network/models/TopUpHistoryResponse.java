@@ -20,13 +20,27 @@ public class TopUpHistoryResponse {
         @SerializedName("history")
         public List<Transaction> history;
 
-        @SerializedName("total")
-        public int total;
+        @SerializedName("pagination")
+        public Pagination pagination;
+    }
 
-        @SerializedName("limit")
-        public int limit;
+    public static class Pagination {
+        @SerializedName("currentPage")
+        public int currentPage;
 
-        @SerializedName("skip")
-        public int skip;
+        @SerializedName("totalPages")
+        public int totalPages;
+
+        @SerializedName("totalItems")
+        public int totalItems;
+
+        @SerializedName("itemsPerPage")
+        public int itemsPerPage;
+
+        @SerializedName("hasNextPage")
+        public boolean hasNextPage;
+
+        @SerializedName("hasPrevPage")
+        public boolean hasPrevPage;
     }
 }

@@ -2,7 +2,7 @@ package com.booyahx;
 
 import com.booyahx.utils.TopRightToast;
 import com.booyahx.utils.TournamentJoinStateManager;
-
+import com.booyahx.settings.EditProfileActivity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -620,9 +620,19 @@ public class HomeFragment extends Fragment {
 
                 return card;
             } else {
+                // ✅ CHECK IGN BEFORE OPENING DIALOG
                 btnJoin.setOnClickListener(v -> {
-                    JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
-                    dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
+                    ProfileResponse.Data profile = ProfileCacheManager.getProfile(requireContext());
+
+                    if (profile == null || profile.ign == null || profile.ign.trim().isEmpty()) {
+                        // ✅ NO IGN → REDIRECT TO EDIT PROFILE
+                        Intent intent = new Intent(requireContext(), EditProfileActivity.class);
+                        startActivity(intent);
+                    } else {
+                        // ✅ HAS IGN → OPEN JOIN DIALOG
+                        JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
+                        dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
+                    }
                 });
 
                 if (!"upcoming".equalsIgnoreCase(t.getStatus())) {

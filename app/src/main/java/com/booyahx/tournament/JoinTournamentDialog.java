@@ -1,5 +1,6 @@
 package com.booyahx.tournament;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -14,8 +15,10 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
 import com.booyahx.DashboardActivity;
+import com.booyahx.ProfileCacheManager;
 import com.booyahx.R;
 import com.booyahx.TokenManager;
+import com.booyahx.settings.EditProfileActivity;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.JoinTournamentRequest;
@@ -85,7 +88,18 @@ public class JoinTournamentDialog extends DialogFragment {
         });
 
         btnJoin.setOnClickListener(v1 -> {
-            if (!isJoining) submitJoin();
+            if (!isJoining) {
+                // ✅ CHECK IGN BEFORE SUBMITTING
+                String ign = etPlayer1.getText().toString().trim();
+                if (TextUtils.isEmpty(ign)) {
+                    // ✅ REDIRECT TO UPDATE PROFILE
+                    dismiss();
+                    Intent intent = new Intent(requireContext(), EditProfileActivity.class);
+                    startActivity(intent);
+                } else {
+                    submitJoin();
+                }
+            }
         });
 
         loadProfileAndPrefill();
@@ -94,34 +108,18 @@ public class JoinTournamentDialog extends DialogFragment {
     }
 
     // --------------------------------------------------
-    // LOAD PROFILE → PREFILL IGN + TEAM NAME
+    // LOAD PROFILE → PREFILL IGN + TEAM NAME (FROM CACHE)
     // --------------------------------------------------
     private void loadProfileAndPrefill() {
-        api.getProfile().enqueue(new Callback<ProfileResponse>() {
-            @Override
-            public void onResponse(
-                    Call<ProfileResponse> call,
-                    Response<ProfileResponse> response
-            ) {
-                if (response.isSuccessful()
-                        && response.body() != null
-                        && response.body().data != null) {
+        // ✅ LOAD FROM CACHE INSTEAD OF API
+        String ign = ProfileCacheManager.getIgn(requireContext());
 
-                    String ign = response.body().data.ign;
-
-                    if (!TextUtils.isEmpty(ign)) {
-                        etPlayer1.setText(ign);
-                        etTeamName.setText(ign + "'s team");
-                        etTeamName.setSelection(etTeamName.getText().length());
-                    }
-                }
-            }
-
-            @Override
-            public void onFailure(Call<ProfileResponse> call, Throwable t) {
-                showToast("Unable to load profile");
-            }
-        });
+        if (!TextUtils.isEmpty(ign)) {
+            etPlayer1.setText(ign);
+            etTeamName.setText(ign + "'s team");
+            etTeamName.setSelection(etTeamName.getText().length());
+        }
+        // No need for error handling since cache is always available locally
     }
 
     // --------------------------------------------------

@@ -31,6 +31,18 @@
             android:layout_marginStart="10dp" />
     </LinearLayout>
 
+    <!-- ⚠️ IMPORTANT NOTICE -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="⚠️ You must update your profile before joining tournaments or withdrawing funds"
+        android:textColor="#FF3B30"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:padding="12dp"
+        android:background="#33FF3B30"
+        android:gravity="center" />
+
     <!-- ================= SCROLLABLE CONTENT ================= -->
     <ScrollView
         android:layout_width="match_parent"
