@@ -386,6 +386,42 @@
                         android:focusable="true" />
                 </LinearLayout>
 
+                <!-- ERROR SCREEN -->
+                <LinearLayout
+                    android:id="@+id/layoutError"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone"
+                    android:paddingVertical="40dp"
+                    android:paddingHorizontal="20dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="☹️"
+                        android:textSize="60sp"
+                        android:layout_marginBottom="24dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Something went wrong"
+                        android:textColor="#7a7a7a"
+                        android:textSize="18sp"
+                        android:gravity="center"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="try again in few minutes"
+                        android:textColor="#7a7a7a"
+                        android:textSize="18sp"
+                        android:gravity="center" />
+                </LinearLayout>
+
             </LinearLayout>
         </ScrollView>
     </androidx.cardview.widget.CardView>

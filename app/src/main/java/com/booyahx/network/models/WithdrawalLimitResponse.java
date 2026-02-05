@@ -18,48 +18,48 @@ public class WithdrawalLimitResponse {
 
     public static class Data {
         @SerializedName("maxWithdrawableGC")
-        private int maxWithdrawableGC;
+        private double maxWithdrawableGC;
 
         @SerializedName("totalDepositedGC")
-        private int totalDepositedGC;
+        private double totalDepositedGC;
 
         @SerializedName("withdrawnGC")
-        private int withdrawnGC;
+        private double withdrawnGC;
 
         @SerializedName("balanceGC")
-        private int balanceGC;
+        private double balanceGC;
 
-        // Getters
+        // Getters - return int by rounding
         public int getMaxWithdrawableGC() {
-            return maxWithdrawableGC;
+            return (int) Math.round(maxWithdrawableGC);
         }
 
         public int getTotalDepositedGC() {
-            return totalDepositedGC;
+            return (int) Math.round(totalDepositedGC);
         }
 
         public int getWithdrawnGC() {
-            return withdrawnGC;
+            return (int) Math.round(withdrawnGC);
         }
 
         public int getBalanceGC() {
-            return balanceGC;
+            return (int) Math.round(balanceGC);
         }
 
         // Setters
-        public void setMaxWithdrawableGC(int maxWithdrawableGC) {
+        public void setMaxWithdrawableGC(double maxWithdrawableGC) {
             this.maxWithdrawableGC = maxWithdrawableGC;
         }
 
-        public void setTotalDepositedGC(int totalDepositedGC) {
+        public void setTotalDepositedGC(double totalDepositedGC) {
             this.totalDepositedGC = totalDepositedGC;
         }
 
-        public void setWithdrawnGC(int withdrawnGC) {
+        public void setWithdrawnGC(double withdrawnGC) {
             this.withdrawnGC = withdrawnGC;
         }
 
-        public void setBalanceGC(int balanceGC) {
+        public void setBalanceGC(double balanceGC) {
             this.balanceGC = balanceGC;
         }
     }

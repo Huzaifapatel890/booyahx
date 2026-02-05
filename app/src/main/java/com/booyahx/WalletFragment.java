@@ -1,23 +1,30 @@
 package com.booyahx;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-
+import com.booyahx.WalletLimitCache;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.WalletBalanceResponse;
 import com.booyahx.network.models.TopUpHistoryResponse;
+import com.booyahx.network.models.WithdrawalLimitResponse;
 import com.booyahx.payment.PaymentTopUpDialog;
 import com.booyahx.network.models.Transaction;
 import com.booyahx.payment.TransactionAdapter;
@@ -34,6 +41,8 @@ import retrofit2.Response;
 
 public class WalletFragment extends Fragment {
 
+    private static final String TAG = "WalletFragment";
+
     private TextView tvBalance;
     private TextView btnTopUp, btnWithdraw;
     private RecyclerView rvTransactions;
@@ -41,12 +50,23 @@ public class WalletFragment extends Fragment {
     private List<Transaction> transactionList;
     private ApiService api;
 
-
     // Pagination
     private int currentSkip = 0;
     private int limitPerPage = 50;
     private boolean isLoading = false;
     private boolean hasMore = true;
+
+    // FIX 1: BroadcastReceiver for wallet updates
+    private BroadcastReceiver walletUpdateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (isAdded()) {
+                loadBalanceFromCache();
+                loadBalanceFromAPI();
+                fetchWithdrawLimitSilently();
+            }
+        }
+    };
 
     @Nullable
     @Override
@@ -61,8 +81,6 @@ public class WalletFragment extends Fragment {
         btnTopUp = view.findViewById(R.id.btnTopUp);
         btnWithdraw = view.findViewById(R.id.btnWithdraw);
         rvTransactions = view.findViewById(R.id.rvTransactions);
-
-
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
@@ -93,6 +111,9 @@ public class WalletFragment extends Fragment {
         // 🔥 LOAD REAL TRANSACTIONS FROM API
         loadTransactionsFromAPI();
 
+        // 🔥 FETCH WITHDRAWAL LIMIT SILENTLY IN BACKGROUND
+        fetchWithdrawLimitSilently();
+
         btnTopUp.setOnClickListener(v -> {
             PaymentTopUpDialog dialog = new PaymentTopUpDialog(requireContext(), WalletFragment.this);
             dialog.show();
@@ -103,8 +124,6 @@ public class WalletFragment extends Fragment {
             WithdrawDialog dialog = new WithdrawDialog(requireContext());
             dialog.show();
         });
-
-        // 🔥 SWIPE TO REFRESH (Optional)
 
         // 🔥 PAGINATION - Load more when scrolling to bottom
         rvTransactions.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -138,6 +157,12 @@ public class WalletFragment extends Fragment {
                 }
         );
 
+        // FIX 1: Register broadcast receiver
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(
+                walletUpdateReceiver,
+                new IntentFilter("WALLET_UPDATED")
+        );
+
         return view;
     }
 
@@ -146,6 +171,15 @@ public class WalletFragment extends Fragment {
         super.onResume();
         // 🔥 REFRESH FROM CACHE WHEN RETURNING
         loadBalanceFromCache();
+        // 🔥 REFRESH WITHDRAWAL LIMIT SILENTLY
+        fetchWithdrawLimitSilently();
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // FIX 1: Unregister broadcast receiver
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(walletUpdateReceiver);
     }
 
     // 🔥 LOAD FROM CACHE (INSTANT)
@@ -181,6 +215,51 @@ public class WalletFragment extends Fragment {
                 if (isAdded()) {
                     Toast.makeText(getContext(), "Failed to load balance", Toast.LENGTH_SHORT).show();
                 }
+            }
+        });
+    }
+
+    /**
+     * Silently fetch withdrawal limit in background without showing loader
+     */
+    private void fetchWithdrawLimitSilently() {
+        ApiService apiService = ApiClient.getClient(getContext()).create(ApiService.class);
+
+        apiService.getWithdrawLimit().enqueue(new Callback<WithdrawalLimitResponse>() {
+            @Override
+            public void onResponse(Call<WithdrawalLimitResponse> call, Response<WithdrawalLimitResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    WithdrawalLimitResponse limitResponse = response.body();
+
+                    if (limitResponse.isSuccess() && limitResponse.getData() != null) {
+                        // Save to cache silently
+                        WalletLimitCache.saveLimit(
+                                getContext(),
+                                limitResponse.getData().getMaxWithdrawableGC(),
+                                limitResponse.getData().getBalanceGC(),
+                                limitResponse.getData().getTotalDepositedGC(),
+                                limitResponse.getData().getWithdrawnGC()
+                        );
+
+                        Log.d(TAG, "Withdrawal limit cached silently: " +
+                                limitResponse.getData().getMaxWithdrawableGC() + " GC");
+                    } else {
+                        // Mark as unavailable if API returns error
+                        WalletLimitCache.markUnavailable(getContext());
+                        Log.e(TAG, "Failed to fetch limit: " + limitResponse.getMessage());
+                    }
+                } else {
+                    // Mark as unavailable on response error
+                    WalletLimitCache.markUnavailable(getContext());
+                    Log.e(TAG, "Response unsuccessful");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<WithdrawalLimitResponse> call, Throwable t) {
+                // Mark as unavailable on network failure
+                WalletLimitCache.markUnavailable(getContext());
+                Log.e(TAG, "Network error fetching limit: " + t.getMessage());
             }
         });
     }

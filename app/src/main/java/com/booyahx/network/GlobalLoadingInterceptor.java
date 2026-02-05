@@ -32,10 +32,16 @@ public class GlobalLoadingInterceptor implements Interceptor {
     public Response intercept(Chain chain) throws IOException {
         Request request = chain.request();
 
-        // Increment active requests and show loader
-        int count = activeRequests.incrementAndGet();
-        if (count == 1) {
-            showLoader();
+        // Check if this request should skip the loader
+        boolean shouldSkipLoader = shouldSkipLoader(request);
+
+        // Increment active requests and show loader (only if not skipping)
+        int count = 0;
+        if (!shouldSkipLoader) {
+            count = activeRequests.incrementAndGet();
+            if (count == 1) {
+                showLoader();
+            }
         }
 
         Response response = null;
@@ -43,12 +49,33 @@ public class GlobalLoadingInterceptor implements Interceptor {
             response = chain.proceed(request);
             return response;
         } finally {
-            // Decrement active requests and hide loader if no more requests
-            int remainingCount = activeRequests.decrementAndGet();
-            if (remainingCount == 0) {
-                hideLoader();
+            // Decrement active requests and hide loader if no more requests (only if not skipping)
+            if (!shouldSkipLoader) {
+                int remainingCount = activeRequests.decrementAndGet();
+                if (remainingCount == 0) {
+                    hideLoader();
+                }
             }
         }
+    }
+
+    /**
+     * Determine if the loader should be skipped for this request
+     */
+    private boolean shouldSkipLoader(Request request) {
+        String url = request.url().toString();
+
+        // Skip loader for withdraw-limit endpoint
+        if (url.contains("/api/wallet/withdraw-limit")) {
+            return true;
+        }
+
+        // Add more endpoints here if needed in the future
+        if (url.contains("/api/wallet/balance ")) {
+        //     return true;
+        }
+
+        return false;
     }
 
     private void showLoader() {

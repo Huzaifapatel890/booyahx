@@ -6,10 +6,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -19,17 +21,18 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.airbnb.lottie.LottieAnimationView;
 import com.booyahx.ProfileCacheManager;
 import com.booyahx.R;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.ApiClient;
-import com.booyahx.network.models.WithdrawalLimitResponse;
 import com.booyahx.network.models.WithdrawalRequest;
 import com.booyahx.network.models.WithdrawalResponse;
 import com.booyahx.settings.EditProfileActivity;
 import com.booyahx.WalletCacheManager;
+import com.booyahx.WalletLimitCache;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -63,6 +66,9 @@ public class WithdrawDialog extends Dialog {
     private LottieAnimationView animCheck;
     private TextView tvSuccessAmount;
     private TextView btnDone;
+
+    // FIX 2: Error screen
+    private LinearLayout layoutError;
 
     private double currentBalance;
     private int maxWithdrawableGC;
@@ -102,7 +108,7 @@ public class WithdrawDialog extends Dialog {
         initApi();
         loadData();
         setupListeners();
-        fetchWithdrawLimit();
+        loadCachedWithdrawLimit();
     }
 
     private void initViews() {
@@ -128,6 +134,9 @@ public class WithdrawDialog extends Dialog {
         animCheck = findViewById(R.id.animCheck);
         tvSuccessAmount = findViewById(R.id.tvSuccessAmount);
         btnDone = findViewById(R.id.btnDone);
+
+        // FIX 2: Error screen
+        layoutError = findViewById(R.id.layoutError);
     }
 
     private void initApi() {
@@ -163,49 +172,60 @@ public class WithdrawDialog extends Dialog {
             layoutUpiWarning.setVisibility(View.VISIBLE);
             btnWithdraw.setEnabled(false);
             btnWithdraw.setAlpha(0.5f);
+            setButtonGrayStyle();
         }
     }
 
-    private void fetchWithdrawLimit() {
-        apiService.getWithdrawLimit().enqueue(new Callback<WithdrawalLimitResponse>() {
-            @Override
-            public void onResponse(Call<WithdrawalLimitResponse> call, Response<WithdrawalLimitResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    WithdrawalLimitResponse limitResponse = response.body();
+    private void loadCachedWithdrawLimit() {
+        // Check if cached limit is available
+        if (WalletLimitCache.isLimitAvailable(context)) {
+            // Load from cache
+            maxWithdrawableGC = WalletLimitCache.getMaxWithdrawableGC(context);
+            int balanceGC = WalletLimitCache.getBalanceGC(context);
 
-                    if (limitResponse.isSuccess() && limitResponse.getData() != null) {
-                        maxWithdrawableGC = limitResponse.getData().getMaxWithdrawableGC();
-                        int balanceGC = limitResponse.getData().getBalanceGC();
+            // Update UI with cached data
+            tvCurrentBalance.setText(balanceGC + " GC");
+            tvWithdrawableBalance.setText(maxWithdrawableGC + " GC");
+            currentBalance = balanceGC;
 
-                        // Update UI with server data
-                        tvCurrentBalance.setText(balanceGC + " GC");
-                        tvWithdrawableBalance.setText(maxWithdrawableGC + " GC");
-                        currentBalance = balanceGC;
-
-                        Log.d(TAG, "Withdrawal limit fetched: " + maxWithdrawableGC + " GC");
-                    } else {
-                        // Use cached balance as fallback
-                        handleLimitFetchError(limitResponse.getMessage());
-                    }
-                } else {
-                    // On error, use cached balance
-                    handleLimitFetchError("Failed to fetch limits");
-                }
+            // Show warning if below minimum
+            if (maxWithdrawableGC < MIN_WITHDRAW) {
+                btnWithdraw.setEnabled(false);
+                btnWithdraw.setAlpha(0.5f);
+                setButtonGrayStyle();
+            } else if (maxWithdrawableGC == 0) {
+                btnWithdraw.setEnabled(false);
+                btnWithdraw.setAlpha(0.5f);
+                setButtonGrayStyle();
             }
 
-            @Override
-            public void onFailure(Call<WithdrawalLimitResponse> call, Throwable t) {
-                // On failure, use cached balance
-                handleLimitFetchError("Network error: " + t.getMessage());
-            }
-        });
+            Log.d(TAG, "Loaded cached withdrawal limit: " + maxWithdrawableGC + " GC");
+        } else {
+            // FIX 2: Show error screen when no cache data
+            showErrorScreen();
+            Log.e(TAG, "Withdrawal limit not available in cache");
+        }
     }
 
-    private void handleLimitFetchError(String error) {
-        maxWithdrawableGC = (int) Math.round(currentBalance);
-        tvWithdrawableBalance.setText(maxWithdrawableGC + " GC");
-        Log.e(TAG, "Error fetching withdrawal limit: " + error);
-        Toast.makeText(context, "Using cached balance", Toast.LENGTH_SHORT).show();
+    // FIX 2: Show error screen
+    private void showErrorScreen() {
+        layoutForm.setVisibility(View.GONE);
+        layoutSuccess.setVisibility(View.GONE);
+        if (layoutError != null) {
+            layoutError.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void setButtonGrayStyle() {
+        GradientDrawable grayDrawable = new GradientDrawable();
+        grayDrawable.setColor(Color.parseColor("#3a3a3a"));
+        grayDrawable.setStroke(2, Color.parseColor("#5a5a5a"));
+        grayDrawable.setCornerRadius(12);
+        btnWithdraw.setBackground(grayDrawable);
+    }
+
+    private void setButtonNeonStyle() {
+        btnWithdraw.setBackgroundResource(R.drawable.neon_button);
     }
 
     private void setupListeners() {
@@ -240,33 +260,55 @@ public class WithdrawDialog extends Dialog {
     private void validateAmount(String amountStr) {
         if (amountStr.isEmpty()) {
             tvAmountError.setVisibility(View.GONE);
+            btnWithdraw.setEnabled(false);
+            btnWithdraw.setAlpha(0.5f);
+            setButtonGrayStyle();
             return;
         }
 
         try {
             double amount = Double.parseDouble(amountStr);
+            boolean hasError = false;
 
             if (amount <= 0) {
                 tvAmountError.setText("Please enter a valid amount");
                 tvAmountError.setVisibility(View.VISIBLE);
+                hasError = true;
             } else if (amount < MIN_WITHDRAW) {
                 tvAmountError.setText("Minimum withdrawal amount is " + MIN_WITHDRAW + " GC");
                 tvAmountError.setVisibility(View.VISIBLE);
+                hasError = true;
             } else if (amount > MAX_WITHDRAW) {
                 tvAmountError.setText("Maximum withdrawal amount is " + MAX_WITHDRAW + " GC");
                 tvAmountError.setVisibility(View.VISIBLE);
+                hasError = true;
             } else if (amount > maxWithdrawableGC) {
                 tvAmountError.setText("Maximum withdrawable amount is " + maxWithdrawableGC + " GC");
                 tvAmountError.setVisibility(View.VISIBLE);
+                hasError = true;
             } else if (amount > currentBalance) {
                 tvAmountError.setText("Amount cannot exceed " + (int) Math.round(currentBalance) + " GC");
                 tvAmountError.setVisibility(View.VISIBLE);
+                hasError = true;
             } else {
                 tvAmountError.setVisibility(View.GONE);
+            }
+
+            if (hasError) {
+                btnWithdraw.setEnabled(false);
+                btnWithdraw.setAlpha(0.5f);
+                setButtonGrayStyle();
+            } else if (upiId != null && !upiId.isEmpty()) {
+                btnWithdraw.setEnabled(true);
+                btnWithdraw.setAlpha(1.0f);
+                setButtonNeonStyle();
             }
         } catch (NumberFormatException e) {
             tvAmountError.setText("Invalid amount");
             tvAmountError.setVisibility(View.VISIBLE);
+            btnWithdraw.setEnabled(false);
+            btnWithdraw.setAlpha(0.5f);
+            setButtonGrayStyle();
         }
     }
 
@@ -339,6 +381,11 @@ public class WithdrawDialog extends Dialog {
                         // Update local balance cache
                         currentBalance -= amount;
                         WalletCacheManager.updateBalance(context, currentBalance);
+
+                        // Send broadcast to update WalletFragment
+                        Intent intent = new Intent("WALLET_UPDATED");
+                        intent.putExtra("balance", currentBalance);
+                        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
 
                         // Show success screen
                         showSuccess(amount);
