@@ -67,7 +67,26 @@ public class NotificationActivity extends AppCompatActivity {
             SocketManager.connect();
         }
 
-        // Listen for room updates
+        String userId = TokenManager.getUserId(this);
+
+        // 🔥 SUBSCRIBE TO USER TOURNAMENTS ON CONNECT
+        if (socket.connected() && userId != null) {
+            socket.emit("subscribe:user-tournaments", userId);
+            socket.emit("subscribe:wallet", userId);
+            Log.d(TAG, "✅ Subscribed to user tournaments and wallet");
+        }
+
+        // 🔥 RE-SUBSCRIBE ON RECONNECT
+        socket.on(Socket.EVENT_CONNECT, args -> {
+            String uid = TokenManager.getUserId(this);
+            if (uid != null) {
+                socket.emit("subscribe:user-tournaments", uid);
+                socket.emit("subscribe:wallet", uid);
+                Log.d(TAG, "✅ Re-subscribed on reconnect");
+            }
+        });
+
+        // 🔥 LISTEN FOR TOURNAMENT ROOM UPDATES
         socket.on("tournament:room-updated", args -> {
             Log.d(TAG, "🔥 Room update notification received");
 
@@ -95,7 +114,7 @@ public class NotificationActivity extends AppCompatActivity {
             }
         });
 
-        // Listen for status updates
+        // 🔥 LISTEN FOR TOURNAMENT STATUS UPDATES
         socket.on("tournament:status-updated", args -> {
             Log.d(TAG, "🔥 Status update notification received");
 
@@ -118,6 +137,9 @@ public class NotificationActivity extends AppCompatActivity {
                         } else if ("cancelled".equalsIgnoreCase(status)) {
                             message = tournamentName + " has been cancelled.";
                             type = NotificationType.SYSTEM;
+                        } else if ("pendingResult".equalsIgnoreCase(status)) {
+                            message = tournamentName + " is awaiting results.";
+                            type = NotificationType.TOURNAMENT;
                         }
 
                         if (!message.isEmpty()) {
@@ -137,6 +159,147 @@ public class NotificationActivity extends AppCompatActivity {
                 }
             }
         });
+
+        // 🔥 LISTEN FOR WALLET BALANCE UPDATES
+        socket.on("wallet:balance-updated", args -> {
+            Log.d(TAG, "🔥 Wallet balance update notification received");
+
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    double balanceGC = data.optDouble("balanceGC", 0);
+                    double updatedAt = data.optDouble("updatedAt", 0);
+
+                    runOnUiThread(() -> {
+                        NotificationItem notification = new NotificationItem(
+                                "Wallet Balance Updated",
+                                "Your new balance is " + (int) Math.round(balanceGC) + " GC",
+                                System.currentTimeMillis(),
+                                NotificationType.REWARD
+                        );
+
+                        addNewNotification(notification);
+                    });
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing balance update", e);
+                }
+            }
+        });
+
+        // 🔥 LISTEN FOR WALLET TRANSACTION UPDATES
+        socket.on("wallet:transaction-updated", args -> {
+            Log.d(TAG, "🔥 Wallet transaction update notification received");
+
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String action = data.optString("action", "");
+
+                    runOnUiThread(() -> {
+                        String message = "";
+                        NotificationType type = NotificationType.REWARD;
+
+                        if ("approved".equalsIgnoreCase(action)) {
+                            message = "Your transaction has been approved";
+                        } else if ("rejected".equalsIgnoreCase(action)) {
+                            message = "Your transaction has been rejected";
+                            type = NotificationType.SYSTEM;
+                        } else if ("updated".equalsIgnoreCase(action)) {
+                            message = "Your transaction has been updated";
+                        }
+
+                        if (!message.isEmpty()) {
+                            NotificationItem notification = new NotificationItem(
+                                    "Transaction Update",
+                                    message,
+                                    System.currentTimeMillis(),
+                                    type
+                            );
+
+                            addNewNotification(notification);
+                        }
+                    });
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing transaction update", e);
+                }
+            }
+        });
+
+        // 🔥 LISTEN FOR WALLET HISTORY UPDATES
+        socket.on("wallet:history-updated", args -> {
+            Log.d(TAG, "🔥 Wallet history update notification received");
+
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+
+                    runOnUiThread(() -> {
+                        NotificationItem notification = new NotificationItem(
+                                "Transaction History Updated",
+                                "New transaction added to your wallet",
+                                System.currentTimeMillis(),
+                                NotificationType.REWARD
+                        );
+
+                        addNewNotification(notification);
+                    });
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing history update", e);
+                }
+            }
+        });
+
+        // 🔥 LISTEN FOR QR PAYMENT STATUS UPDATES
+        socket.on("payment:qr-status-updated", args -> {
+            Log.d(TAG, "🔥 QR payment status update notification received");
+
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String status = data.optString("status", "");
+                    String action = data.optString("action", "");
+                    double amountGC = data.optDouble("amountGC", 0);
+
+                    runOnUiThread(() -> {
+                        String message = "";
+                        NotificationType type = NotificationType.REWARD;
+
+                        if ("success".equalsIgnoreCase(status) || "approved".equalsIgnoreCase(action)) {
+                            message = "Payment successful! " + (int) Math.round(amountGC) + " GC credited to your wallet";
+                            type = NotificationType.REWARD;
+                        } else if ("pending".equalsIgnoreCase(status)) {
+                            message = "Payment is being processed";
+                            type = NotificationType.SYSTEM;
+                        } else if ("rejected".equalsIgnoreCase(action)) {
+                            message = "Payment was rejected";
+                            type = NotificationType.SYSTEM;
+                        } else if ("failed".equalsIgnoreCase(status)) {
+                            message = "Payment failed. Please try again";
+                            type = NotificationType.SYSTEM;
+                        }
+
+                        if (!message.isEmpty()) {
+                            NotificationItem notification = new NotificationItem(
+                                    "Payment Status Update",
+                                    message,
+                                    System.currentTimeMillis(),
+                                    type
+                            );
+
+                            addNewNotification(notification);
+                        }
+                    });
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing QR payment status", e);
+                }
+            }
+        });
+
+        Log.d(TAG, "✅ All socket listeners setup complete");
     }
 
     private void addNewNotification(NotificationItem notification) {
@@ -171,8 +334,19 @@ public class NotificationActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         if (socket != null) {
+            String userId = TokenManager.getUserId(this);
+            if (userId != null) {
+                socket.emit("unsubscribe:wallet", userId);
+            }
+
             socket.off("tournament:room-updated");
             socket.off("tournament:status-updated");
+            socket.off("wallet:balance-updated");
+            socket.off("wallet:transaction-updated");
+            socket.off("wallet:history-updated");
+            socket.off("payment:qr-status-updated");
+
+            Log.d(TAG, "✅ All socket listeners removed");
         }
     }
 }

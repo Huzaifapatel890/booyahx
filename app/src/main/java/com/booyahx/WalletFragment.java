@@ -5,12 +5,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,22 +19,24 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.booyahx.WalletLimitCache;
+import com.booyahx.payment.TransactionAdapter;
+import com.booyahx.payment.PaymentTopUpDialog;
+import com.booyahx.payment.WithdrawDialog;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
-import com.booyahx.network.models.WalletBalanceResponse;
 import com.booyahx.network.models.TopUpHistoryResponse;
-import com.booyahx.network.models.WithdrawalLimitResponse;
-import com.booyahx.payment.PaymentTopUpDialog;
 import com.booyahx.network.models.Transaction;
-import com.booyahx.payment.TransactionAdapter;
-import com.booyahx.payment.WithdrawDialog;
-import com.booyahx.TokenManager;
-import com.booyahx.WalletCacheManager;
+import com.booyahx.network.models.WalletBalanceResponse;
+import com.booyahx.network.models.WithdrawalLimitResponse;
+import com.booyahx.socket.SocketManager;
+import com.booyahx.WalletLimitCache;
+
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import io.socket.client.Socket;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -55,6 +57,9 @@ public class WalletFragment extends Fragment {
     private int limitPerPage = 50;
     private boolean isLoading = false;
     private boolean hasMore = true;
+
+    // 🔥 SOCKET FOR REAL-TIME WALLET UPDATES
+    private Socket socket;
 
     // FIX 1: BroadcastReceiver for wallet updates
     private BroadcastReceiver walletUpdateReceiver = new BroadcastReceiver() {
@@ -163,12 +168,19 @@ public class WalletFragment extends Fragment {
                 new IntentFilter("WALLET_UPDATED")
         );
 
+        // 🔥 SETUP SOCKET LISTENERS FOR WALLET
+        setupSocketListeners();
+
         return view;
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        // 🔥 ENSURE SOCKET CONNECTED ON RESUME
+        if (socket != null && !socket.connected()) {
+            SocketManager.connect();
+        }
         // 🔥 REFRESH FROM CACHE WHEN RETURNING
         loadBalanceFromCache();
         // 🔥 REFRESH WITHDRAWAL LIMIT SILENTLY
@@ -180,6 +192,164 @@ public class WalletFragment extends Fragment {
         super.onDestroyView();
         // FIX 1: Unregister broadcast receiver
         LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(walletUpdateReceiver);
+
+        // 🔥 REMOVE SOCKET LISTENERS
+        removeSocketListeners();
+    }
+
+    // 🔥 SETUP SOCKET LISTENERS FOR WALLET UPDATES
+    private void setupSocketListeners() {
+        String token = TokenManager.getAccessToken(requireContext());
+        socket = SocketManager.getSocket(token);
+
+        if (socket == null) {
+            Log.e(TAG, "Socket is null, cannot setup listeners");
+            return;
+        }
+
+        // 🔥 ENSURE SOCKET CONNECTED
+        if (!socket.connected()) {
+            SocketManager.connect();
+        }
+
+        String userId = TokenManager.getUserId(requireContext());
+
+        // 🔥 SUBSCRIBE TO WALLET UPDATES
+        if (socket.connected() && userId != null) {
+            socket.emit("subscribe:wallet", userId);
+            Log.d(TAG, "✅ Subscribed to wallet updates for user: " + userId);
+        }
+
+        // 🔥 RE-SUBSCRIBE ON RECONNECT
+        socket.on(Socket.EVENT_CONNECT, args -> {
+            String uid = TokenManager.getUserId(requireContext());
+            if (uid != null) {
+                socket.emit("subscribe:wallet", uid);
+                Log.d(TAG, "✅ Re-subscribed to wallet on reconnect");
+            }
+            // 🔥 REFRESH DATA ON RECONNECT
+            if (isAdded()) {
+                android.app.Activity activity = getActivity();
+                if (activity != null) {
+                    activity.runOnUiThread(() -> {
+                        loadBalanceFromAPI();
+                        refreshData();
+                    });
+                }
+            }
+        });
+
+        // 🔥 LISTEN FOR BALANCE UPDATES
+        socket.on("wallet:balance-updated", args -> {
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    double newBalance = data.optDouble("balanceGC", 0);
+
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            // Update cache
+                            WalletCacheManager.saveBalance(requireContext(), newBalance);
+
+                            // Update UI
+                            int rupees = (int) Math.round(newBalance);
+                            tvBalance.setText(String.valueOf(rupees));
+
+                            Log.d(TAG, "✅ Balance updated via socket: " + newBalance);
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing balance update", e);
+                }
+            }
+        });
+
+        // 🔥 LISTEN FOR TRANSACTION UPDATES
+        socket.on("wallet:transaction-updated", args -> {
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String action = data.optString("action", "");
+
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            // Refresh transactions list
+                            refreshData();
+
+                            Log.d(TAG, "✅ Transaction updated via socket: " + action);
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing transaction update", e);
+                }
+            }
+        });
+
+        // 🔥 LISTEN FOR WALLET HISTORY UPDATES
+        socket.on("wallet:history-updated", args -> {
+            if (args.length > 0) {
+                try {
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            // Refresh transactions list
+                            refreshData();
+
+                            Log.d(TAG, "✅ Wallet history updated via socket");
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing wallet history update", e);
+                }
+            }
+        });
+
+        // 🔥 LISTEN FOR QR PAYMENT STATUS UPDATES
+        socket.on("payment:qr-status-updated", args -> {
+            if (args.length > 0) {
+                try {
+                    JSONObject data = (JSONObject) args[0];
+                    String status = data.optString("status", "");
+                    String action = data.optString("action", "");
+
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            if ("success".equalsIgnoreCase(status)) {
+                                Toast.makeText(requireContext(),
+                                        "Payment successful!",
+                                        Toast.LENGTH_SHORT).show();
+
+                                // Refresh balance and transactions
+                                loadBalanceFromAPI();
+                                refreshData();
+                            }
+
+                            Log.d(TAG, "✅ QR Payment status updated: " + status + " - " + action);
+                        });
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing QR payment status", e);
+                }
+            }
+        });
+
+        Log.d(TAG, "✅ Socket listeners setup complete");
+    }
+
+    // 🔥 REMOVE SOCKET LISTENERS ON DESTROY
+    private void removeSocketListeners() {
+        if (socket != null) {
+            String userId = TokenManager.getUserId(requireContext());
+            if (userId != null) {
+                socket.emit("unsubscribe:wallet", userId);
+            }
+
+            socket.off("wallet:balance-updated");
+            socket.off("wallet:transaction-updated");
+            socket.off("wallet:history-updated");
+            socket.off("payment:qr-status-updated");
+
+            Log.d(TAG, "✅ Socket listeners removed");
+        }
     }
 
     // 🔥 LOAD FROM CACHE (INSTANT)
