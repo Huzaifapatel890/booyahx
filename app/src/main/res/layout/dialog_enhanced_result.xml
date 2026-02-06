@@ -7,18 +7,21 @@
     android:background="@drawable/neon_card"
     android:padding="20dp">
 
-    <!-- Header -->
+    <!-- Dynamic Header Title -->
     <TextView
+        android:id="@+id/headerTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Overall Standings 🏆 "
+        android:text="Overall Standings 🏆"
         android:textSize="22sp"
         android:textStyle="bold"
         android:textColor="#39FF14"
         android:gravity="center"
         android:paddingBottom="10dp"/>
 
+    <!-- Dynamic Sub-header Text -->
     <TextView
+        android:id="@+id/subHeaderText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Contact host via Raising Dispute ticket if you find any Error"

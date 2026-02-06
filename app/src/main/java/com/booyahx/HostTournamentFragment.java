@@ -41,8 +41,14 @@ import com.booyahx.network.models.HostTournamentResponse;
 import com.booyahx.network.models.UpdateRoomRequest;
 import com.booyahx.network.models.UpdateRoomResponse;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -263,6 +269,13 @@ public class HostTournamentFragment extends Fragment {
                             Log.d(TAG, "➕ Adding " + l.getCancelled().size() + " from API cancelled list");
                             allCancelled.addAll(l.getCancelled());
                         }
+
+                        // Sort all categories by time (closest first)
+                        sortTournamentsByTime(allUpcoming);
+                        sortTournamentsByTime(allLive);
+                        sortTournamentsByTime(allResultPending);
+                        sortTournamentsByTime(allCompleted);
+                        sortTournamentsByTime(allCancelled);
 
                         Log.d(TAG, "📊 Final counts after processing:");
                         Log.d(TAG, "  - Live: " + allLive.size());
@@ -513,8 +526,12 @@ public class HostTournamentFragment extends Fragment {
             return;
         }
 
+        // ✅ FIXED: Include tournamentId and status for new constructor
         new EnhancedFinalResultDialog(
-                requireContext(), rows).show();
+                requireContext(),
+                rows,
+                tournament.getId(),
+                tournament.getStatus()).show();
     }
 
     // ✅ FIXED: Updated to work with List<String> participants
@@ -644,6 +661,68 @@ public class HostTournamentFragment extends Fragment {
                         Log.e(TAG, "EndTournament API Error", t);
                     }
                 });
+    }
+
+    /**
+     * Sorts tournaments by date and time (closest first)
+     */
+    private void sortTournamentsByTime(List<HostTournament> tournaments) {
+        Collections.sort(tournaments, new Comparator<HostTournament>() {
+            @Override
+            public int compare(HostTournament t1, HostTournament t2) {
+                Date date1 = parseTournamentDateTime(t1);
+                Date date2 = parseTournamentDateTime(t2);
+
+                if (date1 == null && date2 == null) return 0;
+                if (date1 == null) return 1;
+                if (date2 == null) return -1;
+
+                // Sort by closest time first (ascending order)
+                return date1.compareTo(date2);
+            }
+        });
+    }
+
+    /**
+     * Parses the tournament date and time into a Date object
+     */
+    private Date parseTournamentDateTime(HostTournament tournament) {
+        try {
+            String dateStr = tournament.getDate();
+            String timeStr = tournament.getStartTime();
+
+            if (dateStr == null || timeStr == null) {
+                return null;
+            }
+
+            // Combine date and time into a single string
+            String dateTimeStr = dateStr + " " + timeStr;
+
+            // Try multiple date formats to handle different formats
+            SimpleDateFormat[] formats = {
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()),
+                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault()),
+                    new SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()),
+                    new SimpleDateFormat("dd-MM-yyyy hh:mm a", Locale.getDefault()),
+                    new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault()),
+                    new SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
+            };
+
+            for (SimpleDateFormat format : formats) {
+                try {
+                    return format.parse(dateTimeStr);
+                } catch (ParseException e) {
+                    // Try next format
+                }
+            }
+
+            Log.w(TAG, "Could not parse date/time: " + dateTimeStr);
+            return null;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing tournament date/time", e);
+            return null;
+        }
     }
 
     @Override

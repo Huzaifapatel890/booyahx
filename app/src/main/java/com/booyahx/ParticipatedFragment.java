@@ -216,13 +216,36 @@ public class ParticipatedFragment extends Fragment {
 
             // Add tournament to filtered list
             filtered.add(t);
-            Log.d(TAG, "Added tournament: " + t.getLobbyName() + " (date: " + tournamentDate + ", mode: " + t.getMode() + ", subMode: " + t.getSubMode() + ")");
+            Log.d(TAG, "Added tournament: " + t.getLobbyName() + " (date: " + tournamentDate + ", mode: " + t.getMode() + ", subMode: " + t.getSubMode() + ", status: " + t.getStatus() + ")");
         }
 
-        // ✅ SORT BY TIME: Closest tournament first (ascending order)
+        // ========================================================================
+        // ✅ SORTING LOGIC: Status priority + Time within each status
+        // ========================================================================
+        // Order:
+        // 1. Running/Live (time-wise: earliest first)
+        // 2. Upcoming (time-wise: closest first)
+        // 3. Pending (time-wise: earliest first)
+        // 4. Finished (time-wise: earliest first, e.g., 3 PM before 6 PM)
+        // 5. Cancelled (time-wise: earliest first)
+        // ========================================================================
         Collections.sort(filtered, new Comparator<JoinedTournament>() {
             @Override
             public int compare(JoinedTournament t1, JoinedTournament t2) {
+
+                // Get status priority (lower number = higher priority = shown first)
+                int priority1 = getStatusPriority(t1.getStatus());
+                int priority2 = getStatusPriority(t2.getStatus());
+
+                Log.d(TAG, "Comparing: " + t1.getLobbyName() + " (priority=" + priority1 + ", status=" + t1.getStatus() + ") vs " +
+                        t2.getLobbyName() + " (priority=" + priority2 + ", status=" + t2.getStatus() + ")");
+
+                // First sort by status priority
+                if (priority1 != priority2) {
+                    return Integer.compare(priority1, priority2);
+                }
+
+                // If same priority, sort by time (earliest first within each category)
                 try {
                     String dateTime1 = t1.getDate() + " " + t1.getStartTime();
                     String dateTime2 = t2.getDate() + " " + t2.getStartTime();
@@ -233,7 +256,7 @@ public class ParticipatedFragment extends Fragment {
 
                     if (date1 == null || date2 == null) return 0;
 
-                    // Ascending order - closest tournament first
+                    // Ascending order - earliest time first within each status category
                     return date1.compareTo(date2);
                 } catch (Exception e) {
                     Log.e(TAG, "Error comparing tournament times: " + e.getMessage());
@@ -241,6 +264,14 @@ public class ParticipatedFragment extends Fragment {
                 }
             }
         });
+
+        Log.d(TAG, "========================================");
+        Log.d(TAG, "FINAL SORTED ORDER:");
+        for (int i = 0; i < filtered.size(); i++) {
+            JoinedTournament t = filtered.get(i);
+            Log.d(TAG, (i + 1) + ". " + t.getLobbyName() + " | Status: " + t.getStatus() + " | Time: " + t.getStartTime());
+        }
+        Log.d(TAG, "========================================");
 
         Log.d(TAG, "Filtered and sorted = " + filtered.size() + " tournaments | subMode = " + currentSubMode);
 
@@ -255,4 +286,63 @@ public class ParticipatedFragment extends Fragment {
 
         adapter.updateData(filtered);
     }
+
+    // ========================================================================
+    // ✅ METHOD: Get status priority for sorting
+    // ========================================================================
+    /**
+     * Returns priority number for tournament status
+     * Lower number = Higher priority = Shown first
+     *
+     * Priority order:
+     * 0 = Running/Live (shown first)
+     * 1 = Upcoming (shown second)
+     * 2 = Pending (shown third)
+     * 3 = Finished/Completed (shown fourth)
+     * 4 = Cancelled (shown last)
+     *
+     * Within each category, tournaments are sorted by time (earliest first)
+     */
+    private int getStatusPriority(String status) {
+        if (status == null || status.isEmpty()) {
+            return 1; // Treat null/empty as upcoming
+        }
+
+        String statusLower = status.toLowerCase(Locale.getDefault());
+
+        // Running/Live tournaments (show first)
+        if (statusLower.contains("running") || statusLower.contains("live")) {
+            Log.d(TAG, "Status '" + status + "' classified as RUNNING (priority 0)");
+            return 0;
+        }
+
+        // Upcoming tournaments (show second)
+        if (statusLower.contains("upcoming")) {
+            Log.d(TAG, "Status '" + status + "' classified as UPCOMING (priority 1)");
+            return 1;
+        }
+
+        // Pending tournaments (show third)
+        if (statusLower.contains("pending")) {
+            Log.d(TAG, "Status '" + status + "' classified as PENDING (priority 2)");
+            return 2;
+        }
+
+        // Finished/Completed tournaments (show fourth)
+        if (statusLower.contains("finished") || statusLower.contains("completed")) {
+            Log.d(TAG, "Status '" + status + "' classified as FINISHED (priority 3)");
+            return 3;
+        }
+
+        // Cancelled tournaments (show last)
+        if (statusLower.contains("cancel")) {
+            Log.d(TAG, "Status '" + status + "' classified as CANCELLED (priority 4)");
+            return 4;
+        }
+
+        // Default: treat as upcoming
+        Log.d(TAG, "Status '" + status + "' not recognized, treating as UPCOMING (priority 1)");
+        return 1;
+    }
+    // ========================================================================
 }

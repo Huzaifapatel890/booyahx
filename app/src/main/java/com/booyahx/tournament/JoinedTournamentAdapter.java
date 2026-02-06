@@ -15,11 +15,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.booyahx.Host.EnhancedFinalResultDialog;
+import com.booyahx.Host.FinalRow;
 import com.booyahx.R;
 import com.booyahx.TokenManager;
 import com.booyahx.network.models.JoinedTournament;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -172,14 +175,33 @@ public class JoinedTournamentAdapter
             handleCountdown(t);
             handleRoomAndPassword(t);
 
-            // ✅ ADDED: RESULTS button click listener
+            // ========================================================================
+            // ✅ UPDATED: RESULTS button with proper dialog integration
+            // ========================================================================
             if (btnResults != null) {
-                btnResults.setVisibility(View.VISIBLE);
-                btnResults.setOnClickListener(v -> {
-                    // TODO: Add your results logic here
-                    Toast.makeText(v.getContext(), "Results feature coming soon!", Toast.LENGTH_SHORT).show();
-                });
+                String status = t.getStatus();
+
+                // Show button only for running/finished tournaments
+                if (status != null &&
+                        ("running".equalsIgnoreCase(status) || "finished".equalsIgnoreCase(status))) {
+
+                    btnResults.setVisibility(View.VISIBLE);
+
+                    btnResults.setOnClickListener(v -> {
+                        Log.d(TAG, "🎯 btnResults clicked for tournament: " + t.getId());
+                        Log.d(TAG, "   Lobby: " + t.getLobbyName());
+                        Log.d(TAG, "   Status: " + status);
+
+                        showResultsDialog(t);
+                    });
+
+                } else {
+                    // Hide button for upcoming tournaments
+                    btnResults.setVisibility(View.GONE);
+                    Log.d(TAG, "btnResults hidden - status: " + status);
+                }
             }
+            // ========================================================================
 
             if (btnRules != null && t.getRules() != null) {
                 btnRules.setVisibility(View.VISIBLE);
@@ -201,6 +223,59 @@ public class JoinedTournamentAdapter
 
             Log.d(TAG, "============ BIND END ============");
         }
+
+        // ========================================================================
+        // ✅ NEW METHOD: Show results dialog with proper tournament data
+        // ========================================================================
+        private void showResultsDialog(JoinedTournament tournament) {
+            Context context = itemView.getContext();
+
+            // Empty results list - dialog will fetch from API
+            List<FinalRow> emptyResults = new ArrayList<>();
+
+            // Get tournament data
+            String tournamentId = tournament.getId();
+            String tournamentStatus = tournament.getStatus();
+
+            // Validate tournament ID
+            if (tournamentId == null || tournamentId.isEmpty()) {
+                Log.e(TAG, "❌ Cannot show results - tournament ID is null/empty");
+                Toast.makeText(context, "Invalid tournament data", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Default to "running" if status is null
+            if (tournamentStatus == null || tournamentStatus.isEmpty()) {
+                Log.w(TAG, "⚠️ Tournament status is null/empty, defaulting to 'running'");
+                tournamentStatus = "running";
+            }
+
+            Log.d(TAG, "========================================");
+            Log.d(TAG, "📊 CREATING RESULTS DIALOG");
+            Log.d(TAG, "========================================");
+            Log.d(TAG, "Tournament ID: " + tournamentId);
+            Log.d(TAG, "Tournament Status: " + tournamentStatus);
+            Log.d(TAG, "Lobby Name: " + tournament.getLobbyName());
+            Log.d(TAG, "========================================");
+
+            // Create and show dialog
+            EnhancedFinalResultDialog dialog = new EnhancedFinalResultDialog(
+                    context,
+                    emptyResults,        // Empty - will be fetched from API
+                    tournamentId,        // Tournament ID for API call
+                    tournamentStatus     // "running" or "finished"
+            );
+
+            dialog.show();
+
+            // Log expected behavior
+            if ("running".equalsIgnoreCase(tournamentStatus)) {
+                Log.d(TAG, "✅ Dialog will show: Live Results 🔥");
+            } else if ("finished".equalsIgnoreCase(tournamentStatus)) {
+                Log.d(TAG, "✅ Dialog will show: Overall Standings 🏆");
+            }
+        }
+        // ========================================================================
 
         private void handleCountdown(JoinedTournament t) {
 
