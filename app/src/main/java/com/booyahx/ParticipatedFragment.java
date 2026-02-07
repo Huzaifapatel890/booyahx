@@ -82,9 +82,18 @@ public class ParticipatedFragment extends Fragment {
 
         getParentFragmentManager().setFragmentResultListener(
                 "joined_refresh",
-                this,
+                getViewLifecycleOwner(),
                 (requestKey, bundle) -> {
                     Log.d(TAG, "joined_refresh received, refetching tournaments");
+                    fetchJoinedTournaments();
+                }
+        );
+
+        getParentFragmentManager().setFragmentResultListener(
+                "tournament_status_changed",
+                getViewLifecycleOwner(),
+                (requestKey, bundle) -> {
+                    Log.d(TAG, "tournament_status_changed received, refetching tournaments");
                     fetchJoinedTournaments();
                 }
         );

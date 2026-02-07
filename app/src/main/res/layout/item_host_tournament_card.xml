@@ -108,7 +108,7 @@
                     android:id="@+id/entryFee"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="150 GC"
+                    android:text=""
                     android:textColor="#FFFFFF"
                     android:textSize="14sp"
                     android:textStyle="bold"

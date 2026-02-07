@@ -42,8 +42,6 @@ public class HostTournament {
     @SerializedName("lockTime")
     private String lockTime;
 
-    // ✅ FIXED: Changed from List<Participant> to List<String>
-    // API returns participant IDs as strings, not objects
     @SerializedName("participants")
     private List<String> participants;
 
@@ -55,6 +53,10 @@ public class HostTournament {
 
     @SerializedName("prizePool")
     private int prizePool;
+
+    // ✅ NEW: Add potentialPrizePool field to get max prize pool
+    @SerializedName("potentialPrizePool")
+    private PotentialPrizePool potentialPrizePool;
 
     @SerializedName("status")
     private String status;
@@ -71,6 +73,34 @@ public class HostTournament {
     // =====================
     // INNER MODELS
     // =====================
+
+    // ✅ NEW: PotentialPrizePool class to parse API data
+    public static class PotentialPrizePool {
+        @SerializedName("totalPrizePool")
+        private int totalPrizePool;
+
+        @SerializedName("platformFee")
+        private int platformFee;
+
+        @SerializedName("hostFee")
+        private int hostFee;
+
+        @SerializedName("casterFee")
+        private int casterFee;
+
+        @SerializedName("totalFees")
+        private int totalFees;
+
+        @SerializedName("winnerPrizePool")
+        private int winnerPrizePool;
+
+        public int getTotalPrizePool() { return totalPrizePool; }
+        public int getPlatformFee() { return platformFee; }
+        public int getHostFee() { return hostFee; }
+        public int getCasterFee() { return casterFee; }
+        public int getTotalFees() { return totalFees; }
+        public int getWinnerPrizePool() { return winnerPrizePool; }
+    }
 
     public static class Room {
         @SerializedName("roomId")
@@ -152,9 +182,10 @@ public class HostTournament {
     public String getDate() { return date; }
     public String getStartTime() { return startTime; }
     public String getLockTime() { return lockTime; }
-    public List<String> getParticipants() { return participants; } // ✅ Now returns List<String>
+    public List<String> getParticipants() { return participants; }
     public Room getRoom() { return room; }
     public int getPrizePool() { return prizePool; }
+    public PotentialPrizePool getPotentialPrizePool() { return potentialPrizePool; } // ✅ NEW getter
     public String getStatus() { return status; }
     public List<Result> getResults() { return results; }
     public List<Team> getTeams() { return teams; }
@@ -179,7 +210,11 @@ public class HostTournament {
         return entryFee + " GC";
     }
 
+    // ✅ FIXED: Return max prize pool from potentialPrizePool instead of current prizePool
     public String getPrizePoolDisplay() {
+        if (potentialPrizePool != null && potentialPrizePool.getTotalPrizePool() > 0) {
+            return potentialPrizePool.getTotalPrizePool() + " GC";
+        }
         return prizePool + " GC";
     }
 

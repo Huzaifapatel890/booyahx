@@ -84,6 +84,10 @@ public class HostTournamentAdapter
         h.roomId.setText(t.getRoomIdDisplay());
         h.password.setText(t.getPasswordDisplay());
 
+        // ✅ FIXED: Add entry fee and prize pool display
+        h.entryFee.setText(t.getEntryFeeDisplay());
+        h.prizePool.setText(t.getPrizePoolDisplay());
+
         // Cancel existing timer for this position
         if (activeTimers.containsKey(pos)) {
             activeTimers.get(pos).cancel();
@@ -211,6 +215,7 @@ public class HostTournamentAdapter
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title, mode, slots, time, roomId, password;
+        TextView entryFee, prizePool;  // ✅ ADDED: Entry fee and prize pool TextViews
         TextView edit, submit, result, rules, end;
 
         ViewHolder(View v) {
@@ -221,6 +226,10 @@ public class HostTournamentAdapter
             time = v.findViewById(R.id.timeStatus);
             roomId = v.findViewById(R.id.roomId);
             password = v.findViewById(R.id.password);
+
+            // ✅ ADDED: Initialize entry fee and prize pool TextViews
+            entryFee = v.findViewById(R.id.entryFee);
+            prizePool = v.findViewById(R.id.prizePool);
 
             edit = v.findViewById(R.id.editIcon);
             submit = v.findViewById(R.id.submitResultBtn);
