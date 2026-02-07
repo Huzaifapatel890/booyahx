@@ -46,7 +46,7 @@ public class ParticipatedFragment extends Fragment {
     private Spinner spinnerMode;
     private TournamentStatusAdapter modeAdapter;
 
-    // ✅ ALL MODES IS DEFAULT
+    // All modes is default
     private String currentSubMode = "all";
 
     private List<JoinedTournament> allTournaments = new ArrayList<>();
@@ -84,7 +84,7 @@ public class ParticipatedFragment extends Fragment {
                 "joined_refresh",
                 this,
                 (requestKey, bundle) -> {
-                    Log.d(TAG, "🔄 joined_refresh received, refetching tournaments");
+                    Log.d(TAG, "joined_refresh received, refetching tournaments");
                     fetchJoinedTournaments();
                 }
         );
@@ -102,7 +102,7 @@ public class ParticipatedFragment extends Fragment {
         modeAdapter = new TournamentStatusAdapter(requireContext(), modeItems);
         spinnerMode.setAdapter(modeAdapter);
 
-        // ✅ ALL MODES DEFAULT
+        // All modes default
         spinnerMode.setSelection(0);
         Log.d(TAG, "Mode spinner set to default: all");
 
@@ -123,7 +123,7 @@ public class ParticipatedFragment extends Fragment {
     }
 
     private void fetchJoinedTournaments() {
-        Log.d(TAG, "🌐 Fetching joined tournaments from API...");
+        Log.d(TAG, "Fetching joined tournaments from API...");
 
         ApiService api = ApiClient.getClient(requireContext())
                 .create(ApiService.class);
@@ -137,22 +137,22 @@ public class ParticipatedFragment extends Fragment {
                 Log.d(TAG, "API Response received: " + response.code());
 
                 if (response.body() == null) {
-                    Log.e(TAG, "❌ Response body is NULL");
+                    Log.e(TAG, "Response body is NULL");
                     return;
                 }
 
                 if (response.body().getData() == null) {
-                    Log.e(TAG, "❌ Response data is NULL");
+                    Log.e(TAG, "Response data is NULL");
                     return;
                 }
 
                 if (response.body().getData().getTournaments() == null) {
-                    Log.e(TAG, "❌ Tournaments list is NULL");
+                    Log.e(TAG, "Tournaments list is NULL");
                     return;
                 }
 
                 allTournaments = response.body().getData().getTournaments();
-                Log.d(TAG, "✅ Successfully fetched " + allTournaments.size() + " tournaments");
+                Log.d(TAG, "Successfully fetched " + allTournaments.size() + " tournaments");
 
                 // Debug: Print first tournament's participants
                 if (!allTournaments.isEmpty()) {
@@ -166,7 +166,7 @@ public class ParticipatedFragment extends Fragment {
                             Log.d(TAG, "Participant[" + i + "]: userId=" + p.userId + ", name=" + p.name + ", ign=" + p.ign);
                         }
                     } else {
-                        Log.e(TAG, "❌ First tournament has NULL participants");
+                        Log.e(TAG, "First tournament has NULL participants");
                     }
                 }
 
@@ -178,7 +178,7 @@ public class ParticipatedFragment extends Fragment {
                     @NonNull Call<JoinedTournamentResponse> call,
                     @NonNull Throwable t
             ) {
-                Log.e(TAG, "❌❌❌ API FAILED", t);
+                Log.e(TAG, "API FAILED", t);
                 Log.e(TAG, "Error message: " + t.getMessage());
             }
         });
@@ -192,7 +192,7 @@ public class ParticipatedFragment extends Fragment {
         String todayDate = dateFormat.format(new Date());
 
         for (JoinedTournament t : allTournaments) {
-            // ✅ FILTER 1: Only current date tournaments (no older tournaments)
+            // Filter 1: Only current date tournaments (no older tournaments)
             String tournamentDate = t.getDate();
             if (tournamentDate == null || tournamentDate.isEmpty()) {
                 Log.w(TAG, "Tournament " + t.getId() + " has NULL or empty date");
@@ -205,7 +205,7 @@ public class ParticipatedFragment extends Fragment {
                 continue;
             }
 
-            // ✅ FILTER 2: SubMode filter (solo, duo, squad, or all)
+            // Filter 2: SubMode filter (solo, duo, squad, or all)
             if (!currentSubMode.equals("all")) {
                 String subMode = t.getSubMode();
                 if (subMode == null || !subMode.equalsIgnoreCase(currentSubMode)) {
@@ -219,33 +219,20 @@ public class ParticipatedFragment extends Fragment {
             Log.d(TAG, "Added tournament: " + t.getLobbyName() + " (date: " + tournamentDate + ", mode: " + t.getMode() + ", subMode: " + t.getSubMode() + ", status: " + t.getStatus() + ")");
         }
 
-        // ========================================================================
-        // ✅ SORTING LOGIC: Status priority + Time within each status
-        // ========================================================================
-        // Order:
-        // 1. Running/Live (time-wise: earliest first)
-        // 2. Upcoming (time-wise: closest first)
-        // 3. Pending (time-wise: earliest first)
-        // 4. Finished (time-wise: earliest first, e.g., 3 PM before 6 PM)
-        // 5. Cancelled (time-wise: earliest first)
-        // ========================================================================
+        // Sorting logic: Status priority + Time within each status
         Collections.sort(filtered, new Comparator<JoinedTournament>() {
             @Override
             public int compare(JoinedTournament t1, JoinedTournament t2) {
-
-                // Get status priority (lower number = higher priority = shown first)
                 int priority1 = getStatusPriority(t1.getStatus());
                 int priority2 = getStatusPriority(t2.getStatus());
 
                 Log.d(TAG, "Comparing: " + t1.getLobbyName() + " (priority=" + priority1 + ", status=" + t1.getStatus() + ") vs " +
                         t2.getLobbyName() + " (priority=" + priority2 + ", status=" + t2.getStatus() + ")");
 
-                // First sort by status priority
                 if (priority1 != priority2) {
                     return Integer.compare(priority1, priority2);
                 }
 
-                // If same priority, sort by time (earliest first within each category)
                 try {
                     String dateTime1 = t1.getDate() + " " + t1.getStartTime();
                     String dateTime2 = t2.getDate() + " " + t2.getStartTime();
@@ -255,8 +242,6 @@ public class ParticipatedFragment extends Fragment {
                     Date date2 = sdf.parse(dateTime2);
 
                     if (date1 == null || date2 == null) return 0;
-
-                    // Ascending order - earliest time first within each status category
                     return date1.compareTo(date2);
                 } catch (Exception e) {
                     Log.e(TAG, "Error comparing tournament times: " + e.getMessage());
@@ -265,17 +250,14 @@ public class ParticipatedFragment extends Fragment {
             }
         });
 
-        Log.d(TAG, "========================================");
         Log.d(TAG, "FINAL SORTED ORDER:");
         for (int i = 0; i < filtered.size(); i++) {
             JoinedTournament t = filtered.get(i);
             Log.d(TAG, (i + 1) + ". " + t.getLobbyName() + " | Status: " + t.getStatus() + " | Time: " + t.getStartTime());
         }
-        Log.d(TAG, "========================================");
 
         Log.d(TAG, "Filtered and sorted = " + filtered.size() + " tournaments | subMode = " + currentSubMode);
 
-        // ✅ SHOW EMPTY STATE if no tournaments
         if (filtered.isEmpty()) {
             tvEmptyState.setVisibility(View.VISIBLE);
             rvTournaments.setVisibility(View.GONE);
@@ -287,22 +269,6 @@ public class ParticipatedFragment extends Fragment {
         adapter.updateData(filtered);
     }
 
-    // ========================================================================
-    // ✅ METHOD: Get status priority for sorting
-    // ========================================================================
-    /**
-     * Returns priority number for tournament status
-     * Lower number = Higher priority = Shown first
-     *
-     * Priority order:
-     * 0 = Running/Live (shown first)
-     * 1 = Upcoming (shown second)
-     * 2 = Pending (shown third)
-     * 3 = Finished/Completed (shown fourth)
-     * 4 = Cancelled (shown last)
-     *
-     * Within each category, tournaments are sorted by time (earliest first)
-     */
     private int getStatusPriority(String status) {
         if (status == null || status.isEmpty()) {
             return 1; // Treat null/empty as upcoming
@@ -310,39 +276,28 @@ public class ParticipatedFragment extends Fragment {
 
         String statusLower = status.toLowerCase(Locale.getDefault());
 
-        // Running/Live tournaments (show first)
         if (statusLower.contains("running") || statusLower.contains("live")) {
             Log.d(TAG, "Status '" + status + "' classified as RUNNING (priority 0)");
             return 0;
         }
-
-        // Upcoming tournaments (show second)
         if (statusLower.contains("upcoming")) {
             Log.d(TAG, "Status '" + status + "' classified as UPCOMING (priority 1)");
             return 1;
         }
-
-        // Pending tournaments (show third)
         if (statusLower.contains("pending")) {
             Log.d(TAG, "Status '" + status + "' classified as PENDING (priority 2)");
             return 2;
         }
-
-        // Finished/Completed tournaments (show fourth)
         if (statusLower.contains("finished") || statusLower.contains("completed")) {
             Log.d(TAG, "Status '" + status + "' classified as FINISHED (priority 3)");
             return 3;
         }
-
-        // Cancelled tournaments (show last)
         if (statusLower.contains("cancel")) {
             Log.d(TAG, "Status '" + status + "' classified as CANCELLED (priority 4)");
             return 4;
         }
 
-        // Default: treat as upcoming
         Log.d(TAG, "Status '" + status + "' not recognized, treating as UPCOMING (priority 1)");
         return 1;
     }
-    // ========================================================================
 }

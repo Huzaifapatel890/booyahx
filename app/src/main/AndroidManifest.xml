@@ -16,6 +16,7 @@
     </queries>
 
     <application
+        android:name=".MyApp"
         android:allowBackup="true"
         android:icon="@drawable/booyahx_logo"
         android:label="@string/app_name"
@@ -42,6 +43,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
 
         <!-- LOGIN SELECTION PAGE -->
         <activity

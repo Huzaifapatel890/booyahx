@@ -18,6 +18,7 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import com.booyahx.R;
 import com.booyahx.tournament.HostRulesBottomSheet;
 import com.booyahx.adapters.HostStatusSpinnerAdapter;
@@ -77,9 +78,8 @@ public class HostTournamentFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        Log.d(TAG, "🔥 onCreateView called");
+        Log.d(TAG, "onCreateView called");
         View view = inflater.inflate(R.layout.activity_host_panel, container, false);
-        Log.d(TAG, "✅ Layout inflated successfully");
         return view;
     }
 
@@ -87,11 +87,10 @@ public class HostTournamentFragment extends Fragment {
     public void onViewCreated(@NonNull View view,
                               @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        Log.d(TAG, "🔥 onViewCreated called");
+        Log.d(TAG, "onViewCreated called");
 
         apiService = ApiClient.getClient(requireContext())
                 .create(ApiService.class);
-        Log.d(TAG, "✅ ApiService created");
 
         initViews(view);
         setupStatusSpinner();
@@ -99,24 +98,15 @@ public class HostTournamentFragment extends Fragment {
     }
 
     private void initViews(View view) {
-        Log.d(TAG, "🔥 initViews called");
-
         tournamentRecyclerView = view.findViewById(R.id.tournamentRecyclerView);
         statusSpinner = view.findViewById(R.id.spinnerTournamentStatus);
         progressBar = view.findViewById(R.id.progressBar);
 
-        Log.d(TAG, "RecyclerView null? " + (tournamentRecyclerView == null));
-        Log.d(TAG, "Spinner null? " + (statusSpinner == null));
-        Log.d(TAG, "ProgressBar null? " + (progressBar == null));
-
         if (tournamentRecyclerView != null) {
             tournamentRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-            Log.d(TAG, "✅ LayoutManager set");
         }
 
         tournamentList = new ArrayList<>();
-        Log.d(TAG, "✅ Tournament list initialized: " + tournamentList.size());
-
         adapter = new HostTournamentAdapter(requireContext(), tournamentList,
                 new HostTournamentAdapter.OnItemClickListener() {
 
@@ -146,17 +136,12 @@ public class HostTournamentFragment extends Fragment {
                     }
                 });
 
-        Log.d(TAG, "✅ Adapter created");
-
         if (tournamentRecyclerView != null) {
             tournamentRecyclerView.setAdapter(adapter);
-            Log.d(TAG, "✅ Adapter set to RecyclerView");
         }
     }
 
     private void setupStatusSpinner() {
-        Log.d(TAG, "🔥 setupStatusSpinner called");
-
         List<String> statusItems = new ArrayList<>();
         statusItems.add("Live Tournaments");
         statusItems.add("Upcoming Tournaments");
@@ -169,13 +154,11 @@ public class HostTournamentFragment extends Fragment {
         if (statusSpinner != null) {
             statusSpinner.setAdapter(statusAdapter);
             statusSpinner.setSelection(0);
-            Log.d(TAG, "✅ Spinner setup complete, default: Live Tournaments");
 
             statusSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> parent, android.view.View view, int position, long id) {
                     String selectedStatus = statusAdapter.getItem(position);
-                    Log.d(TAG, "📱 Spinner selection changed to: " + selectedStatus);
                     if (selectedStatus != null) {
                         filterTournaments(selectedStatus);
                     }
@@ -183,20 +166,14 @@ public class HostTournamentFragment extends Fragment {
 
                 @Override
                 public void onNothingSelected(AdapterView<?> parent) {
-                    Log.d(TAG, "⚠️ Spinner: nothing selected");
                 }
             });
-        } else {
-            Log.e(TAG, "❌ statusSpinner is NULL!");
         }
     }
 
     private void loadTournamentsFromAPI() {
-        Log.d(TAG, "🔥 loadTournamentsFromAPI called");
-
         if (progressBar != null) {
             progressBar.setVisibility(View.VISIBLE);
-            Log.d(TAG, "✅ ProgressBar shown");
         }
 
         apiService.getHostMyLobbies()
@@ -206,31 +183,16 @@ public class HostTournamentFragment extends Fragment {
                     public void onResponse(
                             Call<HostTournamentResponse> call,
                             Response<HostTournamentResponse> response) {
-
-                        Log.d(TAG, "🌐 API Response received");
-                        Log.d(TAG, "Response code: " + response.code());
-                        Log.d(TAG, "Response successful: " + response.isSuccessful());
-                        Log.d(TAG, "Response body null? " + (response.body() == null));
-
                         if (progressBar != null) {
                             progressBar.setVisibility(View.GONE);
-                            Log.d(TAG, "✅ ProgressBar hidden");
                         }
 
                         if (!response.isSuccessful() || response.body() == null) {
-                            Log.e(TAG, "❌ Response unsuccessful or body is null");
                             return;
                         }
 
                         HostTournamentResponse.Lobbies l =
                                 response.body().getData().getLobbies();
-
-                        Log.d(TAG, "📦 Raw API data:");
-                        Log.d(TAG, "  - Upcoming: " + (l.getUpcoming() != null ? l.getUpcoming().size() : "null"));
-                        Log.d(TAG, "  - Live: " + (l.getLive() != null ? l.getLive().size() : "null"));
-                        Log.d(TAG, "  - ResultPending: " + (l.getResultPending() != null ? l.getResultPending().size() : "null"));
-                        Log.d(TAG, "  - Completed: " + (l.getCompleted() != null ? l.getCompleted().size() : "null"));
-                        Log.d(TAG, "  - Cancelled: " + (l.getCancelled() != null ? l.getCancelled().size() : "null"));
 
                         allUpcoming.clear();
                         allLive.clear();
@@ -238,64 +200,39 @@ public class HostTournamentFragment extends Fragment {
                         allCompleted.clear();
                         allCancelled.clear();
 
-                        // Add tournaments from API response
                         if (l.getUpcoming() != null) allUpcoming.addAll(l.getUpcoming());
                         if (l.getLive() != null) allLive.addAll(l.getLive());
                         if (l.getResultPending() != null) allResultPending.addAll(l.getResultPending());
 
-                        // Separate completed and cancelled tournaments
                         List<HostTournament> completedList = l.getCompleted();
                         if (completedList != null) {
-                            Log.d(TAG, "🔍 Processing " + completedList.size() + " completed tournaments");
-
                             for (int i = 0; i < completedList.size(); i++) {
                                 HostTournament tournament = completedList.get(i);
                                 String status = tournament.getStatus();
-
-                                Log.d(TAG, "  Tournament #" + (i+1) + ": status = '" + status + "', title = " + tournament.getHeaderTitle());
-
                                 if (status != null && status.equalsIgnoreCase("cancelled")) {
                                     allCancelled.add(tournament);
-                                    Log.d(TAG, "    ➡️ Added to CANCELLED");
                                 } else {
                                     allCompleted.add(tournament);
-                                    Log.d(TAG, "    ➡️ Added to COMPLETED");
                                 }
                             }
                         }
 
-                        // Also add from cancelled list if API provides it
                         if (l.getCancelled() != null && !l.getCancelled().isEmpty()) {
-                            Log.d(TAG, "➕ Adding " + l.getCancelled().size() + " from API cancelled list");
                             allCancelled.addAll(l.getCancelled());
                         }
 
-                        // Sort all categories by time (closest first)
-                        sortTournamentsByTime(allUpcoming);
-                        sortTournamentsByTime(allLive);
-                        sortTournamentsByTime(allResultPending);
-                        sortTournamentsByTime(allCompleted);
-                        sortTournamentsByTime(allCancelled);
+                        sortTournamentsByTime(allUpcoming, false);  // Ascending (closest upcoming first: 7 PM → 8 PM → 9 PM)
+                        sortTournamentsByTime(allLive, false);      // Ascending (closest upcoming first)
+                        sortTournamentsByTime(allResultPending, true);  // Descending (most recent past first)
+                        sortTournamentsByTime(allCompleted, true);  // Descending (most recent past first)
+                        sortTournamentsByTime(allCancelled, true);  // Descending (most recent past first)
 
-                        Log.d(TAG, "📊 Final counts after processing:");
-                        Log.d(TAG, "  - Live: " + allLive.size());
-                        Log.d(TAG, "  - Upcoming: " + allUpcoming.size());
-                        Log.d(TAG, "  - Completed: " + allCompleted.size());
-                        Log.d(TAG, "  - Cancelled: " + allCancelled.size());
-                        Log.d(TAG, "  - Pending: " + allResultPending.size());
-
-                        // Get current selected position to maintain filter
                         int currentPosition = statusSpinner.getSelectedItemPosition();
                         String currentStatus = statusAdapter.getItem(currentPosition);
 
-                        Log.d(TAG, "Current spinner position: " + currentPosition);
-                        Log.d(TAG, "Current spinner status: " + currentStatus);
-
-                        // Filter based on current selection
                         if (currentStatus != null) {
                             filterTournaments(currentStatus);
                         } else {
-                            Log.d(TAG, "⚠️ Current status is null, defaulting to Live");
                             statusSpinner.setSelection(0);
                             filterTournaments("Live Tournaments");
                         }
@@ -305,9 +242,6 @@ public class HostTournamentFragment extends Fragment {
                     public void onFailure(
                             Call<HostTournamentResponse> call,
                             Throwable t) {
-                        Log.e(TAG, "❌ API CALL FAILED!");
-                        Log.e(TAG, "Error: " + t.getMessage(), t);
-
                         if (progressBar != null) {
                             progressBar.setVisibility(View.GONE);
                         }
@@ -320,57 +254,33 @@ public class HostTournamentFragment extends Fragment {
     }
 
     private void filterTournaments(String status) {
-        Log.d(TAG, "🔥 filterTournaments called with: " + status);
-
-        int previousSize = tournamentList.size();
         tournamentList.clear();
-        Log.d(TAG, "  Cleared list (was " + previousSize + " items)");
 
         switch (status) {
             case "Live Tournaments":
                 tournamentList.addAll(allLive);
-                Log.d(TAG, "  Added " + allLive.size() + " live tournaments");
                 break;
             case "Upcoming Tournaments":
                 tournamentList.addAll(allUpcoming);
-                Log.d(TAG, "  Added " + allUpcoming.size() + " upcoming tournaments");
                 break;
             case "Completed Tournaments":
                 tournamentList.addAll(allCompleted);
-                Log.d(TAG, "  Added " + allCompleted.size() + " completed tournaments");
                 break;
             case "Pending Result Tournaments":
                 tournamentList.addAll(allResultPending);
-                Log.d(TAG, "  Added " + allResultPending.size() + " pending tournaments");
                 break;
             case "Cancelled Tournaments":
                 tournamentList.addAll(allCancelled);
-                Log.d(TAG, "  Added " + allCancelled.size() + " cancelled tournaments");
-
-                // Extra debug for cancelled
-                for (int i = 0; i < allCancelled.size(); i++) {
-                    HostTournament t = allCancelled.get(i);
-                    Log.d(TAG, "    Cancelled #" + (i+1) + ": " + t.getHeaderTitle() + " | Status: " + t.getStatus());
-                }
                 break;
         }
 
-        Log.d(TAG, "📋 Tournament list now has " + tournamentList.size() + " items");
-        Log.d(TAG, "Adapter null? " + (adapter == null));
-
         if (adapter != null) {
             adapter.notifyDataSetChanged();
-            Log.d(TAG, "✅ Adapter.notifyDataSetChanged() called");
-        } else {
-            Log.e(TAG, "❌ ADAPTER IS NULL!");
         }
 
         if (tournamentList.isEmpty()) {
             String message = "No " + status.toLowerCase();
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "⚠️ List empty, showing toast: " + message);
-        } else {
-            Log.d(TAG, "✅ List has items, should be rendering now!");
         }
     }
 
@@ -495,7 +405,6 @@ public class HostTournamentFragment extends Fragment {
                         Toast.makeText(requireContext(),
                                 "Error: " + t.getMessage(),
                                 Toast.LENGTH_SHORT).show();
-                        Log.e(TAG, "UpdateRoom API Error", t);
                     }
                 });
     }
@@ -526,7 +435,6 @@ public class HostTournamentFragment extends Fragment {
             return;
         }
 
-        // ✅ FIXED: Include tournamentId and status for new constructor
         new EnhancedFinalResultDialog(
                 requireContext(),
                 rows,
@@ -534,11 +442,9 @@ public class HostTournamentFragment extends Fragment {
                 tournament.getStatus()).show();
     }
 
-    // ✅ FIXED: Updated to work with List<String> participants
     private List<String> getTeamNamesFromTournament(HostTournament tournament) {
         List<String> teamNames = new ArrayList<>();
 
-        // Get team names from teams array (this is the primary source)
         if (tournament.getTeams() != null && !tournament.getTeams().isEmpty()) {
             for (HostTournament.Team team : tournament.getTeams()) {
                 String teamName = team.getTeamName();
@@ -549,8 +455,7 @@ public class HostTournamentFragment extends Fragment {
                 }
             }
         }
-        // Note: participants is now just a List<String> of IDs
-        // If you need actual participant names, you'd need to fetch them separately
+        // participants is now just a List<String> of IDs
 
         return teamNames;
     }
@@ -658,15 +563,11 @@ public class HostTournamentFragment extends Fragment {
                         Toast.makeText(requireContext(),
                                 "Error: " + t.getMessage(),
                                 Toast.LENGTH_SHORT).show();
-                        Log.e(TAG, "EndTournament API Error", t);
                     }
                 });
     }
 
-    /**
-     * Sorts tournaments by date and time (closest first)
-     */
-    private void sortTournamentsByTime(List<HostTournament> tournaments) {
+    private void sortTournamentsByTime(List<HostTournament> tournaments, boolean reverseOrder) {
         Collections.sort(tournaments, new Comparator<HostTournament>() {
             @Override
             public int compare(HostTournament t1, HostTournament t2) {
@@ -677,15 +578,17 @@ public class HostTournamentFragment extends Fragment {
                 if (date1 == null) return 1;
                 if (date2 == null) return -1;
 
-                // Sort by closest time first (ascending order)
-                return date1.compareTo(date2);
+                // Normal order: earliest first (for upcoming/live)
+                // Reverse order: latest first (for cancelled/completed)
+                if (reverseOrder) {
+                    return date2.compareTo(date1);  // Reverse: latest first
+                } else {
+                    return date1.compareTo(date2);  // Normal: earliest first
+                }
             }
         });
     }
 
-    /**
-     * Parses the tournament date and time into a Date object
-     */
     private Date parseTournamentDateTime(HostTournament tournament) {
         try {
             String dateStr = tournament.getDate();
@@ -695,22 +598,33 @@ public class HostTournamentFragment extends Fragment {
                 return null;
             }
 
-            // Combine date and time into a single string
+            // Extract just the date part from ISO 8601 format (2026-01-31T00:00:00.000Z -> 2026-01-31)
+            if (dateStr.contains("T")) {
+                dateStr = dateStr.substring(0, dateStr.indexOf("T"));
+            }
+
             String dateTimeStr = dateStr + " " + timeStr;
 
-            // Try multiple date formats to handle different formats
+            // Try formats with AM/PM first (most common in your app based on screenshots)
             SimpleDateFormat[] formats = {
-                    new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()),
-                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault()),
-                    new SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault()),
-                    new SimpleDateFormat("dd-MM-yyyy hh:mm a", Locale.getDefault()),
-                    new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault()),
-                    new SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
+                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.US),
+                    new SimpleDateFormat("yyyy-MM-dd h:mm a", Locale.US),
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US),
+                    new SimpleDateFormat("dd-MM-yyyy hh:mm a", Locale.US),
+                    new SimpleDateFormat("dd-MM-yyyy h:mm a", Locale.US),
+                    new SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.US),
+                    new SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US),
+                    new SimpleDateFormat("MM/dd/yyyy h:mm a", Locale.US),
+                    new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.US)
             };
 
             for (SimpleDateFormat format : formats) {
                 try {
-                    return format.parse(dateTimeStr);
+                    format.setLenient(false);
+                    Date parsed = format.parse(dateTimeStr);
+                    if (parsed != null) {
+                        return parsed;
+                    }
                 } catch (ParseException e) {
                     // Try next format
                 }
@@ -728,10 +642,8 @@ public class HostTournamentFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        Log.d(TAG, "🔥 onDestroyView called");
         if (adapter != null) {
             adapter.cancelAllTimers();
-            Log.d(TAG, "✅ All timers cancelled");
         }
     }
 }

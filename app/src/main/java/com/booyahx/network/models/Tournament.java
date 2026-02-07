@@ -182,6 +182,13 @@ public class Tournament implements Parcelable {
         public String leaderUserId;
     }
 
+    public String getDate() {
+        return date;
+    }
+
+    public String getStartTime() {
+        return startTime;
+    }
     /* ================= REQUIRED FOR JOIN ================= */
 
     public String getId() {

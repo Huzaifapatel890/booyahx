@@ -6,6 +6,7 @@ import com.booyahx.settings.EditProfileActivity;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -39,9 +40,15 @@ import com.booyahx.utils.NotificationPref;
 import com.booyahx.notifications.NotificationActivity;
 import com.booyahx.utils.AvatarGenerator;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import retrofit2.Call;
@@ -49,6 +56,8 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class HomeFragment extends Fragment {
+
+    private static final String TAG = "HomeFragment_DEBUG";
 
     private TextView txtUsername, txtWalletBalance;
     private TextView txtHostBadge;
@@ -432,6 +441,9 @@ public class HomeFragment extends Fragment {
                                     response.body().data.tournaments
                             );
 
+                            // Sort tournaments by time
+                            sortTournamentsByTime(uniqueTournaments);
+
                             renderTournaments(uniqueTournaments);
                             tournamentsLoaded = true;
                         }
@@ -458,6 +470,9 @@ public class HomeFragment extends Fragment {
                             List<Tournament> uniqueTournaments = removeDuplicateTournaments(
                                     response.body().data.tournaments
                             );
+
+                            // Sort tournaments by time
+                            sortTournamentsByTime(uniqueTournaments);
 
                             renderTournaments(uniqueTournaments);
                             tournamentsLoaded = true;
@@ -490,6 +505,89 @@ public class HomeFragment extends Fragment {
 
         return new ArrayList<>(uniqueMap.values());
     }
+
+    // ========== NEW: TOURNAMENT SORTING METHODS ==========
+    private void sortTournamentsByTime(List<Tournament> tournaments) {
+        if (tournaments == null || tournaments.isEmpty()) {
+            return;
+        }
+
+        // Determine if we need reverse order based on current status
+        boolean reverseOrder = "completed".equalsIgnoreCase(currentStatus)
+                || "cancelled".equalsIgnoreCase(currentStatus)
+                || "pendingResult".equalsIgnoreCase(currentStatus);
+
+        Collections.sort(tournaments, new Comparator<Tournament>() {
+            @Override
+            public int compare(Tournament t1, Tournament t2) {
+                Date date1 = parseTournamentDateTime(t1);
+                Date date2 = parseTournamentDateTime(t2);
+
+                if (date1 == null && date2 == null) return 0;
+                if (date1 == null) return 1;
+                if (date2 == null) return -1;
+
+                // Normal order: earliest first (for upcoming/live)
+                // Reverse order: latest first (for cancelled/completed)
+                if (reverseOrder) {
+                    return date2.compareTo(date1);  // Reverse: latest first
+                } else {
+                    return date1.compareTo(date2);  // Normal: earliest first
+                }
+            }
+        });
+    }
+
+    private Date parseTournamentDateTime(Tournament tournament) {
+        try {
+            String dateStr = tournament.getDate();
+            String timeStr = tournament.getStartTime();
+
+            if (dateStr == null || timeStr == null) {
+                return null;
+            }
+
+            // Extract just the date part from ISO 8601 format (2026-01-31T00:00:00.000Z -> 2026-01-31)
+            if (dateStr.contains("T")) {
+                dateStr = dateStr.substring(0, dateStr.indexOf("T"));
+            }
+
+            String dateTimeStr = dateStr + " " + timeStr;
+
+            // Try formats with AM/PM first (most common in your app)
+            SimpleDateFormat[] formats = {
+                    new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.US),
+                    new SimpleDateFormat("yyyy-MM-dd h:mm a", Locale.US),
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US),
+                    new SimpleDateFormat("dd-MM-yyyy hh:mm a", Locale.US),
+                    new SimpleDateFormat("dd-MM-yyyy h:mm a", Locale.US),
+                    new SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.US),
+                    new SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US),
+                    new SimpleDateFormat("MM/dd/yyyy h:mm a", Locale.US),
+                    new SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.US)
+            };
+
+            for (SimpleDateFormat format : formats) {
+                try {
+                    format.setLenient(false);
+                    Date parsed = format.parse(dateTimeStr);
+                    if (parsed != null) {
+                        return parsed;
+                    }
+                } catch (ParseException e) {
+                    // Try next format
+                }
+            }
+
+            Log.w(TAG, "Could not parse date/time: " + dateTimeStr);
+            return null;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing tournament date/time", e);
+            return null;
+        }
+    }
+    // ========== END: TOURNAMENT SORTING METHODS ==========
 
     private void renderTournaments(List<Tournament> tournaments) {
         if (!isAdded() || tournamentsContainer == null) {
