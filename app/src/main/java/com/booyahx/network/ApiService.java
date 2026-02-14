@@ -69,6 +69,12 @@ public interface ApiService {
             @Query("limit") int limit,
             @Query("skip") int skip
     );
+
+    /**
+     * @deprecated This endpoint has been removed from backend.
+     * Use getWalletBalance() instead which returns both balance and withdrawal limits.
+     */
+    @Deprecated
     @GET("/api/wallet/withdraw-limit")
     Call<WithdrawalLimitResponse> getWithdrawLimit();
 
@@ -76,6 +82,16 @@ public interface ApiService {
     @POST("/api/wallet/withdraw")
     Call<WithdrawalResponse> requestWithdrawal(@Body WithdrawalRequest request);
 
+    /**
+     * Returns both wallet balance AND withdrawal limit data.
+     *
+     * Response includes:
+     * - balanceGC: Current wallet balance
+     * - maxWithdrawableGC: Maximum amount user can withdraw
+     * - totalDepositedGC: Total amount deposited
+     * - withdrawnGC: Total amount already withdrawn
+     * - dailyLimit: Daily withdrawal limits (count, totalGC, maxGC, maxCount)
+     */
     @GET("/api/wallet/balance")
     Call<WalletBalanceResponse> getWalletBalance();
 

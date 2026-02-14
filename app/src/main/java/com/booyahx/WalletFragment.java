@@ -60,7 +60,6 @@ public class WalletFragment extends Fragment {
             if (isAdded()) {
                 loadBalanceFromCache();
                 loadBalanceFromAPI();
-                fetchWithdrawLimitSilently();
                 refreshData();
             }
         }
@@ -107,7 +106,6 @@ public class WalletFragment extends Fragment {
         loadBalanceFromCache();
         loadBalanceFromAPI();
         loadTransactionsFromAPI();
-        fetchWithdrawLimitSilently();
 
         // Setup button click listeners
         btnTopUp.setOnClickListener(v -> {
@@ -165,7 +163,6 @@ public class WalletFragment extends Fragment {
     public void onResume() {
         super.onResume();
         loadBalanceFromCache();
-        fetchWithdrawLimitSilently();
     }
 
     @Override
@@ -200,54 +197,43 @@ public class WalletFragment extends Fragment {
                         tvBalance.setText(String.valueOf(rupees));
                         Log.d(TAG, "Balance updated from API: " + balance);
                     }
+
+                    // 🔥 NEW: Save withdrawal limit data from merged response
+                    WalletBalanceResponse.Data data = response.body().data;
+                    if (data.getMaxWithdrawableGC() != null &&
+                            data.getTotalDepositsGC() != null &&
+                            data.getTotalWithdrawnGC() != null) {
+
+                        WalletLimitCache.saveLimit(
+                                requireContext(),
+                                data.getMaxWithdrawableGC(),
+                                (int) balance,
+                                data.getTotalDepositsGC(),
+                                data.getTotalWithdrawnGC()
+                        );
+
+                        Log.d(TAG, "✅ Balance & Limits saved - Balance: " + balance +
+                                ", MaxWithdrawable: " + data.getMaxWithdrawableGC());
+                    } else {
+                        // 🔥 NEW: If limit data is missing from response, mark unavailable
+                        WalletLimitCache.markUnavailable(requireContext());
+                        Log.w(TAG, "⚠️ Withdrawal limit data missing from API response");
+                    }
                 } else {
+                    // 🔥 NEW: API call failed, mark limits as unavailable
+                    WalletLimitCache.markUnavailable(requireContext());
                     Log.e(TAG, "Failed to load balance: " + response.code());
                 }
             }
 
             @Override
             public void onFailure(@NonNull Call<WalletBalanceResponse> call, @NonNull Throwable t) {
+                // 🔥 NEW: Network error, mark limits as unavailable
+                WalletLimitCache.markUnavailable(requireContext());
                 Log.e(TAG, "API call failed", t);
                 if (isAdded()) {
                     Toast.makeText(requireContext(), "Failed to load balance", Toast.LENGTH_SHORT).show();
                 }
-            }
-        });
-    }
-
-    // ✅ Fetch withdrawal limit silently (using proper method from 460-line version)
-    private void fetchWithdrawLimitSilently() {
-        api.getWithdrawLimit().enqueue(new Callback<WithdrawalLimitResponse>() {
-            @Override
-            public void onResponse(@NonNull Call<WithdrawalLimitResponse> call, @NonNull Response<WithdrawalLimitResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    WithdrawalLimitResponse limitResponse = response.body();
-
-                    if (limitResponse.isSuccess() && limitResponse.getData() != null) {
-                        WalletLimitCache.saveLimit(
-                                requireContext(),
-                                limitResponse.getData().getMaxWithdrawableGC(),
-                                limitResponse.getData().getBalanceGC(),
-                                limitResponse.getData().getTotalDepositedGC(),
-                                limitResponse.getData().getWithdrawnGC()
-                        );
-
-                        Log.d(TAG, "Withdrawal limit cached silently: " +
-                                limitResponse.getData().getMaxWithdrawableGC() + " GC");
-                    } else {
-                        WalletLimitCache.markUnavailable(requireContext());
-                        Log.e(TAG, "Failed to fetch limit: " + limitResponse.getMessage());
-                    }
-                } else {
-                    WalletLimitCache.markUnavailable(requireContext());
-                    Log.e(TAG, "Response unsuccessful");
-                }
-            }
-
-            @Override
-            public void onFailure(@NonNull Call<WithdrawalLimitResponse> call, @NonNull Throwable t) {
-                WalletLimitCache.markUnavailable(requireContext());
-                Log.e(TAG, "Network error fetching limit: " + t.getMessage());
             }
         });
     }

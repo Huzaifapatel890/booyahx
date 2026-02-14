@@ -270,6 +270,7 @@ public class WithdrawDialog extends Dialog {
             double amount = Double.parseDouble(amountStr);
             boolean hasError = false;
 
+            // 🔥 NEW VALIDATION LOGIC
             if (amount <= 0) {
                 tvAmountError.setText("Please enter a valid amount");
                 tvAmountError.setVisibility(View.VISIBLE);
@@ -282,12 +283,16 @@ public class WithdrawDialog extends Dialog {
                 tvAmountError.setText("Maximum withdrawal amount is " + MAX_WITHDRAW + " GC");
                 tvAmountError.setVisibility(View.VISIBLE);
                 hasError = true;
-            } else if (amount > maxWithdrawableGC) {
-                tvAmountError.setText("Maximum withdrawable amount is " + maxWithdrawableGC + " GC");
-                tvAmountError.setVisibility(View.VISIBLE);
-                hasError = true;
             } else if (amount > currentBalance) {
                 tvAmountError.setText("Amount cannot exceed " + (int) Math.round(currentBalance) + " GC");
+                tvAmountError.setVisibility(View.VISIBLE);
+                hasError = true;
+            } else if (amount > maxWithdrawableGC) {
+                if (maxWithdrawableGC <= 0) {
+                    tvAmountError.setText("You must deposit and play 50% in games before withdrawal");
+                } else {
+                    tvAmountError.setText("Maximum withdrawable amount is " + maxWithdrawableGC + " GC");
+                }
                 tvAmountError.setVisibility(View.VISIBLE);
                 hasError = true;
             } else {

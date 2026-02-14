@@ -3,6 +3,16 @@ package com.booyahx;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+/**
+ * Cache manager for withdrawal limit data.
+ * Now populated from merged /api/wallet/balance endpoint.
+ *
+ * Stores:
+ * - maxWithdrawableGC: Calculated by backend (50% of deposits minus withdrawn)
+ * - balanceGC: Current wallet balance
+ * - totalDepositedGC: Total amount deposited
+ * - withdrawnGC: Total amount already withdrawn
+ */
 public class WalletLimitCache {
 
     private static final String PREF_NAME = "wallet_limit_cache";
@@ -18,7 +28,8 @@ public class WalletLimitCache {
     }
 
     /**
-     * Save withdrawal limit data to cache
+     * Save withdrawal limit data to cache.
+     * Called from WalletFragment when /api/wallet/balance response is received.
      */
     public static void saveLimit(Context context, int maxWithdrawableGC, int balanceGC,
                                  int totalDepositedGC, int withdrawnGC) {
