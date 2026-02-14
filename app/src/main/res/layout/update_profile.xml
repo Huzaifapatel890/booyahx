@@ -114,6 +114,7 @@
                     android:inputType="number"
                     android:textColor="#FFFFFF"
                     android:textSize="16sp"
+                    android:enabled="false"
                     android:background="@android:color/transparent"
                     android:hint="18"
                     android:textColorHint="#80FFFFFF" />
@@ -206,7 +207,7 @@
                 android:background="@drawable/btn_neon_blue"
                 android:padding="12dp"
                 android:text="UPI   (OTHER COMING SOON)"
-                android:textColor="#BBBBBB"
+                android:textColor="#757575"
                 android:textSize="14sp"
                 android:gravity="center_vertical"/>
 
@@ -248,7 +249,7 @@
                 android:background="@drawable/btn_neon_blue"
                 android:enabled="false"
                 android:padding="12dp"
-                android:textColor="#BBBBBB"
+                android:textColor="#757575"
                 android:inputType="textEmailAddress"/>
 
             <!-- ROLE -->
@@ -269,7 +270,7 @@
                 android:enabled="false"
                 android:text="User"
                 android:padding="12dp"
-                android:textColor="#BBBBBB"
+                android:textColor="#757575"
                 android:inputType="text"/>
 
             <!-- BUTTONS -->

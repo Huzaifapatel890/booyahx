@@ -3,7 +3,6 @@ package com.booyahx.Host;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
@@ -22,6 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.core.content.FileProvider;
 
 import com.booyahx.R;
+import com.booyahx.ProfileCacheManager;
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.LiveResultResponse;
@@ -65,6 +65,23 @@ public class EnhancedFinalResultDialog extends Dialog {
     private boolean isHost = false;
     private boolean isUser = false;
 
+    // ✅ NEW: Callback for host navigation
+    private OnHostCloseListener hostCloseListener;
+
+    /**
+     * ✅ NEW: Callback interface for host navigation
+     */
+    public interface OnHostCloseListener {
+        void onHostClose();
+    }
+
+    /**
+     * ✅ NEW: Setter for host close listener
+     */
+    public void setOnHostCloseListener(OnHostCloseListener listener) {
+        this.hostCloseListener = listener;
+    }
+
     /**
      * Constructor for role-based dialog
      * @param context Context
@@ -85,12 +102,14 @@ public class EnhancedFinalResultDialog extends Dialog {
         this.tournamentStatus = tournamentStatus;
         this.generator = new ProfessionalResultGenerator(context);
 
-        // ✅ Get user role from SharedPreferences
-        SharedPreferences prefs = context.getSharedPreferences("UserSession", Context.MODE_PRIVATE);
-        this.isHost = prefs.getBoolean("isHost", false);
-        this.isUser = prefs.getBoolean("isUser", false);
+        // ✅ Get user role from ProfileCacheManager (the ACTUAL source of truth)
+        String role = ProfileCacheManager.getRole(context);
 
-        Log.d(TAG, "Dialog initialized - isHost: " + isHost + ", isUser: " + isUser + ", status: " + tournamentStatus);
+        // Set flags based on role string
+        this.isHost = "host".equalsIgnoreCase(role);
+        this.isUser = "user".equalsIgnoreCase(role);
+
+        Log.d(TAG, "Dialog initialized - role: " + role + ", isHost: " + isHost + ", isUser: " + isUser + ", status: " + tournamentStatus);
     }
 
     @Override
@@ -112,11 +131,20 @@ public class EnhancedFinalResultDialog extends Dialog {
 
         // ✅ CONDITIONAL LOGIC BASED ON ROLE AND STATUS
         if (isHost) {
-            // HOST: Show current version (existing static dialog)
-            Log.d(TAG, "HOST view - showing current version");
-            headerTitle.setText("Overall Standings 🏆");
-            subHeaderText.setText("Contact host via Raising Dispute ticket if you find any Error");
-            resultPreview.post(this::generateBasedOnTime);
+            // HOST: Check if results are provided or need to fetch
+            if (results != null && !results.isEmpty()) {
+                // Host provided results directly (old behavior)
+                Log.d(TAG, "HOST view - showing provided results");
+                headerTitle.setText("Overall Standings 🏆");
+                subHeaderText.setText("Contact host via Raising Dispute ticket if you find any Error");
+                resultPreview.post(this::generateBasedOnTime);
+            } else {
+                // Host needs to fetch results (match 6 scenario)
+                Log.d(TAG, "HOST view - fetching results from API");
+                headerTitle.setText("Overall Standings 🏆");
+                subHeaderText.setText("Contact host via Raising Dispute ticket if you find any Error");
+                fetchLiveResults();
+            }
         } else if (isUser) {
             // USER: Dynamic behavior based on status
             if ("running".equalsIgnoreCase(tournamentStatus)) {
@@ -240,7 +268,8 @@ public class EnhancedFinalResultDialog extends Dialog {
     }
 
     /**
-     * Convert API standings to FinalRow objects
+     * ✅ FIXED: Convert API standings to FinalRow objects
+     * FinalRow constructor: FinalRow(teamName, kills, positionPoints, totalPoints, booyah)
      */
     private List<FinalRow> convertStandingsToFinalRows(List<LiveResultResponse.Standing> standings) {
         List<FinalRow> finalRows = new ArrayList<>();
@@ -248,10 +277,10 @@ public class EnhancedFinalResultDialog extends Dialog {
         for (LiveResultResponse.Standing standing : standings) {
             FinalRow row = new FinalRow(
                     standing.getTeamName() != null ? standing.getTeamName() : "Unknown",
-                    standing.getKills(),
-                    standing.getPosition(),
-                    standing.getTotalPoint(),
-                    standing.getBooyah()
+                    standing.getKills(),                    // kills
+                    standing.getTotalPositionPoints(),      // ✅ FIXED: Use getTotalPositionPoints() not getPosition()
+                    standing.getTotalPoint(),               // totalPoints
+                    standing.getBooyah()                    // booyah
             );
             finalRows.add(row);
         }
@@ -348,7 +377,19 @@ public class EnhancedFinalResultDialog extends Dialog {
             shareImage();
         });
 
-        closeBtn.setOnClickListener(v -> dismiss());
+        // ✅ FIXED: Close button behavior based on role
+        closeBtn.setOnClickListener(v -> {
+            if (isHost && hostCloseListener != null) {
+                // ✅ Host: Trigger callback to reopen HostSubmitResultDialog
+                Log.d(TAG, "Host clicked close - triggering callback");
+                dismiss();
+                hostCloseListener.onHostClose();
+            } else {
+                // ✅ User or no callback: Just dismiss
+                Log.d(TAG, "User clicked close - just dismissing");
+                dismiss();
+            }
+        });
     }
 
     private void shareImage() {

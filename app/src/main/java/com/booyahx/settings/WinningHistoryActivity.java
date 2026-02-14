@@ -51,6 +51,8 @@ public class WinningHistoryActivity extends AppCompatActivity {
         adapter = new WinningHistoryAdapter(list);
         recyclerWinningHistory.setAdapter(adapter);
 
+        findViewById(R.id.btnBack).setOnClickListener(v -> finish());
+
         loadWinningHistory();
     }
 

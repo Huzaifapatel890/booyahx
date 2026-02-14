@@ -58,8 +58,14 @@ public class LoginActivity extends AppCompatActivity {
 
         btnGoogle.setOnClickListener(v -> {
             LoaderOverlay.show(LoginActivity.this);
-            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-            startActivityForResult(signInIntent, RC_GOOGLE);
+
+            // 🔥🔥🔥 KEY FIX: Sign out before sign in to force account selection
+            mGoogleSignInClient.signOut().addOnCompleteListener(this, task -> {
+                // After signing out, show the sign-in intent
+                Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+                startActivityForResult(signInIntent, RC_GOOGLE);
+            });
+            // 🔥🔥🔥 END FIX
         });
 
         btnMobile.setOnClickListener(v ->

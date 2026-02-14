@@ -380,17 +380,6 @@ public class HostTournamentFragment extends Fragment {
                                     updateResponse.getMessage(),
                                     Toast.LENGTH_LONG).show();
 
-                            for (HostTournament tournament : tournamentList) {
-                                if (tournament.getId().equals(tournamentId)) {
-                                    if (tournament.getRoom() != null) {
-                                        tournament.getRoom().setRoomId(roomId);
-                                        tournament.getRoom().setPassword(password);
-                                    }
-                                    break;
-                                }
-                            }
-
-                            adapter.notifyDataSetChanged();
                             dialog.dismiss();
                         } else {
                             Toast.makeText(requireContext(),
@@ -423,23 +412,16 @@ public class HostTournamentFragment extends Fragment {
                 apiService).show();
     }
 
-    private void showFinalResultDialog(HostTournament tournament) {
-        List<FinalRow> rows =
-                FinalResultStore.load(requireContext(),
-                        tournament.getId());
 
-        if (rows == null || rows.isEmpty()) {
-            Toast.makeText(requireContext(),
-                    "Result not submitted yet!",
-                    Toast.LENGTH_SHORT).show();
-            return;
-        }
+    private void showFinalResultDialog(HostTournament tournament) {
+
 
         new EnhancedFinalResultDialog(
                 requireContext(),
-                rows,
+                new ArrayList<>(),
                 tournament.getId(),
-                tournament.getStatus()).show();
+                tournament.getStatus() != null ? tournament.getStatus() : "finished"
+        ).show();
     }
 
     private List<String> getTeamNamesFromTournament(HostTournament tournament) {
@@ -455,7 +437,6 @@ public class HostTournamentFragment extends Fragment {
                 }
             }
         }
-        // participants is now just a List<String> of IDs
 
         return teamNames;
     }
@@ -578,12 +559,10 @@ public class HostTournamentFragment extends Fragment {
                 if (date1 == null) return 1;
                 if (date2 == null) return -1;
 
-                // Normal order: earliest first (for upcoming/live)
-                // Reverse order: latest first (for cancelled/completed)
                 if (reverseOrder) {
-                    return date2.compareTo(date1);  // Reverse: latest first
+                    return date2.compareTo(date1);
                 } else {
-                    return date1.compareTo(date2);  // Normal: earliest first
+                    return date1.compareTo(date2);
                 }
             }
         });
@@ -598,7 +577,6 @@ public class HostTournamentFragment extends Fragment {
                 return null;
             }
 
-            // Extract just the date part from ISO 8601 format (2026-01-31T00:00:00.000Z -> 2026-01-31)
             if (dateStr.contains("T")) {
                 dateStr = dateStr.substring(0, dateStr.indexOf("T"));
             }

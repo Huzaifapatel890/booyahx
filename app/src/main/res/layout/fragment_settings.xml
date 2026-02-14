@@ -109,7 +109,7 @@
                         android:src="@drawable/ic_winning_history"
                         android:scaleType="fitCenter" />
 
-                    <TextView style="@style/SettingsTextStyle" android:text="Winning History" />
+                    <TextView style="@style/SettingsTextStyle" android:text="Entry Record" />
                 </LinearLayout>
 
                 <!-- RESULT HISTORY -->
@@ -141,7 +141,7 @@
                         android:src="@drawable/ic_news"
                         android:scaleType="fitCenter" />
 
-                    <TextView style="@style/SettingsTextStyle" android:text="News" />
+                    <TextView style="@style/SettingsTextStyle" android:text="News  (Coming Soon)" />
                 </LinearLayout>
 
                 <!-- THEMES -->

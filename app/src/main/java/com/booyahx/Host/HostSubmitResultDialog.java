@@ -296,6 +296,7 @@ public class HostSubmitResultDialog extends Dialog {
             @Override
             public void onResponse(Call<MatchResultResponse> call, Response<MatchResultResponse> response) {
                 saveMatchBtn.setEnabled(true);
+                saveMatchBtn.setText("Save Match " + (matchIndex + 1));
 
                 if (response.isSuccessful() && response.body() != null) {
                     MatchResultResponse apiResponse = response.body();
@@ -303,6 +304,33 @@ public class HostSubmitResultDialog extends Dialog {
                     Toast.makeText(context,
                             "Match " + (matchIndex + 1) + " submitted successfully!",
                             Toast.LENGTH_SHORT).show();
+
+                    // ✅ CHECK IF THIS IS MATCH 6 (matchIndex == 5)
+                    if (matchIndex == 5) {
+                        // When match 6 is submitted, instantly open EnhancedFinalResultDialog
+                        // The dialog will fetch live results via API
+
+                        EnhancedFinalResultDialog enhancedDialog = new EnhancedFinalResultDialog(
+                                context,
+                                new ArrayList<>(), // Empty list, will be populated by API
+                                tournamentId,
+                                "finished" // Match 6 means tournament is finished
+                        );
+
+                        // ✅ SET CALLBACK - When host clicks close, reopen this HostSubmitResultDialog
+                        enhancedDialog.setOnHostCloseListener(new EnhancedFinalResultDialog.OnHostCloseListener() {
+                            @Override
+                            public void onHostClose() {
+                                // Reopen HostSubmitResultDialog
+                                HostSubmitResultDialog.this.show();
+                            }
+                        });
+
+                        dismiss(); // Close submit dialog first
+                        enhancedDialog.show(); // Show enhanced dialog
+
+                        return; // Exit early, don't do anything else
+                    }
 
                     // ⭐ If this is match 6 (last match), calculate final points
                     if (matchIndex == totalMatches - 1 && !finalCalculationDone) {
@@ -324,6 +352,7 @@ public class HostSubmitResultDialog extends Dialog {
                     }
                 } else {
                     // API call failed
+                    saveMatchBtn.setText("Save Match " + (matchIndex + 1));
                     matchSaved[matchIndex] = false;
                     saveToStorage();
 
@@ -338,6 +367,7 @@ public class HostSubmitResultDialog extends Dialog {
             @Override
             public void onFailure(Call<MatchResultResponse> call, Throwable t) {
                 saveMatchBtn.setEnabled(true);
+                saveMatchBtn.setText("Save Match " + (matchIndex + 1));
                 matchSaved[matchIndex] = false;
                 saveToStorage();
 
@@ -517,13 +547,7 @@ public class HostSubmitResultDialog extends Dialog {
                 }
             }
 
-            // Check if final calculation is done
-            if (!finalCalculationDone) {
-                Toast.makeText(context,
-                        "Please wait for final calculation to complete.",
-                        Toast.LENGTH_SHORT).show();
-                return;
-            }
+
 
             // Disable button during API call
             submitFinalBtn.setEnabled(false);

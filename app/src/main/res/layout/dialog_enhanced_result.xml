@@ -7,163 +7,176 @@
     android:background="@drawable/neon_card"
     android:padding="20dp">
 
-    <!-- Dynamic Header Title -->
-    <TextView
-        android:id="@+id/headerTitle"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Overall Standings 🏆"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:textColor="#39FF14"
-        android:gravity="center"
-        android:paddingBottom="10dp"/>
+        android:layout_height="wrap_content">
 
-    <!-- Dynamic Sub-header Text -->
-    <TextView
-        android:id="@+id/subHeaderText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Contact host via Raising Dispute ticket if you find any Error"
-        android:textSize="13sp"
-        android:textColor="#AAAAAA"
-        android:gravity="center"
-        android:paddingBottom="15dp"/>
-
-
-    <!-- Preview Container -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginVertical="10dp"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="12dp"
-        app:cardBackgroundColor="#000000">
-
-        <RelativeLayout
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-            <!-- Preview Image -->
-            <ScrollView
+            <!-- Dynamic Header Title -->
+            <TextView
+                android:id="@+id/headerTitle"
                 android:layout_width="match_parent"
-                android:layout_height="500dp"
-                android:background="#0a0a0a">
+                android:layout_height="wrap_content"
+                android:text="Overall Standings 🏆"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#39FF14"
+                android:gravity="center"
+                android:paddingBottom="10dp"/>
 
-                <ImageView
-                    android:id="@+id/resultPreview"
+            <!-- Dynamic Sub-header Text -->
+            <TextView
+                android:id="@+id/subHeaderText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Contact host via Raising Dispute ticket if you find any Error"
+                android:textSize="13sp"
+                android:textColor="#AAAAAA"
+                android:gravity="center"
+                android:paddingBottom="15dp"/>
+
+
+            <!-- Preview Container -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="10dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="12dp"
+                app:cardBackgroundColor="#000000">
+
+                <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:adjustViewBounds="true"
-                    android:scaleType="fitCenter"/>
+                    android:layout_height="wrap_content">
 
-            </ScrollView>
+                    <!-- Preview Image -->
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="500dp"
+                        android:background="#0a0a0a">
 
-            <!-- Loading Overlay -->
-            <ProgressBar
-                android:id="@+id/progressBar"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:layout_centerInParent="true"
-                android:indeterminateTint="#FFD700"
-                android:visibility="gone"/>
+                        <ImageView
+                            android:id="@+id/resultPreview"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:adjustViewBounds="true"
+                            android:scaleType="fitCenter"/>
 
-        </RelativeLayout>
+                    </ScrollView>
 
-    </androidx.cardview.widget.CardView>
+                    <!-- Loading Overlay -->
+                    <ProgressBar
+                        android:id="@+id/progressBar"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:layout_centerInParent="true"
+                        android:indeterminateTint="#FFD700"
+                        android:visibility="gone"/>
 
-    <!-- Info Text -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Prizes will be Credited in your Account Shortly"
-        android:textSize="12sp"
-        android:textColor="#FFFFFF"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:paddingVertical="8dp"/>
+                </RelativeLayout>
 
-    <!-- Action Buttons -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:paddingTop="10dp">
+            </androidx.cardview.widget.CardView>
 
-        <!-- Download Button -->
-        <LinearLayout
-            android:id="@+id/downloadBtn"
-            android:layout_width="0dp"
-            android:layout_height="60dp"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/neon_green"
-            android:layout_marginEnd="8dp"
-            android:clickable="true"
-            android:focusable="true">
-
+            <!-- Info Text -->
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="💾"
-                android:textSize="18sp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Download"
+                android:text="Prizes will be Credited in your Account Shortly"
+                android:textSize="12sp"
                 android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold"/>
+                android:textStyle="bold"
+                android:gravity="center"
+                android:paddingVertical="8dp"/>
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:paddingTop="10dp">
+
+                <!-- Download Button -->
+                <LinearLayout
+                    android:id="@+id/downloadBtn"
+                    android:layout_width="0dp"
+                    android:layout_height="60dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/neon_green"
+                    android:layout_marginEnd="8dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="💾"
+                        android:textSize="18sp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Download"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"/>
+
+                </LinearLayout>
+
+                <!-- Share Button -->
+                <LinearLayout
+                    android:id="@+id/shareBtn"
+                    android:layout_width="0dp"
+                    android:layout_height="60dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/neon_green"
+                    android:layout_marginStart="8dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📤"
+                        android:textSize="18sp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Share"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"/>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Close Button -->
+            <TextView
+                android:id="@+id/closeBtn"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="✕ Close"
+                android:textColor="#999999"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:background="@drawable/neon_button"
+                android:layout_marginTop="12dp"
+                android:clickable="true"
+                android:focusable="true"/>
 
         </LinearLayout>
 
-        <!-- Share Button -->
-        <LinearLayout
-            android:id="@+id/shareBtn"
-            android:layout_width="0dp"
-            android:layout_height="60dp"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:background="@drawable/neon_green"
-            android:layout_marginStart="8dp"
-            android:clickable="true"
-            android:focusable="true">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📤"
-                android:textSize="18sp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Share"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold"/>
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- Close Button -->
-    <TextView
-        android:id="@+id/closeBtn"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:text="✕ Close"
-        android:textColor="#999999"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:background="@drawable/neon_button"
-        android:layout_marginTop="12dp"
-        android:clickable="true"
-        android:focusable="true"/>
+    </ScrollView>
 
 </LinearLayout>
