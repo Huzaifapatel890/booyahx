@@ -329,7 +329,7 @@ public class HostTournamentFragment extends Fragment {
                 return;
             }
 
-            updateRoomAPI(tournament.getId(), newRoomId, newPassword, dialog);
+            updateRoomAPI(tournament, newRoomId, newPassword, dialog);
         });
 
         dialog.show();
@@ -365,10 +365,10 @@ public class HostTournamentFragment extends Fragment {
         });
     }
 
-    private void updateRoomAPI(String tournamentId, String roomId, String password, Dialog dialog) {
+    private void updateRoomAPI(HostTournament tournament, String roomId, String password, Dialog dialog) {
         UpdateRoomRequest request = new UpdateRoomRequest(roomId, password);
 
-        apiService.updateRoom(tournamentId, request)
+        apiService.updateRoom(tournament.getId(), request)
                 .enqueue(new Callback<UpdateRoomResponse>() {
                     @Override
                     public void onResponse(Call<UpdateRoomResponse> call,
@@ -381,6 +381,22 @@ public class HostTournamentFragment extends Fragment {
                                     Toast.LENGTH_LONG).show();
 
                             dialog.dismiss();
+
+                            // Update the tournament object locally with new room ID and password
+                            tournament.setRoomId(roomId);
+                            tournament.setPassword(password);
+
+                            // Find and update in all lists
+                            updateTournamentInList(allUpcoming, tournament.getId(), roomId, password);
+                            updateTournamentInList(allLive, tournament.getId(), roomId, password);
+                            updateTournamentInList(allResultPending, tournament.getId(), roomId, password);
+                            updateTournamentInList(allCompleted, tournament.getId(), roomId, password);
+                            updateTournamentInList(allCancelled, tournament.getId(), roomId, password);
+
+                            // Refresh the adapter to show updated values
+                            if (adapter != null) {
+                                adapter.notifyDataSetChanged();
+                            }
                         } else {
                             Toast.makeText(requireContext(),
                                     "Failed to update room",
@@ -396,6 +412,16 @@ public class HostTournamentFragment extends Fragment {
                                 Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private void updateTournamentInList(List<HostTournament> list, String tournamentId, String roomId, String password) {
+        for (HostTournament t : list) {
+            if (t.getId().equals(tournamentId)) {
+                t.setRoomId(roomId);
+                t.setPassword(password);
+                break;
+            }
+        }
     }
 
     private void showSubmitResultDialog(HostTournament tournament) {

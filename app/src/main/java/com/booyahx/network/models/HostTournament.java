@@ -192,6 +192,24 @@ public class HostTournament {
     public JsonObject getRules() { return rules; }
 
     // =====================
+    // SETTERS FOR ROOM UPDATE
+    // =====================
+
+    public void setRoomId(String roomId) {
+        if (room == null) {
+            room = new Room();
+        }
+        room.setRoomId(roomId);
+    }
+
+    public void setPassword(String password) {
+        if (room == null) {
+            room = new Room();
+        }
+        room.setPassword(password);
+    }
+
+    // =====================
     // UI HELPERS
     // =====================
 

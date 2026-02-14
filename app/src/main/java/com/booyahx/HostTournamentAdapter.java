@@ -133,7 +133,19 @@ public class HostTournamentAdapter
 
         // If status is "upcoming", calculate countdown
         try {
-            String dateTime = t.getDate() + " " + t.getStartTime();
+            String dateStr = t.getDate();
+            String timeStr = t.getStartTime();
+
+            if (dateStr == null || timeStr == null) {
+                h.time.setText("--");
+                return;
+            }
+
+            if (dateStr.contains("T")) {
+                dateStr = dateStr.substring(0, dateStr.indexOf("T"));
+            }
+
+            String dateTime = dateStr + " " + timeStr;
             SimpleDateFormat sdf =
                     new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
 
@@ -158,18 +170,11 @@ public class HostTournamentAdapter
                             h.time.setText(
                                     String.format(
                                             Locale.getDefault(),
-                                            "Starts in %dh %dm",
-                                            hours, minutes
+                                            "%d:%d:%d",
+                                            hours, minutes, seconds
                                     )
                             );
-                        } else {
-                            h.time.setText(
-                                    String.format(
-                                            Locale.getDefault(),
-                                            "Starts in %02d:%02d",
-                                            minutes, seconds
-                                    )
-                            );
+
                         }
                     }
 
