@@ -13,29 +13,29 @@ public class WalletBalanceResponse {
         @SerializedName("balanceGC")
         public double balanceGC;
 
-        // 🔥 NEW FIELDS - Added for merged API endpoint
+        // 🔥 FIXED: Changed from Integer to Double because API returns decimal values like 245.99
         @SerializedName("maxWithdrawableGC")
-        private Integer maxWithdrawableGC;
+        private Double maxWithdrawableGC;
 
         @SerializedName("totalDepositsGC")  // 🔥 FIXED: API uses "totalDepositsGC" not "totalDepositedGC"
-        private Integer totalDepositsGC;
+        private Double totalDepositsGC;
 
         @SerializedName("totalWithdrawnGC")  // 🔥 FIXED: API uses "totalWithdrawnGC" not "withdrawnGC"
-        private Integer totalWithdrawnGC;
+        private Double totalWithdrawnGC;
 
         @SerializedName("dailyLimit")
         private DailyLimit dailyLimit;
 
-        // 🔥 NEW GETTERS
-        public Integer getMaxWithdrawableGC() {
+        // 🔥 FIXED: Changed return type to Double
+        public Double getMaxWithdrawableGC() {
             return maxWithdrawableGC;
         }
 
-        public Integer getTotalDepositsGC() {  // 🔥 FIXED: getter name matches field
+        public Double getTotalDepositsGC() {  // 🔥 FIXED: getter name matches field
             return totalDepositsGC;
         }
 
-        public Integer getTotalWithdrawnGC() {  // 🔥 FIXED: getter name matches field
+        public Double getTotalWithdrawnGC() {  // 🔥 FIXED: getter name matches field
             return totalWithdrawnGC;
         }
 

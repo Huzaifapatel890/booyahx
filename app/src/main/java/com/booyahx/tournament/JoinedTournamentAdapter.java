@@ -82,6 +82,11 @@ public class JoinedTournamentAdapter
 
         CountDownTimer timer;
 
+        // ✅ Store room details when received from API
+        private String savedRoomId;
+        private String savedPassword;
+        private CountDownTimer revealTimer;
+
         public TournamentViewHolder(@NonNull View itemView) {
             super(itemView);
 
@@ -382,12 +387,40 @@ public class JoinedTournamentAdapter
 
         private void handleRoomAndPassword(JoinedTournament t) {
 
-            if (t.getRoom() != null && t.getRoom().getRoomId() != null) {
-                tvRoomId.setText(t.getRoom().getRoomId());
-                tvPassword.setText(t.getRoom().getPassword());
+            // ✅ FIX 1: Show VOIDED if match is cancelled
+            if (t.getStatus() != null && t.getStatus().toLowerCase(Locale.getDefault()).contains("cancel")) {
+                tvRoomId.setText("V O I D");
+                tvPassword.setText("E D");
 
-                enableCopy(tvRoomId, "Room ID copied");
-                enableCopy(tvPassword, "Password copied");
+                disableCopy(tvRoomId, "Match has been cancelled");
+                disableCopy(tvPassword, "Match has been cancelled");
+                return;
+            }
+
+            // ✅ Save room details when received from API
+            if (t.getRoom() != null && t.getRoom().getRoomId() != null) {
+                savedRoomId = t.getRoom().getRoomId();
+                savedPassword = t.getRoom().getPassword();
+
+                // ✅ FIX 2: Check if within 10 minutes of match start
+                if (isWithin10Minutes(t)) {
+                    // Reveal immediately if within 10 minutes
+                    tvRoomId.setText(savedRoomId);
+                    tvPassword.setText(savedPassword);
+
+                    enableCopy(tvRoomId, "Room ID copied");
+                    enableCopy(tvPassword, "Password copied");
+                } else {
+                    // Hide but start timer to reveal at 10 minutes
+                    tvRoomId.setText("U P C O");
+                    tvPassword.setText("M I N G");
+
+                    disableCopy(tvRoomId, "Room will be available 10 minutes before match time");
+                    disableCopy(tvPassword, "Room will be available 10 minutes before match time");
+
+                    // Start timer to auto-reveal at 10 minutes
+                    startRevealTimer(t);
+                }
                 return;
             }
 
@@ -397,8 +430,8 @@ public class JoinedTournamentAdapter
                 tvRoomId.setText("U P C O");
                 tvPassword.setText("M I N G");
 
-                disableCopy(tvRoomId, "Room will be available at match time");
-                disableCopy(tvPassword, "Room will be available at match time");
+                disableCopy(tvRoomId, "Room will be available 10 minutes before match time");
+                disableCopy(tvPassword, "Room will be available 10 minutes before match time");
                 return;
             }
 
@@ -418,6 +451,64 @@ public class JoinedTournamentAdapter
                 return System.currentTimeMillis() >= startDate.getTime();
             } catch (Exception e) {
                 return false;
+            }
+        }
+
+        // ✅ FIX 2: Helper method to check if within 10 minutes of match start
+        private Boolean isWithin10Minutes(JoinedTournament t) {
+            try {
+                String dateTime = t.getDate() + " " + t.getStartTime();
+                SimpleDateFormat sdf =
+                        new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
+                Date startDate = sdf.parse(dateTime);
+                long diff = startDate.getTime() - System.currentTimeMillis();
+
+                // Return true if within 10 minutes (600000 ms) before or after match start
+                return diff <= 600000;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        // ✅ Timer to auto-reveal room details at 10 minutes before match
+        private void startRevealTimer(JoinedTournament t) {
+            try {
+                String dateTime = t.getDate() + " " + t.getStartTime();
+                SimpleDateFormat sdf =
+                        new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.getDefault());
+                Date startDate = sdf.parse(dateTime);
+                long diff = startDate.getTime() - System.currentTimeMillis();
+
+                // Calculate time until 10 minutes before match (diff - 600000)
+                long timeUntilReveal = diff - 600000; // 600000 ms = 10 minutes
+
+                if (timeUntilReveal > 0 && savedRoomId != null && savedPassword != null) {
+                    // Cancel existing reveal timer if any
+                    if (revealTimer != null) {
+                        revealTimer.cancel();
+                    }
+
+                    revealTimer = new CountDownTimer(timeUntilReveal, 1000) {
+                        @Override
+                        public void onTick(long millisUntilFinished) {
+                            // Just waiting...
+                        }
+
+                        @Override
+                        public void onFinish() {
+                            // Reveal room details
+                            if (savedRoomId != null && savedPassword != null) {
+                                tvRoomId.setText(savedRoomId);
+                                tvPassword.setText(savedPassword);
+
+                                enableCopy(tvRoomId, "Room ID copied");
+                                enableCopy(tvPassword, "Password copied");
+                            }
+                        }
+                    }.start();
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error starting reveal timer: " + e.getMessage());
             }
         }
 

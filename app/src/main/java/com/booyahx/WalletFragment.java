@@ -206,10 +206,10 @@ public class WalletFragment extends Fragment {
 
                         WalletLimitCache.saveLimit(
                                 requireContext(),
-                                data.getMaxWithdrawableGC(),
+                                data.getMaxWithdrawableGC().intValue(),
                                 (int) balance,
-                                data.getTotalDepositsGC(),
-                                data.getTotalWithdrawnGC()
+                                data.getTotalDepositsGC().intValue(),
+                                data.getTotalWithdrawnGC().intValue()
                         );
 
                         Log.d(TAG, "✅ Balance & Limits saved - Balance: " + balance +
