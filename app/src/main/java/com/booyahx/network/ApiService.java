@@ -104,6 +104,27 @@ public interface ApiService {
             @Query("mode") String mode
     );
 
+
+// Inside your ApiService interface:
+
+    // 🔥 GET /api/tournament/userHistory
+    @GET("api/tournament/userHistory")
+    Call<TournamentHistoryResponse> getUserTournamentHistory(
+            @Query("limit")  int limit,
+            @Query("offset") int offset
+    );
+
+// ============================================================
+// OPTIONAL — if you want mode/win filters too, use this instead:
+// ============================================================
+
+    @GET("api/tournament/userHistory")
+    Call<TournamentHistoryResponse> getUserTournamentHistoryFiltered(
+            @Query("limit")    int limit,
+            @Query("offset")   int offset,
+            @Query("mode")     String mode,   // "BR", "CS", "LW" or null
+            @Query("win")      String win      // "true" / "false" or null
+    );
     @GET("/api/tournament/{tournamentId}/live-results")
     Call<LiveResultResponse> getLiveResults(
             @Path("tournamentId") String tournamentId

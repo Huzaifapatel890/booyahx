@@ -23,4 +23,8 @@
     <!-- Amount Colors -->
     <color name="green">#00FF88</color>
     <color name="red">#FF4444</color>
+    <!-- Alias used by result history layouts -->
+    <color name="neon_blue">#00D4FF</color>      <!-- same as your "cyan" -->
+    <color name="success_green">#00FF88</color>  <!-- same as your "green" -->
+
 </resources>

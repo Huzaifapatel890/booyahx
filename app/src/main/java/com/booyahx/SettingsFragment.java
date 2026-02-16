@@ -28,6 +28,7 @@ import com.booyahx.settings.AboutActivity;
 import com.booyahx.settings.ChangePasswordActivity;
 import com.booyahx.settings.EditProfileActivity;
 import com.booyahx.settings.HelpSupportActivity;
+import com.booyahx.settings.ResultHistoryActivity;   // 🔥 NEW IMPORT
 import com.booyahx.settings.WinningHistoryActivity;
 import com.booyahx.utils.AvatarGenerator;
 
@@ -81,6 +82,11 @@ public class SettingsFragment extends Fragment {
         view.findViewById(R.id.btnWinningHistory)
                 .setOnClickListener(v -> startActivity(
                         new Intent(requireContext(), WinningHistoryActivity.class)));
+
+        // 🔥 RESULT HISTORY — new button hooked here
+        view.findViewById(R.id.btnResultHistory)
+                .setOnClickListener(v -> startActivity(
+                        new Intent(requireContext(), ResultHistoryActivity.class)));
 
         // 🔥 CUSTOM LOGOUT DIALOG
         view.findViewById(R.id.btnLogout)

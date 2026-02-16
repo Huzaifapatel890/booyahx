@@ -44,7 +44,6 @@
             </intent-filter>
         </activity>
 
-
         <!-- LOGIN SELECTION PAGE -->
         <activity
             android:name="com.booyahx.LoginActivity"
@@ -64,7 +63,6 @@
         <activity
             android:name="com.booyahx.ForgotPasswordActivity"
             android:exported="false" />
-
 
         <activity
             android:name=".settings.AboutActivity$AboutUsActivity"
@@ -101,6 +99,12 @@
             android:name=".notifications.NotificationActivity"
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar"/>
+
+        <!-- 🔥 RESULT HISTORY -->
+        <activity
+            android:name=".settings.ResultHistoryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.BooyahX.NoActionBar" />
 
     </application>
 

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- bg_card_neon_border.xml
+     Card background: dark fill + neon blue border (matches history card design) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <solid android:color="#0A0A0A" />
+
+    <stroke
+        android:width="2dp"
+        android:color="#00D4FF" />
+
+    <corners android:radius="12dp" />
+
+</shape>
