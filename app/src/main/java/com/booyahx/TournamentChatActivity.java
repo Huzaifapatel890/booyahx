@@ -286,6 +286,8 @@ public class TournamentChatActivity extends AppCompatActivity {
                             handleMessageHistoryFromAPI(messages);
                         } else {
                             Log.d(TAG, "ℹ️ No chat history yet");
+                            // ANIMATION: no history, mark boundary at 0 so all live messages animate
+                            chatAdapter.markHistoryLoaded();
                         }
 
                     } catch (Exception e) {
@@ -344,6 +346,9 @@ public class TournamentChatActivity extends AppCompatActivity {
             if (chatAdapter.getItemCount() > 0) {
                 rvMessages.scrollToPosition(chatAdapter.getItemCount() - 1);
             }
+
+            // ANIMATION: mark boundary so all subsequent live messages animate in
+            chatAdapter.markHistoryLoaded();
 
             Log.d(TAG, "✅ History loaded: " + messages.size() + " messages");
 
