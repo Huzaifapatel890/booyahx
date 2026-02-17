@@ -1,5 +1,6 @@
 package com.booyahx;
 
+import android.animation.ObjectAnimator;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
@@ -8,13 +9,16 @@ import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.animation.LinearInterpolator;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.booyahx.adapters.ChatAdapter;
@@ -24,7 +28,6 @@ import com.booyahx.network.models.ChatMessage;
 import com.booyahx.network.models.ChatHistoryResponse;
 import com.booyahx.socket.SocketManager;
 import io.socket.emitter.Emitter;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -34,76 +37,90 @@ import java.util.List;
 /**
  * Tournament Chat Activity
  * Real-time chat using WebSocket for tournament participants
- * FIXED: API chat history + single-click send working
- * UPDATED: Corrected WebSocket event names to match backend
+ *
+ * FIX LOG (current pass):
+ *  - Wired new layout IDs: cvSend, layoutActiveBanner, viewLiveDot
+ *  - Live dot pulse animation via ObjectAnimator (alpha 1.0 ↔ 0.3, 1.6s loop)
+ *  - Banner visibility driven by tournament status ("live" | "running" → VISIBLE, else GONE)
+ *  - Subtitle online count updated from onUserJoined / onUserLeft events
+ *  - ChatHistoryResponse.MessageData field fix consumed here:
+ *      getSenderName() replaces broken getUsername()
+ *      getTimestamp() now parses createdAt ISO string
+ *      isHost() now derived from role string
+ *  - handleNewMessage: reads "senderName" field (API) with fallback to "username"
+ *  - tournamentName shown in header, fallback to "Lobby"
+ *  - Input disabled with correct hint when chat not live
  */
 public class TournamentChatActivity extends AppCompatActivity {
 
     private static final String TAG = "TournamentChat";
 
-    // UI Components
+    // ── UI Components ────────────────────────────────────────────
     private ImageView ivBack;
     private TextView tvTournamentName, tvSubtitle;
     private RecyclerView rvMessages;
     private EditText etMessage;
     private ImageView ivSend;
 
-    // Data
+    // FIX: New layout IDs from updated activity_lobby_chat.xml
+    private CardView cvSend;
+    private LinearLayout layoutActiveBanner;
+    private View viewLiveDot;
+
+    // ── Data ─────────────────────────────────────────────────────
     private ChatAdapter chatAdapter;
     private SocketManager socketManager;
     private String tournamentId;
     private String tournamentName;
-    private String tournamentStatus; // 🔥 NEW: Tournament status
+    private String tournamentStatus;
     private String userId;
     private String username;
     private boolean isHost;
 
-    // 🔥 FIX: Prevent duplicate sends
+    // FIX: Online count tracking for subtitle
+    private int onlineCount = 0;
+
+    // FIX: Prevent duplicate sends
     private boolean isSending = false;
     private long lastSendTime = 0;
-    private static final long SEND_COOLDOWN_MS = 300; // 300ms between sends
+    private static final long SEND_COOLDOWN_MS = 300;
+
+    // Live dot animator reference (so we can cancel in onDestroy)
+    private ObjectAnimator liveDotAnimator;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_tournament_chat);
+        setContentView(R.layout.activity_tournament_chat);   // updated layout name
 
         // Get data from intent
-        tournamentId = getIntent().getStringExtra("tournament_id");
-        tournamentName = getIntent().getStringExtra("tournament_name");
-        tournamentStatus = getIntent().getStringExtra("tournament_status"); // 🔥 NEW: Get tournament status
-        isHost = getIntent().getBooleanExtra("is_host", false);
+        tournamentId     = getIntent().getStringExtra("tournament_id");
+        tournamentName   = getIntent().getStringExtra("tournament_name");
+        tournamentStatus = getIntent().getStringExtra("tournament_status");
+        isHost           = getIntent().getBooleanExtra("is_host", false);
 
         // Get user info from SharedPreferences
         SharedPreferences prefs = getSharedPreferences("UserSession", MODE_PRIVATE);
-        userId = prefs.getString("userId", "");
+        userId   = prefs.getString("userId", "");
         username = prefs.getString("username", "");
 
-        // ✅ FIX: If empty, try TokenManager
+        // FIX: If empty, try TokenManager
         if (TextUtils.isEmpty(userId)) {
             userId = TokenManager.getUserId(this);
             Log.w(TAG, "UserId was empty in SharedPreferences, got from TokenManager: " + userId);
         }
 
-        // 🔥 FIX: Improved username fallback chain
-        // 1. Try "username" key in UserSession prefs (already done above)
-        // 2. Try "name" key in UserSession prefs
-        // 3. Try TokenManager's own "booyahx_user" prefs (stores "name" key from login)
-        // 4. Fall back to "User"
+        // FIX: Username fallback chain
         if (TextUtils.isEmpty(username)) {
             username = prefs.getString("name", "");
-            Log.d(TAG, "Tried 'name' key in UserSession: '" + username + "'");
         }
         if (TextUtils.isEmpty(username)) {
-            // TokenManager stores user prefs under "booyahx_user" SharedPreferences
             SharedPreferences tokenPrefs = getSharedPreferences("booyahx_user", MODE_PRIVATE);
             username = tokenPrefs.getString("name", "");
-            Log.d(TAG, "Tried 'name' in booyahx_user prefs: '" + username + "'");
         }
         if (TextUtils.isEmpty(username)) {
             SharedPreferences tokenPrefs = getSharedPreferences("booyahx_user", MODE_PRIVATE);
             username = tokenPrefs.getString("username", "");
-            Log.d(TAG, "Tried 'username' in booyahx_user prefs: '" + username + "'");
         }
         if (TextUtils.isEmpty(username)) {
             username = "User";
@@ -112,8 +129,9 @@ public class TournamentChatActivity extends AppCompatActivity {
 
         Log.d(TAG, "============================================");
         Log.d(TAG, "🔐 User Authentication Check");
-        Log.d(TAG, "User ID: " + (TextUtils.isEmpty(userId) ? "EMPTY!!!" : userId));
-        Log.d(TAG, "Username: " + username);
+        Log.d(TAG, "User ID: "   + (TextUtils.isEmpty(userId) ? "EMPTY!!!" : userId));
+        Log.d(TAG, "Username: "  + username);
+        Log.d(TAG, "Status: "    + tournamentStatus);
         Log.d(TAG, "============================================");
 
         if (TextUtils.isEmpty(tournamentId)) {
@@ -124,146 +142,188 @@ public class TournamentChatActivity extends AppCompatActivity {
 
         if (TextUtils.isEmpty(userId)) {
             Toast.makeText(this, "User not authenticated. Please login again.", Toast.LENGTH_LONG).show();
-            Log.e(TAG, "❌ CRITICAL: userId is empty! Cannot join chat.");
+            Log.e(TAG, "❌ CRITICAL: userId is empty!");
             finish();
             return;
         }
 
         initViews();
         setupRecyclerView();
-
-        // 🔥 NEW: Load chat history from API FIRST
         loadChatHistoryFromAPI();
-
         setupWebSocket();
         setupClickListeners();
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  INIT VIEWS
+    // ═══════════════════════════════════════════════════════════════
     private void initViews() {
-        ivBack = findViewById(R.id.ivBack);
-        tvTournamentName = findViewById(R.id.tvTournamentName);
-        tvSubtitle = findViewById(R.id.tvSubtitle);
-        rvMessages = findViewById(R.id.rvMessages);
-        etMessage = findViewById(R.id.etMessage);
-        ivSend = findViewById(R.id.ivSend);
+        ivBack            = findViewById(R.id.ivBack);
+        tvTournamentName  = findViewById(R.id.tvTournamentName);
+        tvSubtitle        = findViewById(R.id.tvSubtitle);
+        rvMessages        = findViewById(R.id.rvMessages);
+        etMessage         = findViewById(R.id.etMessage);
+        ivSend            = findViewById(R.id.ivSend);
 
-        // Set tournament name
+        // FIX: New IDs from updated layout
+        cvSend            = findViewById(R.id.cvSend);
+        layoutActiveBanner = findViewById(R.id.layoutActiveBanner);
+        viewLiveDot       = findViewById(R.id.viewLiveDot);
+
+        // ── Header ──
+        // Show tournament name in header; fallback to "Lobby"
         if (!TextUtils.isEmpty(tournamentName)) {
             tvTournamentName.setText(tournamentName);
+        } else {
+            tvTournamentName.setText("Lobby");
         }
-        tvSubtitle.setText("Lobby Chat");
+        updateSubtitleOnlineCount();
 
-        // ✅ FIX: Simpler input type that works better
+        // ── Active banner visibility ──
+        // FIX: Banner only shown when match is live/running
+        boolean isLive = "live".equalsIgnoreCase(tournamentStatus)
+                || "running".equalsIgnoreCase(tournamentStatus);
+
+        if (isLive) {
+            layoutActiveBanner.setVisibility(View.VISIBLE);
+            startLiveDotAnimation();
+        } else {
+            layoutActiveBanner.setVisibility(View.GONE);
+        }
+
+        // ── Input setup ──
         etMessage.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         etMessage.setMaxLines(4);
         etMessage.setSingleLine(false);
-
-        // ✅ FIX: Disable IME options that cause issues
         etMessage.setImeOptions(EditorInfo.IME_ACTION_SEND | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
 
-        // 🔥 FIX: Start with send button disabled and semi-transparent
-        ivSend.setEnabled(false);
-        ivSend.setAlpha(0.5f);
+        // FIX: Disable input when not live
+        if (!isLive) {
+            etMessage.setEnabled(false);
+            etMessage.setHint("Chat not available yet");
+            if (cvSend != null) cvSend.setAlpha(0.3f);
+            ivSend.setEnabled(false);
+            ivSend.setAlpha(0.3f);
+        } else {
+            ivSend.setEnabled(false);   // enabled by TextWatcher once user types
+            ivSend.setAlpha(0.5f);
+        }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  LIVE DOT PULSE ANIMATION
+    //  Matches HTML: @keyframes livePulse — alpha 1.0 ↔ 0.3, 1.6s infinite
+    // ═══════════════════════════════════════════════════════════════
+    private void startLiveDotAnimation() {
+        if (viewLiveDot == null) return;
+
+        liveDotAnimator = ObjectAnimator.ofFloat(viewLiveDot, "alpha", 1.0f, 0.3f);
+        liveDotAnimator.setDuration(800);                          // half of 1.6s cycle
+        liveDotAnimator.setRepeatCount(ObjectAnimator.INFINITE);
+        liveDotAnimator.setRepeatMode(ObjectAnimator.REVERSE);     // ping-pong = full pulse
+        liveDotAnimator.setInterpolator(new LinearInterpolator());
+        liveDotAnimator.start();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  SUBTITLE HELPER — "Lobby Chat · N online"
+    // ═══════════════════════════════════════════════════════════════
+    private void updateSubtitleOnlineCount() {
+        if (tvSubtitle == null) return;
+        if (onlineCount > 0) {
+            tvSubtitle.setText("Lobby Chat · " + onlineCount + " online");
+        } else {
+            tvSubtitle.setText("Lobby Chat");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  RECYCLER VIEW
+    // ═══════════════════════════════════════════════════════════════
     private void setupRecyclerView() {
         chatAdapter = new ChatAdapter();
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        layoutManager.setStackFromEnd(true); // Start from bottom
+        layoutManager.setStackFromEnd(true);
         rvMessages.setLayoutManager(layoutManager);
         rvMessages.setAdapter(chatAdapter);
     }
 
-    // 🔥 UPDATED METHOD: Load chat history using ChatHistoryResponse model
+    // ═══════════════════════════════════════════════════════════════
+    //  API: LOAD CHAT HISTORY
+    // ═══════════════════════════════════════════════════════════════
     private void loadChatHistoryFromAPI() {
-        Log.d(TAG, "============================================");
-        Log.d(TAG, "📡 CALLING API: Loading chat history from REST API");
-        Log.d(TAG, "Endpoint: /tournament/" + tournamentId + "/chat");
-        Log.d(TAG, "Tournament ID: " + tournamentId);
-        Log.d(TAG, "============================================");
+        Log.d(TAG, "📡 Loading chat history — /tournament/" + tournamentId + "/chat");
 
         ApiService apiService = ApiClient.getClient(this).create(ApiService.class);
         Call<ChatHistoryResponse> call = apiService.getChatHistory(tournamentId, 50, 0);
 
         call.enqueue(new Callback<ChatHistoryResponse>() {
             @Override
-            public void onResponse(Call<ChatHistoryResponse> call, Response<ChatHistoryResponse> response) {
+            public void onResponse(Call<ChatHistoryResponse> call,
+                                   Response<ChatHistoryResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     try {
                         ChatHistoryResponse chatResponse = response.body();
-                        Log.d(TAG, "✅ API RESPONSE SUCCESS!");
+                        Log.d(TAG, "✅ API response success");
 
-                        // Check if response is successful
                         if (!chatResponse.isSuccess()) {
                             Log.w(TAG, "⚠️ API returned success=false");
                             return;
                         }
 
-                        // Get data object
                         ChatHistoryResponse.ChatData data = chatResponse.getData();
                         if (data == null) {
                             Log.w(TAG, "⚠️ Data object is null");
                             return;
                         }
 
-                        Log.d(TAG, "📦 Got data object for tournament: " + data.getTournamentId());
+                        Log.d(TAG, "📦 Tournament: " + data.getTournamentId());
 
-                        // Get messages list
                         List<ChatHistoryResponse.MessageData> messages = data.getMessages();
-
-                        if (messages != null) {
-                            int messageCount = messages.size();
-                            Log.d(TAG, "📜 API returned " + messageCount + " messages");
-
-                            if (messageCount > 0) {
-                                Log.d(TAG, "Processing " + messageCount + " messages from API");
-                                handleMessageHistoryFromAPI(messages);
-                            } else {
-                                Log.d(TAG, "ℹ️ Messages list is empty - no chat history available yet");
-                            }
+                        if (messages != null && !messages.isEmpty()) {
+                            Log.d(TAG, "📜 " + messages.size() + " messages from API");
+                            handleMessageHistoryFromAPI(messages);
                         } else {
-                            Log.w(TAG, "⚠️ Messages list is null");
+                            Log.d(TAG, "ℹ️ No chat history yet");
                         }
+
                     } catch (Exception e) {
                         Log.e(TAG, "❌ Error processing API response", e);
                         e.printStackTrace();
                     }
                 } else {
-                    Log.e(TAG, "❌ API call failed");
-                    Log.e(TAG, "Response code: " + response.code());
-                    Log.e(TAG, "Response message: " + response.message());
+                    Log.e(TAG, "❌ API failed — code: " + response.code());
                     try {
                         if (response.errorBody() != null) {
-                            String errorBody = response.errorBody().string();
-                            Log.e(TAG, "Error body: " + errorBody);
+                            Log.e(TAG, "Error body: " + response.errorBody().string());
                         }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error reading error body", e);
-                    }
+                    } catch (Exception ignored) {}
                 }
             }
 
             @Override
             public void onFailure(Call<ChatHistoryResponse> call, Throwable t) {
-                Log.e(TAG, "❌ API call FAILED completely");
-                Log.e(TAG, "Error message: " + t.getMessage());
+                Log.e(TAG, "❌ API call FAILED: " + t.getMessage());
                 t.printStackTrace();
             }
         });
     }
 
-    // 🔥 NEW METHOD: Handle message history from API using ChatHistoryResponse model
+    // ═══════════════════════════════════════════════════════════════
+    //  PROCESS HISTORY — FIX: uses getSenderName() + getTimestamp()
+    //  which now correctly read senderName/createdAt from API
+    // ═══════════════════════════════════════════════════════════════
     private void handleMessageHistoryFromAPI(List<ChatHistoryResponse.MessageData> messages) {
         try {
-            Log.d(TAG, "📜 Processing " + messages.size() + " messages from API");
+            Log.d(TAG, "📜 Processing " + messages.size() + " history messages");
 
             for (ChatHistoryResponse.MessageData msgData : messages) {
-                // Determine message type
+
                 int messageType;
                 if (msgData.getUserId().equals(userId)) {
                     messageType = ChatMessage.TYPE_SENT;
-                } else if (msgData.isHost()) {
+                } else if (msgData.isHost()) {               // FIX: now reads role field
                     messageType = ChatMessage.TYPE_HOST;
                 } else {
                     messageType = ChatMessage.TYPE_RECEIVED;
@@ -271,9 +331,9 @@ public class TournamentChatActivity extends AppCompatActivity {
 
                 ChatMessage message = new ChatMessage(
                         msgData.getUserId(),
-                        msgData.getUsername(),
+                        msgData.getSenderName(),             // FIX: was getUsername() — broken
                         msgData.getMessage(),
-                        msgData.getTimestamp(),
+                        msgData.getTimestamp(),              // FIX: now parses createdAt ISO string
                         msgData.isHost(),
                         messageType
                 );
@@ -281,106 +341,75 @@ public class TournamentChatActivity extends AppCompatActivity {
                 chatAdapter.addMessage(message);
             }
 
-            // Scroll to bottom after loading history
             if (chatAdapter.getItemCount() > 0) {
                 rvMessages.scrollToPosition(chatAdapter.getItemCount() - 1);
             }
 
-            Log.d(TAG, "✅ Message history loaded successfully: " + messages.size() + " messages");
+            Log.d(TAG, "✅ History loaded: " + messages.size() + " messages");
 
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error processing API messages", e);
+            Log.e(TAG, "❌ Error processing history messages", e);
             e.printStackTrace();
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  WEBSOCKET SETUP
+    // ═══════════════════════════════════════════════════════════════
     private void setupWebSocket() {
         Log.d(TAG, "============================================");
-        Log.d(TAG, "Setting up WebSocket for tournament chat");
-        Log.d(TAG, "Tournament ID: " + tournamentId);
-        Log.d(TAG, "User ID: " + userId);
-        Log.d(TAG, "Username: " + username);
-        Log.d(TAG, "Is Host: " + isHost);
+        Log.d(TAG, "Setting up WebSocket");
+        Log.d(TAG, "Tournament: " + tournamentId + " | User: " + userId + " | Host: " + isHost);
         Log.d(TAG, "============================================");
 
         socketManager = SocketManager.getInstance();
         socketManager.connect();
 
-        // 🔥 UPDATED: Check tournament status before joining
-        // Backend only allows joining when status is 'running' or 'live'
-        if (tournamentStatus != null && (tournamentStatus.equals("live") || tournamentStatus.equals("running"))) {
-            Log.d(TAG, "✅ Tournament status is '" + tournamentStatus + "' - joining chat room");
-            // 🔥 FIX: Run on background thread — joinTournamentRoom does a synchronous
-            // token refresh network call which must NOT happen on the main thread
+        boolean isLive = "live".equalsIgnoreCase(tournamentStatus)
+                || "running".equalsIgnoreCase(tournamentStatus);
+
+        if (isLive) {
+            Log.d(TAG, "✅ Tournament is live — joining chat room");
             new Thread(() -> {
                 socketManager.joinTournamentRoom(tournamentId, userId, username);
                 Log.d(TAG, "Join room request sent");
             }).start();
         } else {
-            Log.w(TAG, "⚠️ Cannot join chat - tournament status is: " + tournamentStatus);
-            Log.w(TAG, "Chat will be available when tournament goes live");
-            runOnUiThread(() -> {
-                Toast.makeText(this, "Chat will be available when tournament goes live", Toast.LENGTH_LONG).show();
-                // Disable message input
-                etMessage.setEnabled(false);
-                ivSend.setEnabled(false);
-                etMessage.setHint("Chat not available yet");
-            });
+            Log.w(TAG, "⚠️ Tournament not live — status: " + tournamentStatus);
+            // Input is already disabled in initViews()
         }
 
-        // 🔥 UPDATED: Listen for new messages (lobby-chat:message)
+        // ── lobby-chat:message ──
         socketManager.onNewMessage(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 runOnUiThread(() -> {
                     try {
-                        Log.d(TAG, "============================================");
-                        Log.d(TAG, "📨 lobby-chat:message CALLBACK TRIGGERED");
-
-                        if (args == null || args.length == 0) {
-                            Log.w(TAG, "⚠️ No data received in callback");
-                            Log.d(TAG, "============================================");
-                            return;
-                        }
-
+                        if (args == null || args.length == 0) return;
                         Object firstArg = args[0];
-                        Log.d(TAG, "Data type: " + firstArg.getClass().getName());
-                        Log.d(TAG, "Data: " + firstArg.toString());
-
+                        Log.d(TAG, "📨 lobby-chat:message — " + firstArg.toString());
                         if (firstArg instanceof JSONObject) {
-                            JSONObject data = (JSONObject) firstArg;
-                            handleNewMessage(data);
-                        } else {
-                            Log.e(TAG, "❌ Expected JSONObject but got: " + firstArg.getClass().getName());
+                            handleNewMessage((JSONObject) firstArg);
                         }
-
-                        Log.d(TAG, "============================================");
                     } catch (Exception e) {
-                        Log.e(TAG, "============================================");
-                        Log.e(TAG, "❌ Error handling new message");
-                        Log.e(TAG, "Exception: " + e.getMessage());
+                        Log.e(TAG, "❌ Error handling new message", e);
                         e.printStackTrace();
-                        Log.e(TAG, "============================================");
                     }
                 });
             }
         });
 
-        // 🔥 NEW: Listen for chat errors
+        // ── lobby-chat:error ──
         socketManager.onChatError(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 runOnUiThread(() -> {
                     try {
-                        Log.e(TAG, "============================================");
-                        Log.e(TAG, "❌ lobby-chat:error RECEIVED");
+                        Log.e(TAG, "❌ lobby-chat:error — " + (args.length > 0 ? args[0] : "no data"));
                         if (args.length > 0) {
-                            Log.e(TAG, "Error data: " + args[0].toString());
                             Toast.makeText(TournamentChatActivity.this,
-                                    "Chat error: " + args[0].toString(),
-                                    Toast.LENGTH_SHORT).show();
+                                    "Chat error: " + args[0], Toast.LENGTH_SHORT).show();
                         }
-                        Log.e(TAG, "============================================");
                     } catch (Exception e) {
                         Log.e(TAG, "Error handling chat error", e);
                     }
@@ -388,24 +417,26 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
-        // 🔥 NEW: Listen for chat closed
+        // ── lobby-chat:closed ──
         socketManager.onChatClosed(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 runOnUiThread(() -> {
                     try {
-                        Log.d(TAG, "============================================");
-                        Log.d(TAG, "📨 lobby-chat:closed RECEIVED");
-                        Log.d(TAG, "Tournament chat has been closed");
-                        Log.d(TAG, "============================================");
-
+                        Log.d(TAG, "📨 lobby-chat:closed — disabling input");
                         Toast.makeText(TournamentChatActivity.this,
-                                "Tournament chat has been closed",
-                                Toast.LENGTH_LONG).show();
+                                "Tournament chat has been closed", Toast.LENGTH_LONG).show();
 
-                        // Optionally finish activity or disable chat input
+                        // Disable everything
                         etMessage.setEnabled(false);
+                        etMessage.setHint("Chat closed");
                         ivSend.setEnabled(false);
+                        if (cvSend != null) cvSend.setAlpha(0.3f);
+
+                        // Hide live banner
+                        layoutActiveBanner.setVisibility(View.GONE);
+                        if (liveDotAnimator != null) liveDotAnimator.cancel();
+
                     } catch (Exception e) {
                         Log.e(TAG, "Error handling chat closed", e);
                     }
@@ -413,15 +444,17 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
-        // Keep old listeners for backward compatibility
+        // ── user joined — update online count ──
         socketManager.onUserJoined(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 runOnUiThread(() -> {
                     try {
                         JSONObject data = (JSONObject) args[0];
-                        String joinedUsername = data.getString("username");
-                        Log.d(TAG, "👤 " + joinedUsername + " joined the chat");
+                        String joinedUsername = data.optString("username", "Someone");
+                        Log.d(TAG, "👤 " + joinedUsername + " joined");
+                        onlineCount++;
+                        updateSubtitleOnlineCount();
                     } catch (Exception e) {
                         Log.e(TAG, "Error handling user joined", e);
                     }
@@ -429,14 +462,17 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
+        // ── user left — update online count ──
         socketManager.onUserLeft(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 runOnUiThread(() -> {
                     try {
                         JSONObject data = (JSONObject) args[0];
-                        String leftUsername = data.getString("username");
-                        Log.d(TAG, "👋 " + leftUsername + " left the chat");
+                        String leftUsername = data.optString("username", "Someone");
+                        Log.d(TAG, "👋 " + leftUsername + " left");
+                        if (onlineCount > 0) onlineCount--;
+                        updateSubtitleOnlineCount();
                     } catch (Exception e) {
                         Log.e(TAG, "Error handling user left", e);
                     }
@@ -447,109 +483,89 @@ public class TournamentChatActivity extends AppCompatActivity {
         Log.d(TAG, "✅ WebSocket listeners attached");
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  CLICK LISTENERS
+    // ═══════════════════════════════════════════════════════════════
     private void setupClickListeners() {
         ivBack.setOnClickListener(v -> finish());
 
-        // 🔥 FIX: Prevent rapid multiple clicks with debouncing
-        ivSend.setOnClickListener(new View.OnClickListener() {
+        // FIX: Click listener on cvSend (CardView container) — works even if tap misses ivSend
+        View sendTarget = cvSend != null ? cvSend : ivSend;
+        sendTarget.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 long currentTime = System.currentTimeMillis();
-
-                // Check if enough time has passed since last send
                 if (currentTime - lastSendTime < SEND_COOLDOWN_MS) {
-                    Log.d(TAG, "⚠️ Ignoring click - too soon after last send (" +
-                            (currentTime - lastSendTime) + "ms)");
+                    Log.d(TAG, "⚠️ Cooldown active, ignoring click");
                     return;
                 }
-
-                // Check if we're already in the process of sending
                 if (isSending) {
-                    Log.d(TAG, "⚠️ Ignoring click - already sending message");
+                    Log.d(TAG, "⚠️ Already sending, ignoring click");
                     return;
                 }
-
-                Log.d(TAG, "🖱️ Send button clicked - proceeding to send");
+                Log.d(TAG, "🖱️ Send clicked");
                 sendMessage();
             }
         });
 
-        // ✅ FIX: Better IME action handling
+        // IME send key
         etMessage.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
-                if (!isSending) {
-                    sendMessage();
-                }
+                if (!isSending) sendMessage();
                 return true;
             }
-            if (event != null && event.getAction() == KeyEvent.ACTION_DOWN &&
-                    event.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
-                if (!isSending) {
-                    sendMessage();
-                }
+            if (event != null && event.getAction() == KeyEvent.ACTION_DOWN
+                    && event.getKeyCode() == KeyEvent.KEYCODE_ENTER) {
+                if (!isSending) sendMessage();
                 return true;
             }
             return false;
         });
 
-        // ✅ FIX: Visual feedback - enable/disable send button
+        // Enable/disable send button based on text
         etMessage.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void afterTextChanged(Editable s) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 boolean hasText = s != null && s.toString().trim().length() > 0;
-                // Only enable if has text AND not currently sending
-                ivSend.setEnabled(hasText && !isSending);
-                ivSend.setAlpha((hasText && !isSending) ? 1.0f : 0.5f);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
+                boolean enabled = hasText && !isSending;
+                ivSend.setEnabled(enabled);
+                ivSend.setAlpha(enabled ? 1.0f : 0.5f);
+                if (cvSend != null) cvSend.setAlpha(enabled ? 1.0f : 0.5f);
             }
         });
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  SEND MESSAGE
+    // ═══════════════════════════════════════════════════════════════
     private void sendMessage() {
         String messageText = etMessage.getText().toString().trim();
 
-        // ✅ FIX: Better validation
-        if (TextUtils.isEmpty(messageText)) {
-            Log.d(TAG, "Message is empty, not sending");
-            return;
-        }
-
-        // ✅ FIX: Check if message contains only whitespace
+        if (TextUtils.isEmpty(messageText)) return;
         if (messageText.replaceAll("\\s+", "").isEmpty()) {
-            Log.d(TAG, "Message contains only whitespace, not sending");
             etMessage.setText("");
             return;
         }
 
-        // 🔥 FIX: Set sending flag IMMEDIATELY to prevent duplicate sends
         isSending = true;
         lastSendTime = System.currentTimeMillis();
 
-        // Disable send button during sending
+        // Disable send during send
         ivSend.setEnabled(false);
         ivSend.setAlpha(0.5f);
+        if (cvSend != null) cvSend.setAlpha(0.5f);
 
-        Log.d(TAG, "💬 Sending message: '" + messageText + "'");
-        Log.d(TAG, "   Tournament: " + tournamentId);
-        Log.d(TAG, "   User: " + username + " (" + userId + ")");
-        Log.d(TAG, "   Is Host: " + isHost);
+        Log.d(TAG, "💬 Sending: '" + messageText + "' | user: " + username + " | host: " + isHost);
 
-        // Send via WebSocket
         try {
             socketManager.sendMessage(tournamentId, userId, username, messageText, isHost);
             Log.d(TAG, "✅ Message sent to socket manager");
         } catch (Exception e) {
             Log.e(TAG, "❌ Error sending message", e);
             Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show();
-
-            // 🔥 FIX: Reset flags on error
             isSending = false;
             updateSendButtonState();
             return;
@@ -558,7 +574,7 @@ public class TournamentChatActivity extends AppCompatActivity {
         // Clear input immediately
         etMessage.setText("");
 
-        // Add to local UI immediately (will be confirmed by server)
+        // Add to local UI immediately
         ChatMessage sentMessage = new ChatMessage(
                 userId,
                 username,
@@ -569,45 +585,53 @@ public class TournamentChatActivity extends AppCompatActivity {
         );
         chatAdapter.addMessage(sentMessage);
 
-        // Scroll to bottom
         if (chatAdapter.getItemCount() > 0) {
             rvMessages.smoothScrollToPosition(chatAdapter.getItemCount() - 1);
         }
 
-        // 🔥 FIX: Reset sending flag after a short delay
+        // Reset sending flag after cooldown
         rvMessages.postDelayed(() -> {
             isSending = false;
             updateSendButtonState();
-            Log.d(TAG, "✅ Send cooldown complete, button re-enabled");
+            Log.d(TAG, "✅ Send cooldown complete");
         }, SEND_COOLDOWN_MS);
     }
 
-    // 🔥 NEW METHOD: Update send button state based on text and sending status
     private void updateSendButtonState() {
         boolean hasText = etMessage.getText().toString().trim().length() > 0;
-        ivSend.setEnabled(hasText && !isSending);
-        ivSend.setAlpha((hasText && !isSending) ? 1.0f : 0.5f);
+        boolean enabled = hasText && !isSending;
+        ivSend.setEnabled(enabled);
+        ivSend.setAlpha(enabled ? 1.0f : 0.5f);
+        if (cvSend != null) cvSend.setAlpha(enabled ? 1.0f : 0.5f);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  HANDLE INCOMING WEBSOCKET MESSAGE
+    //  FIX: reads "senderName" (API field) with fallback to "username"
+    // ═══════════════════════════════════════════════════════════════
     private void handleNewMessage(JSONObject data) {
         try {
-            Log.d(TAG, "📝 Parsing message data...");
+            Log.d(TAG, "📝 Parsing incoming message...");
 
             String messageUserId = data.getString("userId");
 
-            // 🔥 FIX: Server sends "senderName" not "username"
+            // FIX: API sends "senderName" not "username"
             String messageUsername = data.optString("senderName",
                     data.optString("username", "Unknown"));
 
             String messageText = data.getString("message");
 
-            // 🔥 FIX: Server sends "createdAt" timestamp, parse it or use current time
+            // Parse timestamp — prefer createdAt ISO string, fallback to timestamp millis
             long timestamp;
             if (data.has("createdAt")) {
                 try {
-                    // Try to parse ISO timestamp if provided
                     String createdAt = data.getString("createdAt");
-                    timestamp = System.currentTimeMillis(); // Use current time for now
+                    java.text.SimpleDateFormat sdf =
+                            new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                                    java.util.Locale.US);
+                    sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                    java.util.Date date = sdf.parse(createdAt);
+                    timestamp = date != null ? date.getTime() : System.currentTimeMillis();
                 } catch (Exception e) {
                     timestamp = System.currentTimeMillis();
                 }
@@ -617,33 +641,24 @@ public class TournamentChatActivity extends AppCompatActivity {
                 timestamp = System.currentTimeMillis();
             }
 
-            // 🔥 FIX: Server sends "role": "host" or "participant", not "isHost"
+            // FIX: API sends "role": "host" | "participant" — not boolean isHost
             boolean messageIsHost = false;
             if (data.has("role")) {
-                String role = data.getString("role");
-                messageIsHost = "host".equalsIgnoreCase(role);
+                messageIsHost = "host".equalsIgnoreCase(data.getString("role"));
             } else if (data.has("isHost")) {
                 messageIsHost = data.getBoolean("isHost");
             }
 
-            Log.d(TAG, "Handling new message from: " + messageUsername);
-            Log.d(TAG, "   User ID: " + messageUserId);
-            Log.d(TAG, "   Is Host: " + messageIsHost);
-            Log.d(TAG, "   Message: " + messageText);
+            Log.d(TAG, "  from: " + messageUsername + " | host: " + messageIsHost);
+            Log.d(TAG, "  msg: " + messageText);
 
-            // Don't add if it's our own message (already added)
+            // Skip own message (already shown locally)
             if (messageUserId.equals(userId)) {
-                Log.d(TAG, "Skipping own message (already displayed locally)");
+                Log.d(TAG, "Skipping own message (already displayed)");
                 return;
             }
 
-            // Determine message type
-            int messageType;
-            if (messageIsHost) {
-                messageType = ChatMessage.TYPE_HOST;
-            } else {
-                messageType = ChatMessage.TYPE_RECEIVED;
-            }
+            int messageType = messageIsHost ? ChatMessage.TYPE_HOST : ChatMessage.TYPE_RECEIVED;
 
             ChatMessage message = new ChatMessage(
                     messageUserId,
@@ -659,21 +674,27 @@ public class TournamentChatActivity extends AppCompatActivity {
             Log.d(TAG, "✅ Message added to UI");
 
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error parsing message", e);
-            Log.e(TAG, "Message data was: " + data.toString());
+            Log.e(TAG, "❌ Error parsing message: " + data.toString(), e);
             e.printStackTrace();
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  LIFECYCLE
+    // ═══════════════════════════════════════════════════════════════
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        Log.d(TAG, "============================================");
-        Log.d(TAG, "🔴 Activity being destroyed - cleaning up");
-        Log.d(TAG, "============================================");
+        Log.d(TAG, "🔴 Activity destroyed — cleaning up");
 
-        // Leave tournament room and cleanup
+        // Cancel live dot animation
+        if (liveDotAnimator != null) {
+            liveDotAnimator.cancel();
+            liveDotAnimator = null;
+        }
+
+        // Leave room and remove listeners
         if (socketManager != null) {
             socketManager.leaveTournamentRoom(tournamentId, userId);
             socketManager.removeAllListeners();

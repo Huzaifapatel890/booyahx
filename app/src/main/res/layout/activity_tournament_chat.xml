@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  activity_lobby_chat.xml
+  FIX LOG:
+  - Removed locked/upcoming state entirely (chat only opens for LIVE matches)
+  - Toolbar: matched HTML chat-hdr — black bg, neon name, teal subtitle with live pip
+  - Added LIVE active banner (pulsing dot + "Match is Active — Chat Enabled" + LIVE badge)
+  - Input area bg: #000000 (was #1A1A1A) matching HTML .ibar
+  - Send button: gradient drawable (was flat #00FFFF CardView) matching HTML .sbtn
+  - Header border: subtle rgba(0,229,255,0.1) (was full-bright #00FFFF — too harsh)
+  - RecyclerView background: transparent to let bg_dark_gradient show through
+  - Online count TextView added to subtitle line
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -6,111 +18,229 @@
     android:orientation="vertical"
     android:background="@drawable/bg_dark_gradient">
 
-    <!-- Toolbar -->
+    <!-- ══ TOOLBAR — matches HTML .chat-hdr ══ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#000000"
-        android:padding="16dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="12dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:elevation="4dp">
 
-        <!-- Back Arrow -->
+        <!-- Back Arrow — neon cyan tint matching HTML .hdr-back -->
         <ImageView
             android:id="@+id/ivBack"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
             android:src="@drawable/ic_back_arrow"
-            android:contentDescription="Back"/>
+            android:contentDescription="Back"
+            />
 
-        <!-- Tournament Info -->
+        <!-- Tournament Name + subtitle -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="16dp">
+            android:layout_marginStart="10dp">
 
+            <!-- Match HTML .hdr-name: neon, bold, Rajdhani-style -->
             <TextView
                 android:id="@+id/tvTournamentName"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Tournament Name"
-                android:textColor="#00FFFF"
-                android:gravity="center"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
+                android:text="Lobby • 1:30 AM"
+                android:textColor="#00E5FF"
+                android:textSize="19sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.01"
+                android:singleLine="true"
+                android:ellipsize="end"/>
 
-            <TextView
-                android:id="@+id/tvSubtitle"
+            <!-- Subtitle row: pip dot + "Lobby Chat · 32 online" -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Lobby Chat"
-                android:textColor="#808080"
-                android:textSize="13sp"
-                android:layout_marginTop="2dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="2dp">
+
+                <!-- Live green pip dot -->
+                <View
+                    android:id="@+id/viewPip"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:background="@drawable/bg_pip_green"
+                    android:layout_marginEnd="6dp"/>
+
+                <TextView
+                    android:id="@+id/tvSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Lobby Chat · 0 online"
+                    android:textColor="#3A7080"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-light"/>
+
+            </LinearLayout>
         </LinearLayout>
+
+
+
     </LinearLayout>
 
-    <!-- Border after header -->
+    <!-- Subtle neon border under toolbar — rgba(0,229,255,0.1) -->
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="#00FFFF"/>
+        android:background="#1A00E5FF"/>
 
-    <!-- Messages RecyclerView -->
+    <!-- ══ ACTIVE BANNER — matches HTML .active-banner ══
+         Shown only when match is LIVE. Toggle visibility in Java. -->
+    <LinearLayout
+        android:id="@+id/layoutActiveBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#0D00E5FF"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="9dp"
+        android:paddingBottom="9dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="visible">
+
+        <!-- Left: pulsing dot + label -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Pulsing green dot (animate in Java with ObjectAnimator) -->
+            <View
+                android:id="@+id/viewLiveDot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/bg_live_dot"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Match is Active — Chat Enabled"
+                android:textColor="#00E5FF"
+                android:textSize="12sp"
+                android:letterSpacing="0.02"/>
+
+        </LinearLayout>
+
+        <!-- LIVE badge -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LIVE"
+            android:textColor="#00E5FF"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.12"
+            android:background="@drawable/bg_live_badge"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"/>
+
+    </LinearLayout>
+
+    <!-- Bottom border of banner -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1A00E5FF"/>
+
+    <!-- ══ MESSAGES RecyclerView ══ -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvMessages"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:background="@android:color/transparent"
-        android:padding="12dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="4dp"
         android:clipToPadding="false"/>
 
-    <!-- Input Area -->
+    <!-- ══ INPUT BAR — matches HTML .ibar ══ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1A1A1A"
-        android:padding="12dp"
+        android:background="#000000"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="14dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:elevation="4dp">
+        android:elevation="6dp">
 
-        <!-- Message Input -->
+        <!-- Top border on input bar -->
+        <!-- (add a View above this LinearLayout or use layer-list on background) -->
+
+        <!-- Message Input — matches HTML .ifield -->
         <EditText
             android:id="@+id/etMessage"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
             android:background="@drawable/bg_chat_input"
-            android:padding="12dp"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
             android:hint="Type a message..."
             android:textColor="#FFFFFF"
-            android:textColorHint="#666666"
+            android:textColorHint="#1E5060"
             android:textSize="15sp"
-            android:maxLines="4"
-            android:inputType="textCapSentences|textMultiLine"
-            android:imeOptions="actionSend"/>
+            android:fontFamily="sans-serif-light"
+            android:maxLines="1"
+            android:inputType="textCapSentences"
+            android:imeOptions="actionSend"
+            android:gravity="center_vertical"/>
 
-        <!-- Send Button -->
+        <!-- Send Button — gradient circle matching HTML .sbtn -->
+        <!-- Use a CardView with gradient bg drawable instead of flat cyan -->
         <androidx.cardview.widget.CardView
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="12dp"
-            app:cardBackgroundColor="#00FFFF"
-            app:cardCornerRadius="22dp"
+            android:id="@+id/cvSend"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_marginStart="10dp"
+            app:cardBackgroundColor="@android:color/transparent"
+            app:cardCornerRadius="25dp"
             app:cardElevation="0dp">
 
-            <ImageView
-                android:id="@+id/ivSend"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_send"
-                android:contentDescription="Send"/>
+            <!-- Gradient: #00B8CC → #0066FF matching HTML .sbtn -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_send_button"
+                android:gravity="center">
+
+                <ImageView
+                    android:id="@+id/ivSend"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_send"
+                    android:contentDescription="Send"
+                    />
+
+            </LinearLayout>
         </androidx.cardview.widget.CardView>
+
     </LinearLayout>
+
 </LinearLayout>

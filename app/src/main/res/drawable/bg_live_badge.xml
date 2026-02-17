@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches HTML .ab-badge: background rgba(0,229,255,0.12), border rgba(0,229,255,0.3), border-radius 10dp -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#1F00E5FF"/>
+    <stroke
+        android:width="1dp"
+        android:color="#4D00E5FF"/>
+    <corners android:radius="10dp"/>
+</shape>

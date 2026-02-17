@@ -1,42 +1,82 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_chat_message_sent.xml
+  FIX LOG:
+  - CRITICAL: textColor was #000000 (BLACK on dark teal bg — completely invisible!)
+              → fixed to #D5F5FF light cyan-white (matches HTML)
+  - Timestamp: was outside bubble → now inside bubble bottom-right (matches HTML)
+  - Added double-tick (✓✓) inside bubble next to timestamp (matches HTML)
+  - Timestamp color: rgba(0,229,255,0.4) = #6600E5FF
+  - Tick color: #00E5FF neon
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="60dp"
     android:paddingEnd="8dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end"
         android:orientation="vertical"
-        android:maxWidth="280dp">
+        android:maxWidth="260dp">
 
-        <!-- Message Bubble -->
-        <TextView
-            android:id="@+id/tvMessage"
+        <!-- Message Bubble — timestamp + ticks INSIDE at bottom right -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:background="@drawable/bg_chat_bubble_sent"
-            android:padding="12dp"
-            android:text="Message text"
-            android:textColor="#000000"
-            android:textSize="15sp"
-            android:lineSpacingExtra="2dp"/>
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="8dp">
 
-        <!-- Time -->
-        <TextView
-            android:id="@+id/tvTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="12:30 PM"
-            android:textColor="#00FFFF"
-            android:textSize="11sp"
-            android:alpha="0.7"
-            android:layout_marginTop="4dp"
-            android:layout_marginEnd="4dp"
-            android:layout_gravity="end"/>
+            <!-- ⚠️ FIX: was #000000 (invisible) → now #D5F5FF (light cyan-white) -->
+            <TextView
+                android:id="@+id/tvMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Message text"
+                android:textColor="#D5F5FF"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:lineSpacingExtra="2dp"/>
+
+            <!-- Time + double tick row inside bubble -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:id="@+id/tvTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="12:30 AM"
+                    android:textColor="#6600E5FF"
+                    android:textSize="9sp"/>
+
+                <!-- Double tick matching HTML ✓✓ in neon -->
+                <TextView
+                    android:id="@+id/tvTick"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="✓✓"
+                    android:textColor="#00E5FF"
+                    android:textSize="9sp"
+                    android:alpha="0.8"
+                    android:layout_marginStart="3dp"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
     </LinearLayout>
 </FrameLayout>

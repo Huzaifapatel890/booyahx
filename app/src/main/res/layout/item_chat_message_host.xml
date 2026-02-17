@@ -1,86 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_chat_message_host.xml
+  FIX LOG:
+  - Host badge: was transparent+cyan-border+cyan-text → now solid #00E5FF + black text (matches HTML)
+  - Timestamp: was outside bubble → now inside bubble bottom-right (matches HTML)
+  - Message text color: #C8F0F5 (light cyan-white matching HTML)
+  - Host name color: #00E5FF neon with textAllCaps
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="8dp"
     android:paddingEnd="60dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start"
         android:orientation="vertical"
-        android:maxWidth="280dp">
+        android:maxWidth="260dp">
 
-        <!-- Sender Name + Host Badge -->
+        <!-- HOST BADGE — solid neon cyan, black text (matches HTML exactly) -->
+        <TextView
+            android:id="@+id/tvHostBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="◆  HOST"
+            android:textColor="#000000"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.12"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:background="@drawable/bg_host_badge"
+            android:layout_marginBottom="4dp"
+            android:layout_marginStart="2dp"/>
+
+        <!-- Host username line -->
+        <TextView
+            android:id="@+id/tvSenderName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="HostName"
+            android:textColor="#00E5FF"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.12"
+            android:layout_marginStart="4dp"
+            android:layout_marginBottom="4dp"/>
+
+        <!-- Message Bubble — timestamp INSIDE at bottom right -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginStart="4dp"
-            android:layout_marginBottom="4dp">
+            android:orientation="vertical"
+            android:background="@drawable/bg_chat_bubble_host"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="8dp">
 
             <TextView
-                android:id="@+id/tvSenderName"
+                android:id="@+id/tvMessage"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Host Name"
-                android:textColor="#00FFFF"
+                android:text="Message text"
+                android:textColor="#C8F0F5"
                 android:textSize="13sp"
-                android:textStyle="bold"/>
+                android:lineSpacingExtra="2dp"/>
 
-            <!-- Host Badge -->
-            <androidx.cardview.widget.CardView
+            <!-- Timestamp inside bubble -->
+            <TextView
+                android:id="@+id/tvTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
-                app:cardBackgroundColor="#1A00FFFF"
-                app:cardCornerRadius="10dp"
-                app:cardElevation="0dp"
-                app:strokeColor="#00FFFF"
-                app:strokeWidth="1dp">
+                android:layout_gravity="end"
+                android:text="12:30 AM"
+                android:textColor="#5900E5FF"
+                android:textSize="9sp"
+                android:layout_marginTop="4dp"/>
 
-                <TextView
-                    android:id="@+id/tvHostBadge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="HOST"
-                    android:textColor="#00FFFF"
-                    android:textSize="9sp"
-                    android:textStyle="bold"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"/>
-            </androidx.cardview.widget.CardView>
         </LinearLayout>
 
-        <!-- Message Bubble with special host styling -->
-        <TextView
-            android:id="@+id/tvMessage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_chat_bubble_host"
-            android:padding="12dp"
-            android:text="Message text"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:lineSpacingExtra="2dp"/>
-
-        <!-- Time -->
-        <TextView
-            android:id="@+id/tvTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="12:30 PM"
-            android:textColor="#00FFFF"
-            android:textSize="11sp"
-            android:alpha="0.7"
-            android:layout_marginTop="4dp"
-            android:layout_marginStart="4dp"/>
     </LinearLayout>
 </FrameLayout>

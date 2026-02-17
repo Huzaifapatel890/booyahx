@@ -1,15 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Neon cyan background for sent messages -->
-    <solid android:color="#00FFFF"/>
+    <!-- Glow shadow beneath bubble -->
+    <item
+        android:top="3dp"
+        android:right="4dp">
+        <shape>
+            <solid android:color="#33006488"/>
+            <corners
+                android:topLeftRadius="18dp"
+                android:topRightRadius="4dp"
+                android:bottomLeftRadius="18dp"
+                android:bottomRightRadius="18dp"/>
+        </shape>
+    </item>
 
-    <!-- Neon blue border -->
-    <stroke
-        android:width="2dp"
-        android:color="#0080FF"/>
+    <!-- Main teal gradient bubble matching HTML: #003D52 → #005570 → #006080 -->
+    <!-- Border: rgba(0,229,255,0.2) = #3300E5FF -->
+    <item>
+        <shape>
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#003D52"
+                android:centerColor="#005570"
+                android:endColor="#006080"/>
+            <stroke
+                android:width="1dp"
+                android:color="#3300E5FF"/>
+            <!-- Sent bubble: TL=18 round, TR=4 sharp (tail), BL=18, BR=18 -->
+            <corners
+                android:topLeftRadius="18dp"
+                android:topRightRadius="4dp"
+                android:bottomLeftRadius="18dp"
+                android:bottomRightRadius="18dp"/>
+        </shape>
+    </item>
 
-    <!-- Rounded corners -->
-    <corners android:radius="16dp"/>
-</shape>
+</layer-list>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Matches HTML .sbtn: background: linear-gradient(135deg, #00b8cc, #0066ff) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:type="linear"
+        android:angle="135"
+        android:startColor="#00B8CC"
+        android:endColor="#0066FF"/>
+</shape>

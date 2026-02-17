@@ -1,53 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  item_chat_message_received.xml
+  FIX LOG:
+  - Timestamp: was outside bubble → now inside bubble bottom-right (matches HTML)
+  - Sender name color: rgba(0,229,255,0.55) = dimmed neon (#8C00E5FF)
+  - Message text: #E8E8E8 near-white (matches HTML)
+  - Timestamp color inside: #2A6070 muted teal (matches HTML)
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="8dp"
     android:paddingEnd="60dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start"
         android:orientation="vertical"
-        android:maxWidth="280dp">
+        android:maxWidth="260dp">
 
-        <!-- Sender Name -->
+        <!-- Sender name: dimmed neon, uppercase, letter-spaced -->
         <TextView
             android:id="@+id/tvSenderName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Username"
-            android:textColor="#00FFFF"
-            android:textSize="13sp"
+            android:textColor="#8C00E5FF"
+            android:textSize="9sp"
             android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.12"
             android:layout_marginStart="4dp"
             android:layout_marginBottom="4dp"/>
 
-        <!-- Message Bubble -->
-        <TextView
-            android:id="@+id/tvMessage"
+        <!-- Message Bubble — timestamp INSIDE at bottom right -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:background="@drawable/bg_chat_bubble_recieved"
-            android:padding="12dp"
-            android:text="Message text"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:lineSpacingExtra="2dp"/>
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="8dp">
 
-        <!-- Time -->
-        <TextView
-            android:id="@+id/tvTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="12:30 PM"
-            android:textColor="#00FFFF"
-            android:textSize="11sp"
-            android:alpha="0.7"
-            android:layout_marginTop="4dp"
-            android:layout_marginStart="4dp"/>
+            <TextView
+                android:id="@+id/tvMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Message text"
+                android:textColor="#E8E8E8"
+                android:textSize="13sp"
+                android:lineSpacingExtra="2dp"/>
+
+            <!-- Timestamp inside bubble -->
+            <TextView
+                android:id="@+id/tvTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="12:30 AM"
+                android:textColor="#2A6070"
+                android:textSize="9sp"
+                android:layout_marginTop="4dp"/>
+
+        </LinearLayout>
+
     </LinearLayout>
 </FrameLayout>
