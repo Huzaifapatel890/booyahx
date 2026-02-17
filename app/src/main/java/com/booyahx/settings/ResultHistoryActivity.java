@@ -91,8 +91,11 @@ public class ResultHistoryActivity extends AppCompatActivity {
                 if (lm == null) return;
                 int lastVisible = lm.findLastCompletelyVisibleItemPosition();
                 if (lastVisible == historyList.size() - 1 && !adapter.isLoading()) {
-                    adapter.setLoading(true);
-                    loadMoreHistory();
+                    // 🔥 FIX: post to next frame — notifyItem* cannot be called during layout pass
+                    rv.post(() -> {
+                        adapter.setLoading(true);
+                        loadMoreHistory();
+                    });
                 }
             }
         });

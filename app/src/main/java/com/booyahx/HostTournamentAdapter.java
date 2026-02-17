@@ -34,7 +34,7 @@ public class HostTournamentAdapter
         void onEditRoom(HostTournament t);
         void onSubmitResult(HostTournament t);
         void onViewResult(HostTournament t);
-        void onEndTournament(HostTournament t);
+        void onOpenChat(HostTournament t);
         void onViewRules(HostTournament t);
     }
 
@@ -74,7 +74,7 @@ public class HostTournamentAdapter
         h.edit.setVisibility(View.VISIBLE);
         h.submit.setVisibility(View.VISIBLE);
         h.result.setVisibility(View.VISIBLE);
-        h.end.setVisibility(View.VISIBLE);
+        h.chat.setVisibility(View.VISIBLE);
         h.rules.setVisibility(View.VISIBLE);
 
         // Set text values
@@ -102,7 +102,7 @@ public class HostTournamentAdapter
         h.submit.setOnClickListener(v -> listener.onSubmitResult(t));
         h.result.setOnClickListener(v -> listener.onViewResult(t));
         h.rules.setOnClickListener(v -> listener.onViewRules(t));
-        h.end.setOnClickListener(v -> listener.onEndTournament(t));
+        h.chat.setOnClickListener(v -> listener.onOpenChat(t));
     }
 
     private void handleCountdown(HostTournament t, ViewHolder h, int pos) {
@@ -221,7 +221,7 @@ public class HostTournamentAdapter
     static class ViewHolder extends RecyclerView.ViewHolder {
         TextView title, mode, slots, time, roomId, password;
         TextView entryFee, prizePool;  // ✅ ADDED: Entry fee and prize pool TextViews
-        TextView edit, submit, result, rules, end;
+        TextView edit, submit, result, rules, chat;
 
         ViewHolder(View v) {
             super(v);
@@ -240,7 +240,7 @@ public class HostTournamentAdapter
             submit = v.findViewById(R.id.submitResultBtn);
             result = v.findViewById(R.id.resultButton);
             rules = v.findViewById(R.id.rulesButton);
-            end = v.findViewById(R.id.endBtn);
+            chat = v.findViewById(R.id.btnChat);
         }
     }
 }

@@ -78,7 +78,7 @@ public class JoinedTournamentAdapter
                 tvPlayers, tvTime, tvSlot,
                 tvRoomId, tvPassword;
 
-        TextView btnResults, btnRules;
+        TextView btnResults, btnRules, btnChat;
 
         CountDownTimer timer;
 
@@ -102,6 +102,7 @@ public class JoinedTournamentAdapter
 
             btnResults = itemView.findViewById(R.id.btnResults);
             btnRules   = itemView.findViewById(R.id.btnRules);
+            btnChat    = itemView.findViewById(R.id.btnChat);
 
             Log.d(TAG, "ViewHolder created, tvSlot is " + (tvSlot == null ? "NULL" : "NOT NULL"));
         }
@@ -225,6 +226,34 @@ public class JoinedTournamentAdapter
                     );
                 });
             }
+
+            // ========================================================================
+            // ✅ CHAT button - Opens TournamentChatActivity
+            // ========================================================================
+            if (btnChat != null) {
+                btnChat.setVisibility(View.VISIBLE);
+                btnChat.setOnClickListener(v -> {
+                    Log.d(TAG, "💬 btnChat clicked for tournament: " + t.getId());
+
+
+
+                    // Get user info from SharedPreferences
+                    android.content.SharedPreferences prefs =
+                            context.getSharedPreferences("UserSession", Context.MODE_PRIVATE);
+                    String userId = prefs.getString("userId", "");
+
+                    // Launch TournamentChatActivity
+                    android.content.Intent intent =
+                            new android.content.Intent(context, com.booyahx.TournamentChatActivity.class);
+                    intent.putExtra("tournament_id", t.getId());
+                    intent.putExtra("tournament_name", t.getLobbyName());
+                    intent.putExtra("is_host", false); // User is not host
+                    intent.putExtra("tournament_status", t.getStatus()); // ✅ FIX: Pass tournament status
+
+                    context.startActivity(intent);
+                });
+            }
+            // ========================================================================
 
             Log.d(TAG, "============ BIND END ============");
         }

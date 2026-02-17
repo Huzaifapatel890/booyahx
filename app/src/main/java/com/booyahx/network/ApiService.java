@@ -1,7 +1,7 @@
 package com.booyahx.network;
 
 import com.booyahx.network.models.*;
-
+import org.json.JSONObject;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -118,7 +118,7 @@ public interface ApiService {
 // OPTIONAL — if you want mode/win filters too, use this instead:
 // ============================================================
 
-    @GET("api/tournament/userHistory")
+    @GET("/api/tournament/userHistory")
     Call<TournamentHistoryResponse> getUserTournamentHistoryFiltered(
             @Query("limit")    int limit,
             @Query("offset")   int offset,
@@ -138,11 +138,6 @@ public interface ApiService {
     @GET("/api/tournament/joined")
     Call<JoinedTournamentResponse> getJoinedTournaments();
 
-    @POST("api/host/tournaments/{tournamentId}/end")
-    Call<EndTournamentResponse> endTournament(
-            @Path("tournamentId") String tournamentId,
-            @Body EndTournamentRequest request
-    );
 
     /* ================= SUPPORT ================= */
 
@@ -157,7 +152,12 @@ public interface ApiService {
     Call<TicketResponse> createTicket(
             @Body CreateTicketRequest request
     );
-
+    @GET("/api/tournament/{tournamentId}/chat")
+    Call<ChatHistoryResponse> getChatHistory(
+            @Path("tournamentId") String tournamentId,
+            @Query("limit") int limit,
+            @Query("skip") int skip
+    );
 
     /* ================= HOST ================= */
 

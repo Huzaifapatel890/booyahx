@@ -44,6 +44,15 @@
             </intent-filter>
         </activity>
 
+            <!-- Your existing activities -->
+
+            <activity
+                android:name=".TournamentChatActivity"
+                android:screenOrientation="portrait"
+                android:exported="false"
+                android:windowSoftInputMode="adjustResize"
+                android:theme="@style/Theme.BooyahX.NoActionBar"/>
+
         <!-- LOGIN SELECTION PAGE -->
         <activity
             android:name="com.booyahx.LoginActivity"
@@ -99,6 +108,7 @@
             android:name=".notifications.NotificationActivity"
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar"/>
+
 
         <!-- 🔥 RESULT HISTORY -->
         <activity

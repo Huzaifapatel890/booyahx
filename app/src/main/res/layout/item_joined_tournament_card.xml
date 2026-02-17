@@ -40,7 +40,23 @@
                 android:layout_marginTop="4dp"/>
         </LinearLayout>
 
-        <!-- ✅ ADDED: RESULTS Button -->
+        <!-- CHAT Button -->
+        <TextView
+            android:id="@+id/btnChat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/neon_button"
+            android:paddingStart="14dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="6dp"
+            android:text="CHAT"
+            android:textColor="#00FFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- RESULTS Button -->
         <TextView
             android:id="@+id/btnResults"
             android:layout_width="wrap_content"

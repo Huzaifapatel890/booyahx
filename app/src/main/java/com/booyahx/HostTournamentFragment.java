@@ -35,8 +35,7 @@ import com.booyahx.Host.FinalRow;
 
 import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
-import com.booyahx.network.models.EndTournamentRequest;
-import com.booyahx.network.models.EndTournamentResponse;
+
 import com.booyahx.network.models.HostTournament;
 import com.booyahx.network.models.HostTournamentResponse;
 import com.booyahx.network.models.UpdateRoomRequest;
@@ -126,8 +125,8 @@ public class HostTournamentFragment extends Fragment {
                     }
 
                     @Override
-                    public void onEndTournament(HostTournament tournament) {
-                        showEndTournamentDialog(tournament);
+                    public void onOpenChat(HostTournament tournament) {
+                        openTournamentChat(tournament);
                     }
 
                     @Override
@@ -472,106 +471,19 @@ public class HostTournamentFragment extends Fragment {
         rulesSheet.show(getParentFragmentManager(), "HostRulesBottomSheet");
     }
 
-    private void showEndTournamentDialog(HostTournament tournament) {
-        Dialog dialog = new Dialog(requireContext());
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(R.layout.dialog_end_tournament_bg);
-        if (dialog.getWindow() != null) {
-            dialog.getWindow()
-                    .setBackgroundDrawable(
-                            new ColorDrawable(Color.TRANSPARENT));
-        }
+    private void openTournamentChat(HostTournament tournament) {
+        // Get user info from SharedPreferences
+        SharedPreferences prefs = requireContext().getSharedPreferences("UserSession", Context.MODE_PRIVATE);
+        String userId = prefs.getString("userId", "");
 
-        EditText reasonInput = dialog.findViewById(R.id.reasonInput);
-        TextView cancelBtn = dialog.findViewById(R.id.cancelEndBtn);
-        TextView endBtn = dialog.findViewById(R.id.endNowBtn);
+        // Launch TournamentChatActivity
+        android.content.Intent intent = new android.content.Intent(requireContext(), TournamentChatActivity.class);
+        intent.putExtra("tournament_id", tournament.getId());
+        intent.putExtra("tournament_name", tournament.getHeaderTitle());
+        intent.putExtra("is_host", true); // Host is opening the chat
+        intent.putExtra("tournament_status", tournament.getStatus()); // ✅ FIX: Pass tournament status
 
-        String defaultReason = "Tournament finished.";
-        reasonInput.setText(defaultReason);
-        reasonInput.setTextColor(Color.parseColor("#808080"));
-
-        reasonInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) {
-                if (reasonInput.getText().toString().equals(defaultReason)) {
-                    reasonInput.setText("");
-                    reasonInput.setTextColor(Color.WHITE);
-                }
-            } else {
-                if (reasonInput.getText().toString().trim().isEmpty()) {
-                    reasonInput.setText(defaultReason);
-                    reasonInput.setTextColor(Color.parseColor("#808080"));
-                }
-            }
-        });
-
-        cancelBtn.setOnClickListener(v -> dialog.dismiss());
-
-        endBtn.setOnClickListener(v -> {
-            String reason = reasonInput.getText().toString().trim();
-
-            if (reason.isEmpty() || reason.equals(defaultReason)) {
-                reason = defaultReason;
-            }
-
-            endTournamentAPI(tournament.getId(), reason, dialog);
-        });
-
-        dialog.show();
-
-        Window window = dialog.getWindow();
-        if (window != null) {
-            window.setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
-        }
-    }
-
-    private void endTournamentAPI(String tournamentId, String reason, Dialog dialog) {
-        EndTournamentRequest request = new EndTournamentRequest(reason);
-
-        apiService.endTournament(tournamentId, request)
-                .enqueue(new Callback<EndTournamentResponse>() {
-                    @Override
-                    public void onResponse(Call<EndTournamentResponse> call,
-                                           Response<EndTournamentResponse> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            EndTournamentResponse endResponse = response.body();
-
-                            Toast.makeText(requireContext(),
-                                    endResponse.getMessage(),
-                                    Toast.LENGTH_LONG).show();
-
-                            dialog.dismiss();
-
-                            for (int i = 0; i < tournamentList.size(); i++) {
-                                if (tournamentList.get(i).getId().equals(tournamentId)) {
-                                    tournamentList.remove(i);
-                                    adapter.notifyItemRemoved(i);
-                                    break;
-                                }
-                            }
-
-                            for (int i = 0; i < allLive.size(); i++) {
-                                if (allLive.get(i).getId().equals(tournamentId)) {
-                                    allLive.remove(i);
-                                    break;
-                                }
-                            }
-                        } else {
-                            Toast.makeText(requireContext(),
-                                    "Failed to end tournament",
-                                    Toast.LENGTH_SHORT).show();
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<EndTournamentResponse> call,
-                                          Throwable t) {
-                        Toast.makeText(requireContext(),
-                                "Error: " + t.getMessage(),
-                                Toast.LENGTH_SHORT).show();
-                    }
-                });
+        startActivity(intent);
     }
 
     private void sortTournamentsByTime(List<HostTournament> tournaments, boolean reverseOrder) {

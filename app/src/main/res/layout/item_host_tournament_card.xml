@@ -302,11 +302,11 @@
                 android:visibility="gone" />
 
             <TextView
-                android:id="@+id/endBtn"
+                android:id="@+id/btnChat"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="END"
+                android:text="💬 CHAT"
                 android:textColor="#ff4444"
                 android:textSize="14sp"
                 android:textStyle="bold"
