@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -45,6 +47,14 @@ public class WalletFragment extends Fragment {
     private RecyclerView rvTransactions;
     private TransactionAdapter transactionAdapter;
     private List<Transaction> transactionList;
+
+    // ── Filter chips ──────────────────────────────────────────────────────────
+    private TextView chipAll, chipTopUp, chipWithdraw, chipSuccess, chipPending, chipCancelled;
+    private String currentFilter = "all";
+    // filteredList is what the adapter actually displays; transactionList is the master list
+    private List<Transaction> filteredList;
+    // ─────────────────────────────────────────────────────────────────────────
+
     private ApiService api;
 
     private int currentSkip = 0;
@@ -80,13 +90,62 @@ public class WalletFragment extends Fragment {
         btnWithdraw = view.findViewById(R.id.btnWithdraw);
         rvTransactions = view.findViewById(R.id.rvTransactions);
 
+        // ── Initialize filter chips ──────────────────────────────────────────
+        chipAll        = view.findViewById(R.id.chipAll);
+        chipTopUp      = view.findViewById(R.id.chipTopUp);
+        chipWithdraw   = view.findViewById(R.id.chipWithdraw);
+        chipSuccess    = view.findViewById(R.id.chipSuccess);
+        chipPending    = view.findViewById(R.id.chipPending);
+        chipCancelled  = view.findViewById(R.id.chipCancelled);
+
+        // Apply default chip styles then activate "All"
+        styleAllChipsDefault();
+        setActiveChip(chipAll);
+
+        // Chip click listeners
+        chipAll.setOnClickListener(v -> {
+            currentFilter = "all";
+            setActiveChip(chipAll);
+            applyFilter();
+        });
+
+        chipTopUp.setOnClickListener(v -> {
+            currentFilter = "topup";
+            setActiveChip(chipTopUp);
+            applyFilter();
+        });
+
+        chipWithdraw.setOnClickListener(v -> {
+            currentFilter = "withdraw";
+            setActiveChip(chipWithdraw);
+            applyFilter();
+        });
+
+        chipSuccess.setOnClickListener(v -> {
+            currentFilter = "success";
+            setActiveChip(chipSuccess);
+            applyFilter();
+        });
+
+        chipPending.setOnClickListener(v -> {
+            currentFilter = "pending";
+            setActiveChip(chipPending);
+            applyFilter();
+        });
+
+        // TODO: Wire chipCancelled click listener when cancel transaction API is ready.
+        // chipCancelled is intentionally NOT clickable (set in XML: android:clickable="false")
+        // until the cancel transaction API is integrated.
+        // ─────────────────────────────────────────────────────────────────────
+
         // Initialize API service
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
-        // Setup RecyclerView
+        // Setup RecyclerView with filteredList (adapter shows filtered view)
         rvTransactions.setLayoutManager(new LinearLayoutManager(getContext()));
         transactionList = new ArrayList<>();
-        transactionAdapter = new TransactionAdapter(getContext(), transactionList);
+        filteredList = new ArrayList<>();
+        transactionAdapter = new TransactionAdapter(getContext(), filteredList);
         rvTransactions.setAdapter(transactionAdapter);
 
         // Hide top-up button for hosts and adjust margins
@@ -258,7 +317,10 @@ public class WalletFragment extends Fragment {
                         }
 
                         transactionList.addAll(data.history);
-                        transactionAdapter.notifyDataSetChanged();
+
+                        // ── Apply current chip filter after loading ──────────
+                        applyFilter();
+                        // ─────────────────────────────────────────────────────
 
                         hasMore = data.history.size() >= limitPerPage;
                         Log.d(TAG, "Loaded " + data.history.size() + " transactions, hasMore: " + hasMore);
@@ -310,7 +372,9 @@ public class WalletFragment extends Fragment {
                 true
         );
         transactionList.add(0, t);
-        transactionAdapter.notifyItemInserted(0);
+        // ── Re-apply current filter so the pending item respects active chip ──
+        applyFilter();
+        // ─────────────────────────────────────────────────────────────────────
         rvTransactions.scrollToPosition(0);
         Log.d(TAG, "Added pending top-up: " + amount + " GC");
     }
@@ -321,4 +385,112 @@ public class WalletFragment extends Fragment {
         refreshData();
         Log.d(TAG, "Balance refresh requested");
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ── FILTER CHIP HELPERS ──────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Rebuilds filteredList from the master transactionList based on currentFilter,
+     * then notifies the adapter. Mirrors the HTML filterTx() logic exactly:
+     *   - "all"      → show everything
+     *   - anything else → match transaction type OR status (case-insensitive)
+     */
+    private void applyFilter() {
+        filteredList.clear();
+
+        if ("all".equals(currentFilter)) {
+            filteredList.addAll(transactionList);
+        } else {
+            for (Transaction tx : transactionList) {
+                String type   = tx.getType()   != null ? tx.getType().toLowerCase()   : "";
+                String status = tx.getStatus() != null ? tx.getStatus().toLowerCase() : "";
+
+                Log.d(TAG, "  checking tx → type='" + type + "' status='" + status + "' filter='" + currentFilter + "'");
+
+                boolean typeMatch;
+                if ("withdraw".equals(currentFilter)) {
+                    // API may return type as "withdraw" OR "withdrawal" — match both
+                    typeMatch = type.equals("withdraw") || type.equals("withdrawal");
+                } else {
+                    typeMatch = type.equals(currentFilter);
+                }
+
+                boolean statusMatch = status.equals(currentFilter);
+
+                if (typeMatch || statusMatch) {
+                    filteredList.add(tx);
+                }
+            }
+        }
+
+        if (isAdded()) {
+            transactionAdapter.notifyDataSetChanged();
+        }
+
+        Log.d(TAG, "Filter applied: " + currentFilter + " → " + filteredList.size() + " items");
+    }
+
+    /**
+     * Resets every chip to its default (unselected) visual style, then
+     * highlights the selected chip with the cyan active style.
+     */
+    private void setActiveChip(TextView selectedChip) {
+        float dp = getResources().getDisplayMetrics().density;
+        int cornerRadius = (int) (20 * dp);   // pill shape
+        int strokeWidth  = (int) (1.5f * dp);
+
+        // Default style colours
+        int defaultStroke = Color.parseColor("#2A2A2A");
+        int defaultFill   = Color.parseColor("#060D12");
+        int defaultText   = Color.parseColor("#6B7F8A");
+
+        // Active style colours  (cyan — matches HTML var(--cyan) #00D4FF)
+        int activeStroke = Color.parseColor("#00D4FF");
+        int activeFill   = Color.argb(34, 0, 212, 255);  // #00D4FF at ~13% opacity
+        int activeText   = Color.parseColor("#00D4FF");
+
+        // All chips to iterate (cancelled included so it stays styled when reset)
+        TextView[] allChips = {chipAll, chipTopUp, chipWithdraw, chipSuccess, chipPending, chipCancelled};
+
+        for (TextView chip : allChips) {
+            if (chip == null) continue;
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(cornerRadius);
+            bg.setStroke(strokeWidth, defaultStroke);
+            bg.setColor(defaultFill);
+            chip.setBackground(bg);
+            chip.setTextColor(defaultText);
+        }
+
+        // Highlight the selected chip
+        GradientDrawable activeBg = new GradientDrawable();
+        activeBg.setShape(GradientDrawable.RECTANGLE);
+        activeBg.setCornerRadius(cornerRadius);
+        activeBg.setStroke(strokeWidth, activeStroke);
+        activeBg.setColor(activeFill);
+        selectedChip.setBackground(activeBg);
+        selectedChip.setTextColor(activeText);
+    }
+
+    /** Applies the default style to every chip on first load. */
+    private void styleAllChipsDefault() {
+        float dp = getResources().getDisplayMetrics().density;
+        int cornerRadius = (int) (20 * dp);
+        int strokeWidth  = (int) (1.5f * dp);
+
+        TextView[] allChips = {chipAll, chipTopUp, chipWithdraw, chipSuccess, chipPending, chipCancelled};
+        for (TextView chip : allChips) {
+            if (chip == null) continue;
+            GradientDrawable bg = new GradientDrawable();
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(cornerRadius);
+            bg.setStroke(strokeWidth, Color.parseColor("#2A2A2A"));
+            bg.setColor(Color.parseColor("#060D12"));
+            chip.setBackground(bg);
+            chip.setTextColor(Color.parseColor("#6B7F8A"));
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 }

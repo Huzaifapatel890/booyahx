@@ -94,6 +94,62 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
                 holder.tvAmount.setTextColor(Color.WHITE);
                 break;
         }
+
+        // ── Time display at bottom-right of each card ────────────────────────
+        // ROOT CAUSE FIX: getDateTime() returns only the pre-formatted date string
+        // e.g. "Feb 18" — it has no time component, so all old parsing branches
+        // produced an empty string and tvTime never showed anything.
+        //
+        // The API response includes "createdAt":"2026-02-17T17:20:07.653Z" (full ISO).
+        // We now use getCreatedAt() as the primary source for time extraction.
+        // getDateTime() is still used only for the date label (tvDateTime) — unchanged.
+        //
+        // Converts ISO "2026-02-17T17:20:07.652Z" → local 12-hour "05:20 PM"
+        String timeStr = "";
+        try {
+            String rawCreatedAt = transaction.getCreatedAt(); // full ISO-8601 from API
+            if (rawCreatedAt != null && rawCreatedAt.contains("T")) {
+                // "2026-02-17T17:20:07.652Z" → split on T → "17:20:07.652Z"
+                String timePart = rawCreatedAt.split("T")[1];
+                int hour   = Integer.parseInt(timePart.substring(0, 2));
+                int minute = Integer.parseInt(timePart.substring(3, 5));
+                String amPm = hour >= 12 ? "PM" : "AM";
+                int hour12  = hour % 12;
+                if (hour12 == 0) hour12 = 12;
+                timeStr = String.format("%02d:%02d %s", hour12, minute, amPm);
+            } else if (rawCreatedAt != null && rawCreatedAt.contains(" ")) {
+                // Fallback: space-separated "Feb 17 5:30 PM"
+                int firstSpace  = rawCreatedAt.indexOf(' ');
+                int secondSpace = rawCreatedAt.indexOf(' ', firstSpace + 1);
+                if (secondSpace != -1) {
+                    timeStr = rawCreatedAt.substring(secondSpace + 1).trim();
+                }
+            }
+        } catch (Exception e) {
+            // Fallback to getDateTime() if getCreatedAt() is unavailable or throws
+            String dateTime = transaction.getDateTime();
+            if (dateTime != null && dateTime.contains(",")) {
+                timeStr = dateTime.substring(dateTime.lastIndexOf(",") + 1).trim();
+            } else if (dateTime != null && dateTime.contains("T")) {
+                try {
+                    String timePart = dateTime.split("T")[1];
+                    timeStr = timePart.substring(0, 5); // "17:20"
+                } catch (Exception ignored) {
+                    timeStr = "";
+                }
+            } else if (dateTime != null && dateTime.contains(" ")) {
+                int firstSpace  = dateTime.indexOf(' ');
+                int secondSpace = dateTime.indexOf(' ', firstSpace + 1);
+                if (secondSpace != -1) {
+                    timeStr = dateTime.substring(secondSpace + 1).trim();
+                }
+            }
+        }
+        // Null-safe: tvTime is null if item_transaction.xml doesn't have R.id.tvTime yet
+        if (holder.tvTime != null) {
+            holder.tvTime.setText(timeStr);
+        }
+        // ─────────────────────────────────────────────────────────────────────
     }
 
     @Override
@@ -113,14 +169,20 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
 
     public static class TransactionViewHolder extends RecyclerView.ViewHolder {
         TextView tvDateTime, tvType, tvAmount, tvStatus, tvDescription;
+        // ── Time view added at bottom-right of each card ─────────────────────
+        TextView tvTime;
+        // ─────────────────────────────────────────────────────────────────────
 
         public TransactionViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvDateTime = itemView.findViewById(R.id.tvDateTime);
-            tvType = itemView.findViewById(R.id.tvType);
-            tvAmount = itemView.findViewById(R.id.tvAmount);
-            tvStatus = itemView.findViewById(R.id.tvStatus);
+            tvDateTime    = itemView.findViewById(R.id.tvDateTime);
+            tvType        = itemView.findViewById(R.id.tvType);
+            tvAmount      = itemView.findViewById(R.id.tvAmount);
+            tvStatus      = itemView.findViewById(R.id.tvStatus);
             tvDescription = itemView.findViewById(R.id.tvDescription);
+            // ── Wire tvTime ──────────────────────────────────────────────────
+            tvTime        = itemView.findViewById(R.id.tvTime);
+            // ─────────────────────────────────────────────────────────────────
         }
     }
 }
