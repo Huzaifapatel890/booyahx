@@ -18,7 +18,11 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.booyahx.network.ApiClient;
+import com.booyahx.notifications.NotificationItem;
+import com.booyahx.notifications.NotificationManager;
+import com.booyahx.notifications.NotificationType;
 import com.booyahx.socket.SocketManager;
+import com.booyahx.utils.NotificationPref;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -114,6 +118,11 @@ public class DashboardActivity extends AppCompatActivity {
                 this,
                 (key, bundle) -> applyRoleLabel()
         );
+
+        // ✅ FIX: Register receiver in onCreate so it stays alive even when user navigates
+        // to NotificationActivity, EditProfile, etc. Previously in onResume/onPause which
+        // caused receiver to die the moment any other screen opened.
+        setupSocketBroadcastReceivers();
     }
 
     @Override
@@ -128,24 +137,23 @@ public class DashboardActivity extends AppCompatActivity {
         if (userId != null) {
             SocketManager.subscribe(userId);
         }
-
-        // Setup broadcast receivers for socket events
-        setupSocketBroadcastReceivers();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Unregister broadcast receivers
-        if (broadcastReceiver != null) {
-            LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
-        }
+        // ✅ FIX: Receiver no longer unregistered here — moved to onDestroy.
+        // Unregistering in onPause killed the receiver every time any screen opened.
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // ✅ FIX: Unregister only when Activity is fully destroyed
+        if (broadcastReceiver != null) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
+            Log.d(TAG, "✅ BroadcastReceiver unregistered in onDestroy");
+        }
     }
 
     /**
@@ -186,37 +194,127 @@ public class DashboardActivity extends AppCompatActivity {
         filter.addAction("PAYMENT_QR_UPDATED");
 
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
+        Log.d(TAG, "✅ BroadcastReceiver registered in onCreate");
     }
 
     /**
      * Handle wallet update event
+     * ✅ FIX: Now saves notification to NotificationManager so it persists for NotificationActivity
      */
     private void handleWalletUpdate(Intent intent) {
+        String dataJson = intent.getStringExtra("data");
+
         runOnUiThread(() -> {
             // Notify fragments to refresh wallet balance
             getSupportFragmentManager().setFragmentResult(
                     "balance_updated",
                     new Bundle()
             );
+
+            // ✅ FIX: Save notification to persistent store so NotificationActivity can show it
+            try {
+                NotificationManager nm = NotificationManager.getInstance(this);
+                NotificationItem notification = null;
+
+                if (dataJson != null) {
+                    JSONObject data = new JSONObject(dataJson);
+                    double balanceGC = data.optDouble("balanceGC", -1);
+                    String txAction = data.optString("action", "");
+
+                    if (balanceGC >= 0) {
+                        notification = new NotificationItem(
+                                "Wallet Balance Updated",
+                                "Your new balance is " + (int) Math.round(balanceGC) + " GC",
+                                System.currentTimeMillis(),
+                                NotificationType.REWARD
+                        );
+                    } else if (!txAction.isEmpty()) {
+                        String message = "";
+                        NotificationType type = NotificationType.REWARD;
+                        if ("approved".equalsIgnoreCase(txAction)) {
+                            message = "Your transaction has been approved";
+                        } else if ("rejected".equalsIgnoreCase(txAction)) {
+                            message = "Your transaction has been rejected";
+                            type = NotificationType.SYSTEM;
+                        } else if ("updated".equalsIgnoreCase(txAction)) {
+                            message = "Your transaction has been updated";
+                        }
+                        if (!message.isEmpty()) {
+                            notification = new NotificationItem(
+                                    "Transaction Update", message,
+                                    System.currentTimeMillis(), type);
+                        }
+                    } else {
+                        notification = new NotificationItem(
+                                "Transaction History Updated",
+                                "New transaction added to your wallet",
+                                System.currentTimeMillis(),
+                                NotificationType.REWARD
+                        );
+                    }
+                }
+
+                if (notification != null) {
+                    nm.addNotification(notification);
+                    NotificationPref.setUnread(this, true);
+                    Log.d(TAG, "✅ Wallet notification saved to NotificationManager");
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving wallet notification", e);
+            }
         });
     }
 
     /**
      * Handle tournament room update event
+     * ✅ FIX: Now saves notification to NotificationManager so it persists for NotificationActivity
      */
     private void handleTournamentRoomUpdate(Intent intent) {
+        String dataJson = intent.getStringExtra("data");
+
         runOnUiThread(() -> {
             // Notify fragments about room updates
             getSupportFragmentManager().setFragmentResult(
                     "joined_refresh",
                     new Bundle()
             );
+
+            // ✅ FIX: Save notification to persistent store so NotificationActivity can show it
+            try {
+                NotificationManager nm = NotificationManager.getInstance(this);
+                String tournamentName = "Tournament";
+                String roomId = "";
+                String roomPassword = "";
+
+                if (dataJson != null) {
+                    JSONObject data = new JSONObject(dataJson);
+                    tournamentName = data.optString("tournamentName", "Tournament");
+                    roomId = data.optString("roomId", "");
+                    roomPassword = data.optString("roomPassword", "");
+                }
+
+                NotificationItem notification = new NotificationItem(
+                        "Room ID & Password Updated",
+                        tournamentName + " credentials updated. ID: " + roomId + " Pass: " + roomPassword,
+                        System.currentTimeMillis(),
+                        NotificationType.ROOM_UPDATE
+                );
+
+                nm.addNotification(notification);
+                NotificationPref.setUnread(this, true);
+                Log.d(TAG, "✅ Room update notification saved to NotificationManager");
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving room update notification", e);
+            }
         });
     }
 
     /**
      * Handle tournament status update event
      * ✅ Broadcasts to: HomeFragment, HostTournamentFragment, ParticipatedFragment
+     * ✅ FIX: Now saves notification to NotificationManager so it persists for NotificationActivity
      */
     private void handleTournamentStatusUpdate(Intent intent) {
         String dataJson = intent.getStringExtra("data");
@@ -250,6 +348,43 @@ public class DashboardActivity extends AppCompatActivity {
                 );
 
                 Log.d(TAG, "Tournament status update broadcasted to all fragments");
+
+                // ✅ FIX: Save notification to persistent store so NotificationActivity can show it
+                if (dataJson != null) {
+                    JSONObject data = new JSONObject(dataJson);
+                    String tournamentName = data.optString("tournamentName", "Tournament");
+                    String status = data.optString("status", "");
+
+                    String message = "";
+                    NotificationType type = NotificationType.SYSTEM;
+
+                    if ("live".equalsIgnoreCase(status)) {
+                        message = tournamentName + " is now live!";
+                        type = NotificationType.TOURNAMENT;
+                    } else if ("completed".equalsIgnoreCase(status)) {
+                        message = tournamentName + " has ended.";
+                        type = NotificationType.VICTORY;
+                    } else if ("cancelled".equalsIgnoreCase(status)) {
+                        message = tournamentName + " has been cancelled.";
+                        type = NotificationType.SYSTEM;
+                    } else if ("pendingResult".equalsIgnoreCase(status)) {
+                        message = tournamentName + " is awaiting results.";
+                        type = NotificationType.TOURNAMENT;
+                    }
+
+                    if (!message.isEmpty()) {
+                        NotificationManager nm = NotificationManager.getInstance(this);
+                        nm.addNotification(new NotificationItem(
+                                "Tournament Status Update",
+                                message,
+                                System.currentTimeMillis(),
+                                type
+                        ));
+                        NotificationPref.setUnread(this, true);
+                        Log.d(TAG, "✅ Tournament status notification saved to NotificationManager");
+                    }
+                }
+
             } catch (JSONException e) {
                 Log.e(TAG, "Error parsing tournament status update", e);
             }
@@ -258,12 +393,54 @@ public class DashboardActivity extends AppCompatActivity {
 
     /**
      * Handle payment QR status update event
+     * ✅ FIX: Now saves notification to NotificationManager so it persists for NotificationActivity
      */
     private void handlePaymentQRUpdate(Intent intent) {
         String dataJson = intent.getStringExtra("data");
 
         runOnUiThread(() -> {
             Log.d(TAG, "Payment QR status updated: " + dataJson);
+
+            // ✅ FIX: Save notification to persistent store so NotificationActivity can show it
+            try {
+                if (dataJson != null) {
+                    JSONObject data = new JSONObject(dataJson);
+                    String status = data.optString("status", "");
+                    String qrAction = data.optString("action", "");
+                    double amountGC = data.optDouble("amountGC", 0);
+
+                    String message = "";
+                    NotificationType type = NotificationType.REWARD;
+
+                    if ("success".equalsIgnoreCase(status) || "approved".equalsIgnoreCase(qrAction)) {
+                        message = "Payment successful! " + (int) Math.round(amountGC) + " GC credited to your wallet";
+                        type = NotificationType.REWARD;
+                    } else if ("pending".equalsIgnoreCase(status)) {
+                        message = "Payment is being processed";
+                        type = NotificationType.SYSTEM;
+                    } else if ("rejected".equalsIgnoreCase(qrAction)) {
+                        message = "Payment was rejected";
+                        type = NotificationType.SYSTEM;
+                    } else if ("failed".equalsIgnoreCase(status)) {
+                        message = "Payment failed. Please try again";
+                        type = NotificationType.SYSTEM;
+                    }
+
+                    if (!message.isEmpty()) {
+                        NotificationManager nm = NotificationManager.getInstance(this);
+                        nm.addNotification(new NotificationItem(
+                                "Payment Status Update",
+                                message,
+                                System.currentTimeMillis(),
+                                type
+                        ));
+                        NotificationPref.setUnread(this, true);
+                        Log.d(TAG, "✅ Payment notification saved to NotificationManager");
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error saving payment notification", e);
+            }
         });
     }
 

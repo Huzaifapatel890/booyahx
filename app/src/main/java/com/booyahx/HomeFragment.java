@@ -3,7 +3,10 @@ package com.booyahx;
 import com.booyahx.utils.TopRightToast;
 import com.booyahx.utils.TournamentJoinStateManager;
 import com.booyahx.settings.EditProfileActivity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
@@ -23,6 +26,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.booyahx.adapters.TournamentStatusAdapter;
 import com.booyahx.network.ApiClient;
@@ -85,6 +89,34 @@ public class HomeFragment extends Fragment {
     private int pendingCalls = 0;
 
     private boolean tournamentsLoaded = false;
+
+    // ✅ FIX: BroadcastReceiver — listens to socket events broadcast by SocketManager.
+    // Marks notification as unread, updates bell icon, and reloads tournaments when needed.
+    // This was present in file 1 and missing from file 2 — hence bell & socket weren't working.
+    private final BroadcastReceiver socketEventReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Log.d(TAG, "📨 Socket broadcast received in HomeFragment: " + action);
+
+            if (!isAdded()) return;
+
+            // Mark notification as unread and update bell icon for any socket event
+            NotificationPref.setUnread(requireContext(), true);
+            updateNotificationIcon();
+
+            // For tournament status changes, also reload the tournament list
+            if ("TOURNAMENT_STATUS_UPDATED".equals(action) || "TOURNAMENT_ROOM_UPDATED".equals(action)) {
+                tournamentsLoaded = false;
+                loadTournaments();
+            }
+
+            // For wallet updates, refresh wallet balance
+            if ("WALLET_UPDATED".equals(action)) {
+                loadWalletBalanceFromAPI();
+            }
+        }
+    };
 
     @Nullable
     @Override
@@ -196,6 +228,27 @@ public class HomeFragment extends Fragment {
             loadProfileData();
             loadWalletData();
         });
+    }
+
+    // ✅ FIX: Register BroadcastReceiver when fragment is visible — listens to socket events
+    @Override
+    public void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("WALLET_UPDATED");
+        filter.addAction("TOURNAMENT_ROOM_UPDATED");
+        filter.addAction("TOURNAMENT_STATUS_UPDATED");
+        filter.addAction("PAYMENT_QR_UPDATED");
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(socketEventReceiver, filter);
+        Log.d(TAG, "✅ Socket BroadcastReceiver registered");
+    }
+
+    // ✅ FIX: Unregister BroadcastReceiver when fragment is not visible
+    @Override
+    public void onStop() {
+        super.onStop();
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(socketEventReceiver);
+        Log.d(TAG, "✅ Socket BroadcastReceiver unregistered");
     }
 
     // ✅ REPLACED: setupStatusSpinner() removed entirely.
@@ -844,5 +897,7 @@ public class HomeFragment extends Fragment {
 
         checkAccountSwitch();
 
+        // ✅ FIX: Refresh bell icon on resume — so red dot shows correctly when returning to this screen
+        updateNotificationIcon();
     }
 }
