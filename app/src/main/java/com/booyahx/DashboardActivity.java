@@ -23,6 +23,7 @@ import com.booyahx.notifications.NotificationManager;
 import com.booyahx.notifications.NotificationType;
 import com.booyahx.socket.SocketManager;
 import com.booyahx.utils.NotificationPref;
+import com.booyahx.utils.InAppNotificationBanner;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -258,6 +259,7 @@ public class DashboardActivity extends AppCompatActivity {
                     nm.addNotification(notification);
                     NotificationPref.setUnread(this, true);
                     Log.d(TAG, "✅ Wallet notification saved to NotificationManager");
+                    InAppNotificationBanner.show(DashboardActivity.this, notification.getTitle(), notification.getMessage());
                 }
 
             } catch (Exception e) {
@@ -304,6 +306,7 @@ public class DashboardActivity extends AppCompatActivity {
                 nm.addNotification(notification);
                 NotificationPref.setUnread(this, true);
                 Log.d(TAG, "✅ Room update notification saved to NotificationManager");
+                InAppNotificationBanner.show(DashboardActivity.this, notification.getTitle(), notification.getMessage());
 
             } catch (Exception e) {
                 Log.e(TAG, "Error saving room update notification", e);
@@ -382,6 +385,7 @@ public class DashboardActivity extends AppCompatActivity {
                         ));
                         NotificationPref.setUnread(this, true);
                         Log.d(TAG, "✅ Tournament status notification saved to NotificationManager");
+                        InAppNotificationBanner.show(DashboardActivity.this, "Tournament Status Update", message);
                     }
                 }
 
@@ -436,6 +440,7 @@ public class DashboardActivity extends AppCompatActivity {
                         ));
                         NotificationPref.setUnread(this, true);
                         Log.d(TAG, "✅ Payment notification saved to NotificationManager");
+                        InAppNotificationBanner.show(DashboardActivity.this, "Payment Status Update", message);
                     }
                 }
             } catch (Exception e) {

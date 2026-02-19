@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.booyahx.R;
+import com.booyahx.utils.NotificationPref;
 
 import org.json.JSONObject;
 
@@ -138,17 +139,6 @@ public class NotificationActivity extends AppCompatActivity {
                             addNewNotification(notification);
                         }
 
-                    } else {
-                        // wallet:history-updated
-                        Log.d(TAG, "🔥 Wallet history update notification received");
-
-                        NotificationItem notification = new NotificationItem(
-                                "Transaction History Updated",
-                                "New transaction added to your wallet",
-                                System.currentTimeMillis(),
-                                NotificationType.REWARD
-                        );
-                        addNewNotification(notification);
                     }
 
                     // ✅ PAYMENT QR UPDATED — same logic as before
@@ -209,6 +199,10 @@ public class NotificationActivity extends AppCompatActivity {
 
         notificationManager = NotificationManager.getInstance(this);
 
+        // ✅ FIX: Clear unread flag whenever NotificationActivity opens — covers both the
+        // bell button tap AND the in-app banner tap, so the red dot always clears on open.
+        NotificationPref.setUnread(this, false);
+
         setupRecyclerView();
         loadNotifications();
         // ✅ FIX: setupSocket() removed from here.
@@ -254,14 +248,37 @@ public class NotificationActivity extends AppCompatActivity {
     }
 
     private void loadNotifications() {
+        // Remove any already-stored "Transaction History Updated" notifications
+        java.util.List<NotificationItem> all = notificationManager.getAllNotifications();
+        for (int i = all.size() - 1; i >= 0; i--) {
+            if ("Transaction History Updated".equals(all.get(i).getTitle())) {
+                notificationManager.removeNotification(i);
+            }
+        }
         adapter.updateNotifications(notificationManager.getAllNotifications());
         updateEmptyState();
     }
 
     private void removeNotification(int position) {
-        notificationManager.removeNotification(position);
-        adapter.updateNotifications(notificationManager.getAllNotifications());
-        updateEmptyState();
+        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(position);
+        if (viewHolder != null) {
+            viewHolder.itemView.animate()
+                    .translationX(-viewHolder.itemView.getWidth())
+                    .alpha(0f)
+                    .setDuration(280)
+                    .withEndAction(() -> {
+                        viewHolder.itemView.setAlpha(1f);
+                        viewHolder.itemView.setTranslationX(0f);
+                        notificationManager.removeNotification(position);
+                        adapter.updateNotifications(notificationManager.getAllNotifications());
+                        updateEmptyState();
+                    })
+                    .start();
+        } else {
+            notificationManager.removeNotification(position);
+            adapter.updateNotifications(notificationManager.getAllNotifications());
+            updateEmptyState();
+        }
     }
 
     private void updateEmptyState() {
