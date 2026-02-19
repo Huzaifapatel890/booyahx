@@ -37,17 +37,16 @@ import java.util.List;
 /**
  * Tournament Chat Activity
  * Real-time chat using WebSocket for tournament participants
- *
  * FIX LOG (current pass):
  *  - Wired new layout IDs: cvSend, layoutActiveBanner, viewLiveDot
  *  - Live dot pulse animation via ObjectAnimator (alpha 1.0 ↔ 0.3, 1.6s loop)
  *  - Banner visibility driven by tournament status ("live" | "running" → VISIBLE, else GONE)
  *  - Subtitle online count updated from onUserJoined / onUserLeft events
  *  - ChatHistoryResponse.MessageData field fix consumed here:
- *      getSenderName() replaces broken getUsername()
+ *      getSenderNale string
+ *  *  - handleNewMessage: reads "sendeme() replaces broken getUsername()
  *      getTimestamp() now parses createdAt ISO string
- *      isHost() now derived from role string
- *  - handleNewMessage: reads "senderName" field (API) with fallback to "username"
+ *      isHost() now derived from rorName" field (API) with fallback to "username"
  *  - tournamentName shown in header, fallback to "Lobby"
  *  - Input disabled with correct hint when chat not live
  */
@@ -385,6 +384,7 @@ public class TournamentChatActivity extends AppCompatActivity {
         }
 
         // ── lobby-chat:message ──
+        // Payload: { _id, tournamentId, userId, senderName, role, message, createdAt }
         socketManager.onNewMessage(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
@@ -423,22 +423,42 @@ public class TournamentChatActivity extends AppCompatActivity {
         });
 
         // ── lobby-chat:closed ──
+        // Payload: { tournamentId, status }
         socketManager.onChatClosed(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
                 runOnUiThread(() -> {
                     try {
-                        Log.d(TAG, "📨 lobby-chat:closed — disabling input");
+                        // Parse payload: { tournamentId, status }
+                        String closedTournamentId = null;
+                        String closedStatus = null;
+                        if (args != null && args.length > 0 && args[0] instanceof JSONObject) {
+                            JSONObject payload = (JSONObject) args[0];
+                            closedTournamentId = payload.optString("tournamentId", null);
+                            closedStatus       = payload.optString("status", null);
+                        }
+
+                        Log.d(TAG, "============================================");
+                        Log.d(TAG, "📨 lobby-chat:closed received");
+                        Log.d(TAG, "   tournamentId: " + closedTournamentId);
+                        Log.d(TAG, "   status: "       + closedStatus);
+                        Log.d(TAG, "============================================");
+
                         Toast.makeText(TournamentChatActivity.this,
                                 "Tournament chat has been closed", Toast.LENGTH_LONG).show();
 
-                        // Disable everything
+                        // Clear local chat data
+                        chatAdapter = new ChatAdapter();
+                        rvMessages.setAdapter(chatAdapter);
+                        Log.d(TAG, "🗑️ Local chat data cleared");
+
+                        // Disable input
                         etMessage.setEnabled(false);
                         etMessage.setHint("Chat closed");
                         ivSend.setEnabled(false);
                         if (cvSend != null) cvSend.setAlpha(0.3f);
 
-                        // Hide live banner
+                        // Hide live banner & stop animation
                         layoutActiveBanner.setVisibility(View.GONE);
                         if (liveDotAnimator != null) liveDotAnimator.cancel();
 
@@ -612,21 +632,26 @@ public class TournamentChatActivity extends AppCompatActivity {
 
     // ═══════════════════════════════════════════════════════════════
     //  HANDLE INCOMING WEBSOCKET MESSAGE
+    //  Payload: { _id, tournamentId, userId, senderName, role, message, createdAt }
     //  FIX: reads "senderName" (API field) with fallback to "username"
+    //  FIX: reads "role" ("host"|"participant") instead of boolean isHost
+    //  FIX: parses "createdAt" ISO string for timestamp
     // ═══════════════════════════════════════════════════════════════
     private void handleNewMessage(JSONObject data) {
         try {
             Log.d(TAG, "📝 Parsing incoming message...");
 
+            // Payload field: userId
             String messageUserId = data.getString("userId");
 
-            // FIX: API sends "senderName" not "username"
+            // Payload field: senderName (FIX: API sends "senderName" not "username")
             String messageUsername = data.optString("senderName",
                     data.optString("username", "Unknown"));
 
+            // Payload field: message
             String messageText = data.getString("message");
 
-            // Parse timestamp — prefer createdAt ISO string, fallback to timestamp millis
+            // Payload field: createdAt — parse ISO string; fallback to timestamp millis
             long timestamp;
             if (data.has("createdAt")) {
                 try {
@@ -646,7 +671,7 @@ public class TournamentChatActivity extends AppCompatActivity {
                 timestamp = System.currentTimeMillis();
             }
 
-            // FIX: API sends "role": "host" | "participant" — not boolean isHost
+            // Payload field: role ("host" | "participant") — FIX: was boolean isHost
             boolean messageIsHost = false;
             if (data.has("role")) {
                 messageIsHost = "host".equalsIgnoreCase(data.getString("role"));
@@ -654,8 +679,9 @@ public class TournamentChatActivity extends AppCompatActivity {
                 messageIsHost = data.getBoolean("isHost");
             }
 
-            Log.d(TAG, "  from: " + messageUsername + " | host: " + messageIsHost);
-            Log.d(TAG, "  msg: " + messageText);
+            Log.d(TAG, "  _id: "   + data.optString("_id", "n/a"));
+            Log.d(TAG, "  from: "  + messageUsername + " | host: " + messageIsHost);
+            Log.d(TAG, "  msg: "   + messageText);
 
             // Skip own message (already shown locally)
             if (messageUserId.equals(userId)) {

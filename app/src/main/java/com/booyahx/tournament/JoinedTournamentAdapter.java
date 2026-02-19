@@ -11,7 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
-
+import com.booyahx.settings.ResultHistoryActivity;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -183,6 +183,7 @@ public class JoinedTournamentAdapter
 
             // ========================================================================
             // ✅ UPDATED: RESULTS button with proper dialog integration
+            // ✅ FIX: Also show for "completed" status → redirects to ResultHistoryActivity
             // ========================================================================
             if (btnResults != null) {
                 String status = t.getStatus();
@@ -199,6 +200,23 @@ public class JoinedTournamentAdapter
                         Log.d(TAG, "   Status: " + status);
 
                         showResultsDialog(t);
+                    });
+
+                } else if (status != null && "completed".equalsIgnoreCase(status)) {
+                    // ✅ FIX: Completed tournaments → redirect to ResultHistoryActivity
+                    btnResults.setVisibility(View.VISIBLE);
+
+                    btnResults.setOnClickListener(v -> {
+                        Log.d(TAG, "🎯 btnResults clicked for COMPLETED tournament: " + t.getId());
+                        Log.d(TAG, "   Lobby: " + t.getLobbyName());
+                        Log.d(TAG, "   Status: " + status);
+                        Log.d(TAG, "   → Redirecting to ResultHistoryActivity");
+
+                        android.content.Intent intent = new android.content.Intent(
+                                context, com.booyahx.settings.ResultHistoryActivity.class);
+                        intent.putExtra("tournament_id", t.getId());
+                        intent.putExtra("tournament_name", t.getLobbyName());
+                        context.startActivity(intent);
                     });
 
                 } else {
@@ -228,10 +246,14 @@ public class JoinedTournamentAdapter
             }
 
             // ========================================================================
-            // ✅ CHAT button - Opens TournamentChatActivity
+            // ✅ CHAT button - Only visible when tournament is LIVE / RUNNING
             // ========================================================================
             if (btnChat != null) {
-                btnChat.setVisibility(View.VISIBLE);
+                String chatStatus = t.getStatus();
+                boolean isLive = chatStatus != null &&
+                        (chatStatus.equalsIgnoreCase("running") || chatStatus.equalsIgnoreCase("live"));
+                btnChat.setVisibility(isLive ? View.VISIBLE : View.GONE);
+                if (!isLive) return;
                 btnChat.setOnClickListener(v -> {
                     Log.d(TAG, "💬 btnChat clicked for tournament: " + t.getId());
 

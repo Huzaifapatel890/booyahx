@@ -44,6 +44,31 @@ public class Tournament implements Parcelable {
     @SerializedName("prizePool")
     private int prizePool;
 
+    // ✅ NEW: Max prize pool after all platform/host/caster fees are deducted
+    @SerializedName("potentialPrizePool")
+    private PotentialPrizePool potentialPrizePool;
+
+    public static class PotentialPrizePool {
+        @SerializedName("totalPrizePool")
+        public int totalPrizePool;
+
+        @SerializedName("platformFee")
+        public int platformFee;
+
+        @SerializedName("hostFee")
+        public int hostFee;
+
+        @SerializedName("casterFee")
+        public int casterFee;
+
+        @SerializedName("totalFees")
+        public int totalFees;
+
+        // ✅ Prize pool after all charges — this is what players can win
+        @SerializedName("winnerPrizePool")
+        public int winnerPrizePool;
+    }
+
     @SerializedName("date")
     private String date;
 
@@ -205,6 +230,11 @@ public class Tournament implements Parcelable {
         return entryFee;
     }
 
+    // ✅ NEW: Expose subMode for client-side filtering
+    public String getSubMode() {
+        return subMode;
+    }
+
     /* ================= DISPLAY HELPERS ================= */
 
     public String getTitle() {
@@ -213,7 +243,13 @@ public class Tournament implements Parcelable {
                 : game + " " + subMode;
     }
 
+    // ✅ UPDATED: Returns max prize pool after all charges are deducted.
+    // Prefers potentialPrizePool.winnerPrizePool (explicit post-fee value from API).
+    // Falls back to prizePool if potentialPrizePool is not present.
     public int getExpectedPP() {
+        if (potentialPrizePool != null && potentialPrizePool.winnerPrizePool > 0) {
+            return potentialPrizePool.winnerPrizePool;
+        }
         return prizePool;
     }
 
@@ -281,6 +317,12 @@ public class Tournament implements Parcelable {
         maxTeams = in.readInt();      // ✅ FIXED
         playersPerTeam = in.readInt(); // ✅ FIXED
         prizePool = in.readInt();
+        // ✅ NEW: Restore winnerPrizePool from parcel (-1 means not set)
+        int winnerPrizePool = in.readInt();
+        if (winnerPrizePool >= 0) {
+            potentialPrizePool = new PotentialPrizePool();
+            potentialPrizePool.winnerPrizePool = winnerPrizePool;
+        }
         date = in.readString();
         startTime = in.readString();
         lobbyName = in.readString();
@@ -304,6 +346,8 @@ public class Tournament implements Parcelable {
         dest.writeInt(maxTeams);        // ✅ FIXED
         dest.writeInt(playersPerTeam);  // ✅ FIXED
         dest.writeInt(prizePool);
+        // ✅ NEW: Persist winnerPrizePool (-1 signals not available)
+        dest.writeInt(potentialPrizePool != null ? potentialPrizePool.winnerPrizePool : -1);
         dest.writeString(date);
         dest.writeString(startTime);
         dest.writeString(lobbyName);

@@ -67,11 +67,17 @@ public class HomeFragment extends Fragment {
     private LinearLayout tournamentsContainer;
     private LinearLayout btnBermuda, btnClashSquad, btnSpecial;
 
-    private Spinner spinnerTournamentStatus;
-    private TournamentStatusAdapter statusAdapter;
+    // ✅ REPLACED: Status spinner → SubMode spinner (Solo / Duo / Squad)
+    // Bound to the same R.id.spinnerTournamentStatus view in layout.
+    // Visible only for Bermuda (BR) mode; GONE for ClashSquad and Special.
+    private Spinner spinnerSubMode;
+    private TournamentStatusAdapter subModeAdapter;
 
     private String currentMode = "BR";
+    // ✅ currentStatus fixed to "upcoming" — status filter removed from UI
     private String currentStatus = "upcoming";
+    // ✅ NEW: active subMode filter; null = show all submodes
+    private String currentSubMode = null;
     private ApiService api;
 
     private View fragmentLoader;
@@ -105,7 +111,8 @@ public class HomeFragment extends Fragment {
         btnClashSquad = view.findViewById(R.id.btnClashSquad);
         btnSpecial = view.findViewById(R.id.btnSpecial);
 
-        spinnerTournamentStatus = view.findViewById(R.id.spinnerTournamentStatus);
+        // ✅ Bind subMode spinner to the same view ID that was used for status spinner
+        spinnerSubMode = view.findViewById(R.id.spinnerTournamentStatus);
 
         fragmentLoader = view.findViewById(R.id.fragmentLoaderContainer);
         loaderRing = view.findViewById(R.id.fragmentLoaderRing);
@@ -113,7 +120,8 @@ public class HomeFragment extends Fragment {
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
-        setupStatusSpinner();
+        // ✅ REPLACED: setupStatusSpinner() → setupSubModeSpinner()
+        setupSubModeSpinner();
         updateNotificationIcon();
 
         btnNotification.setOnClickListener(v -> {
@@ -190,26 +198,36 @@ public class HomeFragment extends Fragment {
         });
     }
 
-    private void setupStatusSpinner() {
-        List<TournamentStatusAdapter.StatusItem> statusItems = new ArrayList<>();
-        statusItems.add(new TournamentStatusAdapter.StatusItem("upcoming", "Upcoming Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("live", "Live Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("completed", "Completed Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("pendingResult", "Pending Result Tournaments"));
-        statusItems.add(new TournamentStatusAdapter.StatusItem("cancelled", "Cancelled Tournaments"));
+    // ✅ REPLACED: setupStatusSpinner() removed entirely.
+    // New: SubMode spinner — Solo / Duo / Squad, visible only for Bermuda (BR).
+    private void setupSubModeSpinner() {
+        List<TournamentStatusAdapter.StatusItem> subModeItems = new ArrayList<>();
+        subModeItems.add(new TournamentStatusAdapter.StatusItem(null,    "All Modes"));
+        subModeItems.add(new TournamentStatusAdapter.StatusItem("solo",  "Solo"));
+        subModeItems.add(new TournamentStatusAdapter.StatusItem("duo",   "Duo"));
+        subModeItems.add(new TournamentStatusAdapter.StatusItem("squad", "Squad"));
 
-        statusAdapter = new TournamentStatusAdapter(requireContext(), statusItems);
-        spinnerTournamentStatus.setAdapter(statusAdapter);
-        spinnerTournamentStatus.setSelection(0);
+        subModeAdapter = new TournamentStatusAdapter(requireContext(), subModeItems);
+        spinnerSubMode.setAdapter(subModeAdapter);
+        spinnerSubMode.setSelection(0);
 
-        spinnerTournamentStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        // Only visible for Bermuda mode; hidden for CS and LW
+        spinnerSubMode.setVisibility("BR".equals(currentMode) ? View.VISIBLE : View.GONE);
+
+        spinnerSubMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                TournamentStatusAdapter.StatusItem selected = statusAdapter.getItem(position);
-                if (selected != null && !selected.apiValue.equals(currentStatus)) {
-                    currentStatus = selected.apiValue;
-                    tournamentsLoaded = false;
-                    loadTournaments();
+                TournamentStatusAdapter.StatusItem selected = subModeAdapter.getItem(position);
+                if (selected != null) {
+                    String newSubMode = selected.apiValue; // null means "All Modes"
+                    boolean changed = (newSubMode == null)
+                            ? currentSubMode != null
+                            : !newSubMode.equals(currentSubMode);
+                    if (changed) {
+                        currentSubMode = newSubMode;
+                        tournamentsLoaded = false;
+                        loadTournaments();
+                    }
                 }
             }
 
@@ -395,6 +413,13 @@ public class HomeFragment extends Fragment {
     private void switchMode(String mode) {
         currentMode = mode;
         updateButtonStates(mode);
+        // ✅ Show subMode spinner only for Bermuda; hide + reset for CS and LW
+        if ("BR".equals(mode)) {
+            spinnerSubMode.setVisibility(View.VISIBLE);
+        } else {
+            spinnerSubMode.setVisibility(View.GONE);
+            currentSubMode = null; // clear subMode filter for non-BR modes
+        }
         tournamentsLoaded = false;
         loadTournaments();
     }
@@ -441,6 +466,9 @@ public class HomeFragment extends Fragment {
                                     response.body().data.tournaments
                             );
 
+                            // ✅ Filter by subMode if spinner selection is not "All Modes"
+                            uniqueTournaments = filterBySubMode(uniqueTournaments);
+
                             // Sort tournaments by time
                             sortTournamentsByTime(uniqueTournaments);
 
@@ -470,6 +498,9 @@ public class HomeFragment extends Fragment {
                             List<Tournament> uniqueTournaments = removeDuplicateTournaments(
                                     response.body().data.tournaments
                             );
+
+                            // ✅ Filter by subMode if spinner selection is not "All Modes"
+                            uniqueTournaments = filterBySubMode(uniqueTournaments);
 
                             // Sort tournaments by time
                             sortTournamentsByTime(uniqueTournaments);
@@ -504,6 +535,21 @@ public class HomeFragment extends Fragment {
         }
 
         return new ArrayList<>(uniqueMap.values());
+    }
+
+    // ✅ NEW: Client-side subMode filter — only applied when a specific subMode is selected.
+    // When currentSubMode is null ("All Modes"), the full list is returned unchanged.
+    private List<Tournament> filterBySubMode(List<Tournament> tournaments) {
+        if (currentSubMode == null || currentSubMode.isEmpty()) {
+            return tournaments; // "All Modes" — no filtering
+        }
+        List<Tournament> filtered = new ArrayList<>();
+        for (Tournament t : tournaments) {
+            if (currentSubMode.equalsIgnoreCase(t.getSubMode())) {
+                filtered.add(t);
+            }
+        }
+        return filtered;
     }
 
     // ========== NEW: TOURNAMENT SORTING METHODS ==========

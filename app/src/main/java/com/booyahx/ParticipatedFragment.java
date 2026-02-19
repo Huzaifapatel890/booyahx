@@ -46,8 +46,15 @@ public class ParticipatedFragment extends Fragment {
     private Spinner spinnerMode;
     private TournamentStatusAdapter modeAdapter;
 
+    // ✅ NEW: Second spinner for game mode (BR / CS / Special)
+    private Spinner spinnerGameMode;
+    private TournamentStatusAdapter gameModeAdapter;
+
     // All modes is default
     private String currentSubMode = "all";
+
+    // ✅ NEW: Game mode filter — "all" means no filter applied
+    private String currentGameMode = "all";
 
     private List<JoinedTournament> allTournaments = new ArrayList<>();
 
@@ -73,11 +80,16 @@ public class ParticipatedFragment extends Fragment {
         spinnerMode = view.findViewById(R.id.spinnerMode);
         tvEmptyState = view.findViewById(R.id.tvEmptyState);
 
+        // ✅ NEW: Bind game mode spinner (placed after spinnerMode in the same row in layout)
+        spinnerGameMode = view.findViewById(R.id.spinnerGameMode);
+
         rvTournaments.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new JoinedTournamentAdapter(null);
         rvTournaments.setAdapter(adapter);
 
         setupModeSpinner();
+        // ✅ NEW: Set up game mode spinner
+        setupGameModeSpinner();
         fetchJoinedTournaments();
 
         getParentFragmentManager().setFragmentResultListener(
@@ -122,6 +134,60 @@ public class ParticipatedFragment extends Fragment {
                 if (selected != null && !selected.apiValue.equals(currentSubMode)) {
                     Log.d(TAG, "SubMode changed from " + currentSubMode + " to " + selected.apiValue);
                     currentSubMode = selected.apiValue;
+                    filterAndSortTournaments();
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
+    }
+
+    // ✅ NEW: Game mode spinner — BR / CS / Special (LW), placed in same row as subMode spinner
+    // ✅ FIX: When CS is selected → subMode spinner auto-resets to "All Modes" and is fully locked
+    //         (no dropdown can open). When non-CS is selected → subMode spinner is re-enabled.
+    private void setupGameModeSpinner() {
+        Log.d(TAG, "Setting up game mode spinner");
+
+        List<TournamentStatusAdapter.StatusItem> gameModeItems = new ArrayList<>();
+        gameModeItems.add(new TournamentStatusAdapter.StatusItem("all", "All"));
+        gameModeItems.add(new TournamentStatusAdapter.StatusItem("BR",  "BR"));
+        gameModeItems.add(new TournamentStatusAdapter.StatusItem("CS",  "CS"));
+        gameModeItems.add(new TournamentStatusAdapter.StatusItem("LW",  "Special"));
+
+        gameModeAdapter = new TournamentStatusAdapter(requireContext(), gameModeItems);
+        spinnerGameMode.setAdapter(gameModeAdapter);
+
+        // Default: All
+        spinnerGameMode.setSelection(0);
+        Log.d(TAG, "Game mode spinner set to default: all");
+
+        spinnerGameMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                TournamentStatusAdapter.StatusItem selected = gameModeAdapter.getItem(position);
+                if (selected != null && !selected.apiValue.equals(currentGameMode)) {
+                    Log.d(TAG, "GameMode changed from " + currentGameMode + " to " + selected.apiValue);
+                    currentGameMode = selected.apiValue;
+
+                    // ✅ FIX: CS has no subMode — auto-reset subMode to "All Modes" and lock spinner
+                    if ("CS".equals(currentGameMode)) {
+                        Log.d(TAG, "CS selected → resetting subMode spinner to 'All Modes' and locking it");
+                        currentSubMode = "all";
+                        spinnerMode.setSelection(0);       // force back to "All Modes"
+                        spinnerMode.setEnabled(false);     // block touch interaction
+                        spinnerMode.setClickable(false);   // prevent click from opening dropdown
+                        spinnerMode.setFocusable(false);   // prevent focus-based dropdown
+                        spinnerMode.setAlpha(0.4f);        // visual cue: dimmed = locked/unavailable
+                    } else {
+                        // ✅ Non-CS selected → restore subMode spinner to fully interactive
+                        Log.d(TAG, "Non-CS selected → unlocking subMode spinner");
+                        spinnerMode.setEnabled(true);
+                        spinnerMode.setClickable(true);
+                        spinnerMode.setFocusable(true);
+                        spinnerMode.setAlpha(1.0f);
+                    }
+
                     filterAndSortTournaments();
                 }
             }
@@ -194,7 +260,7 @@ public class ParticipatedFragment extends Fragment {
     }
 
     private void filterAndSortTournaments() {
-        Log.d(TAG, "Filtering and sorting tournaments for subMode: " + currentSubMode);
+        Log.d(TAG, "Filtering and sorting tournaments for subMode: " + currentSubMode + ", gameMode: " + currentGameMode);
 
         List<JoinedTournament> filtered = new ArrayList<>();
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
@@ -219,6 +285,15 @@ public class ParticipatedFragment extends Fragment {
                 String subMode = t.getSubMode();
                 if (subMode == null || !subMode.equalsIgnoreCase(currentSubMode)) {
                     Log.d(TAG, "Skipping tournament " + t.getLobbyName() + " - subMode mismatch (has: " + subMode + ", need: " + currentSubMode + ")");
+                    continue;
+                }
+            }
+
+            // ✅ NEW Filter 3: Game mode filter (BR, CS, LW/Special, or all)
+            if (!currentGameMode.equals("all")) {
+                String gameMode = t.getMode();
+                if (gameMode == null || !gameMode.equalsIgnoreCase(currentGameMode)) {
+                    Log.d(TAG, "Skipping tournament " + t.getLobbyName() + " - gameMode mismatch (has: " + gameMode + ", need: " + currentGameMode + ")");
                     continue;
                 }
             }
@@ -265,7 +340,7 @@ public class ParticipatedFragment extends Fragment {
             Log.d(TAG, (i + 1) + ". " + t.getLobbyName() + " | Status: " + t.getStatus() + " | Time: " + t.getStartTime());
         }
 
-        Log.d(TAG, "Filtered and sorted = " + filtered.size() + " tournaments | subMode = " + currentSubMode);
+        Log.d(TAG, "Filtered and sorted = " + filtered.size() + " tournaments | subMode = " + currentSubMode + " | gameMode = " + currentGameMode);
 
         if (filtered.isEmpty()) {
             tvEmptyState.setVisibility(View.VISIBLE);
