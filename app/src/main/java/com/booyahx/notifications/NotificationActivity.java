@@ -35,6 +35,13 @@ public class NotificationActivity extends AppCompatActivity {
     private final BroadcastReceiver notificationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            // ✅ USER ISOLATION: drop any broadcast not tagged for the current user
+            String targetUserId = intent.getStringExtra("targetUserId");
+            String currentUserId = com.booyahx.TokenManager.getUserId(context);
+            if (targetUserId != null && !targetUserId.equals(currentUserId)) {
+                return; // not for this user
+            }
+
             String action = intent.getAction();
             String rawData = intent.getStringExtra("data");
             Log.d(TAG, "📨 Broadcast received: " + action);
@@ -198,6 +205,16 @@ public class NotificationActivity extends AppCompatActivity {
         backButton.setOnClickListener(v -> finish());
 
         notificationManager = NotificationManager.getInstance(this);
+
+        // ✅ USER ISOLATION FIX: Always enforce the correct user scope here, before reading
+        // any data. DashboardActivity.onResume() may not have run yet (cold start, deep link,
+        // banner tap, etc.), so we cannot rely on it having already called switchUser().
+        // If scope is already correct → switchUser() no-ops. If wrong user is in memory
+        // (User A/B swap) → switchUser() clears memory and loads the right user from disk.
+        String currentUserId = com.booyahx.TokenManager.getUserId(this);
+        if (currentUserId != null) {
+            notificationManager.switchUser(currentUserId);
+        }
 
         // ✅ FIX: Clear unread flag whenever NotificationActivity opens — covers both the
         // bell button tap AND the in-app banner tap, so the red dot always clears on open.

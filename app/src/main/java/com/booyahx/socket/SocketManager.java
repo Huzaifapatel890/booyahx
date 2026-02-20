@@ -351,6 +351,15 @@ public class SocketManager {
     private static void sendBroadcast(String action, Object... args) {
         Intent intent = new Intent(action);
 
+        // ✅ USER ISOLATION FIX (Option B): Tag every broadcast with the currently
+        // subscribed userId so DashboardActivity can drop events meant for other users.
+        // currentUserId is set in subscribe() and cleared in unsubscribe(), so it always
+        // reflects the user whose socket room emitted this event.
+        if (currentUserId != null) {
+            intent.putExtra("targetUserId", currentUserId);
+            Log.d(TAG, "Broadcast tagged for userId: " + currentUserId);
+        }
+
         // Attach data if available
         if (args != null && args.length > 0 && args[0] instanceof JSONObject) {
             try {

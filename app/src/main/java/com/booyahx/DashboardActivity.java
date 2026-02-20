@@ -143,6 +143,9 @@ public class DashboardActivity extends AppCompatActivity {
         String userId = TokenManager.getUserId(this);
         if (userId != null) {
             SocketManager.subscribe(userId);
+            // ✅ USER ISOLATION: scope stored notifications to this user so User B
+            // never sees User A's notification history from SharedPreferences
+            NotificationManager.getInstance(this).switchUser(userId);
         }
     }
 
@@ -170,6 +173,12 @@ public class DashboardActivity extends AppCompatActivity {
         broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
+                String targetUserId = intent.getStringExtra("targetUserId");
+                String currentUserId = TokenManager.getUserId(context);
+                if (targetUserId != null && !targetUserId.equals(currentUserId)) {
+                    return; // drop — not for this user
+                }
+
                 String action = intent.getAction();
                 if (action == null) return;
 
