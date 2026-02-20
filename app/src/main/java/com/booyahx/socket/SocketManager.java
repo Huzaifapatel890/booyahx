@@ -189,8 +189,34 @@ public class SocketManager {
             socket.emit("subscribe:wallet", currentUserId);
             socket.emit("subscribe:user-tournaments", currentUserId);
             Log.d(TAG, "✅ Re-subscription complete");
+            // ✅ GAP 4 FIX: Broadcast reconnect so ParticipatedFragment re-fetches
+            // joined tournaments via REST to recover any events missed while offline.
+            sendBroadcast("SOCKET_RECONNECTED");
+            Log.d(TAG, "✅ SOCKET_RECONNECTED broadcast sent — fragments will re-fetch missed data");
             Log.d(TAG, "============================================");
         });
+    }
+
+    /**
+     * ✅ GAP 1 FIX: Subscribe to a specific tournament room on the server.
+     * Call this from ParticipatedFragment after the joined tournament list loads,
+     * for every tournament in the list. Backend routes room-credential push events
+     * to participants via 'subscribe:tournament', so without this emit the app
+     * never receives room updates for that specific tournament room channel.
+     *
+     * @param tournamentId The tournament ID to subscribe to
+     */
+    public static void subscribeToTournament(String tournamentId) {
+        if (socket == null) {
+            Log.w(TAG, "⚠️ subscribeToTournament: socket is null, skipping: " + tournamentId);
+            return;
+        }
+        if (tournamentId == null || tournamentId.isEmpty()) {
+            Log.w(TAG, "⚠️ subscribeToTournament: tournamentId is null/empty, skipping");
+            return;
+        }
+        socket.emit("subscribe:tournament", tournamentId);
+        Log.d(TAG, "✅ Emitted: subscribe:tournament → " + tournamentId);
     }
 
     /**
@@ -334,6 +360,22 @@ public class SocketManager {
             }
             Log.d(TAG, "Broadcasting to app...");
             sendBroadcast("TOURNAMENT_STATUS_UPDATED", args);
+            Log.d(TAG, "============================================");
+        });
+
+        // ========== NOTIFICATION PUSH ==========
+        // ✅ GAP 3 FIX: notification:push was listed in backend docs but never listened to here.
+        // Admin / backend can push arbitrary notifications to subscribed users via this event.
+        // We broadcast it as NOTIFICATION_PUSH so DashboardActivity can show the banner
+        // and persist it to NotificationManager for NotificationActivity.
+        socket.on("notification:push", args -> {
+            Log.d(TAG, "============================================");
+            Log.d(TAG, "📨 Received: notification:push");
+            if (args.length > 0) {
+                Log.d(TAG, "Data: " + args[0].toString());
+            }
+            Log.d(TAG, "Broadcasting to app...");
+            sendBroadcast("NOTIFICATION_PUSH", args);
             Log.d(TAG, "============================================");
         });
 

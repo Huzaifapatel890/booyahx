@@ -21,7 +21,14 @@ import com.booyahx.network.ApiClient;
 import com.booyahx.network.ApiService;
 import com.booyahx.network.models.JoinedTournament;
 import com.booyahx.network.models.JoinedTournamentResponse;
+import com.booyahx.socket.SocketManager;
 import com.booyahx.tournament.JoinedTournamentAdapter;
+
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -57,6 +64,18 @@ public class ParticipatedFragment extends Fragment {
     private String currentGameMode = "all";
 
     private List<JoinedTournament> allTournaments = new ArrayList<>();
+
+    // ✅ GAP 4 FIX: When the socket reconnects after a drop, re-fetch the joined tournament
+    // list via REST to recover any room/status events that fired while we were offline.
+    // SocketManager.subscribe() broadcasts SOCKET_RECONNECTED on every EVENT_CONNECT.
+    private final BroadcastReceiver reconnectReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!isAdded()) return;
+            Log.d(TAG, "🔄 SOCKET_RECONNECTED — re-fetching joined tournaments to recover missed events");
+            fetchJoinedTournaments();
+        }
+    };
 
     @Nullable
     @Override
@@ -161,6 +180,26 @@ public class ParticipatedFragment extends Fragment {
                     filterAndSortTournaments();
                 }
         );
+    }
+
+    // ✅ GAP 4 FIX: Register reconnect receiver when fragment becomes visible.
+    // Using onStart/onStop (not onResume/onPause) matches the lifecycle used in HomeFragment
+    // and keeps the receiver alive across brief pauses (e.g. dialog opens).
+    @Override
+    public void onStart() {
+        super.onStart();
+        IntentFilter filter = new IntentFilter("SOCKET_RECONNECTED");
+        LocalBroadcastManager.getInstance(requireContext())
+                .registerReceiver(reconnectReceiver, filter);
+        Log.d(TAG, "✅ reconnectReceiver registered");
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        LocalBroadcastManager.getInstance(requireContext())
+                .unregisterReceiver(reconnectReceiver);
+        Log.d(TAG, "✅ reconnectReceiver unregistered");
     }
 
     private void setupModeSpinner() {
@@ -280,6 +319,18 @@ public class ParticipatedFragment extends Fragment {
 
                 allTournaments = response.body().getData().getTournaments();
                 Log.d(TAG, "Successfully fetched " + allTournaments.size() + " tournaments");
+
+                // ✅ GAP 1 FIX: Subscribe to each tournament's specific socket room.
+                // backend routes room-credential push events through 'subscribe:tournament',
+                // so without this emit the app never receives those per-tournament updates.
+                // We subscribe to ALL joined tournaments (not just live ones) because the
+                // backend can promote upcoming → live at any moment and push room data then.
+                for (JoinedTournament t : allTournaments) {
+                    if (t.getId() != null && !t.getId().isEmpty()) {
+                        SocketManager.subscribeToTournament(t.getId());
+                    }
+                }
+                Log.d(TAG, "✅ subscribe:tournament emitted for " + allTournaments.size() + " tournaments");
 
                 // Debug: Print first tournament's participants
                 if (!allTournaments.isEmpty()) {

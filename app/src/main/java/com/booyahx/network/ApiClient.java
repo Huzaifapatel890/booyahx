@@ -17,6 +17,7 @@ public class ApiClient {
     private static final String TAG = "ApiClient_DEBUG";
 
     private static Retrofit api;
+    private static Retrofit silentApi; // ✅ No-loader client for background/broadcast calls
     private static Retrofit refresh;
     private static GlobalLoadingInterceptor loadingInterceptor;
     private static FragmentActivity currentActivity;
@@ -113,6 +114,65 @@ public class ApiClient {
         return api;
     }
 
+    /**
+     * ✅ SILENT CLIENT: Use this for any API call triggered by a BroadcastReceiver,
+     * WebSocket event, or any background operation. It uses the same OkHttpClient
+     * config as getClient() (auth, CSRF, token refresh, logging) but injects
+     * X-Silent-Request: true on every request, which tells GlobalLoadingInterceptor
+     * to skip the loader entirely for that call.
+     *
+     * Usage — replace:  ApiClient.getClient(this).create(ApiService.class)
+     *     with:  ApiClient.getSilentClient(this).create(ApiService.class)
+     */
+    public static Retrofit getSilentClient(Context ctx) {
+        Log.d(TAG, "🟢 getSilentClient() called");
+
+        if (silentApi == null) {
+            Log.d(TAG, "🔨 Building new silent Retrofit instance...");
+
+            HttpLoggingInterceptor log = new HttpLoggingInterceptor();
+            log.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+            if (loadingInterceptor == null && currentActivity != null) {
+                loadingInterceptor = new GlobalLoadingInterceptor(currentActivity);
+            }
+
+            OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
+                    .cookieJar(CookieStore.getInstance())
+                    // ✅ Injects X-Silent-Request: true on every request through this client.
+                    // GlobalLoadingInterceptor sees this header, skips the loader, then
+                    // strips the header so it never reaches the server.
+                    .addInterceptor(chain -> chain.proceed(
+                            chain.request().newBuilder()
+                                    .header("X-Silent-Request", "true")
+                                    .build()
+                    ))
+                    .addInterceptor(new CsrfResponseInterceptor(ctx))
+                    .addInterceptor(new AuthInterceptor(ctx))
+                    .addInterceptor(new TokenRefreshInterceptor(ctx))
+                    .addInterceptor(log)
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS);
+
+            if (loadingInterceptor != null) {
+                clientBuilder.addInterceptor(loadingInterceptor);
+            }
+
+            silentApi = new Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .client(clientBuilder.build())
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+
+            Log.d(TAG, "   ✅ Silent Retrofit instance created");
+        } else {
+            Log.d(TAG, "   ℹ️ Returning existing silent Retrofit instance");
+        }
+
+        return silentApi;
+    }
+
     public static Retrofit getRefreshClient() {
         Log.d(TAG, "🟢 getRefreshClient() called (NO LOADER on this client)");
 
@@ -142,6 +202,7 @@ public class ApiClient {
         Log.d(TAG, "   Before reset - api: " + (api != null) + ", refresh: " + (refresh != null) + ", loadingInterceptor: " + (loadingInterceptor != null));
 
         api = null;
+        silentApi = null; // ✅ also clear silent client
         refresh = null;
         loadingInterceptor = null;
 

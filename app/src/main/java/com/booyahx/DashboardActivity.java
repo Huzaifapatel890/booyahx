@@ -198,6 +198,10 @@ public class DashboardActivity extends AppCompatActivity {
                     case "PAYMENT_QR_UPDATED":
                         handlePaymentQRUpdate(intent);
                         break;
+
+                    case "NOTIFICATION_PUSH": // ✅ GAP 3 FIX
+                        handleNotificationPush(intent);
+                        break;
                 }
             }
         };
@@ -208,6 +212,7 @@ public class DashboardActivity extends AppCompatActivity {
         filter.addAction("TOURNAMENT_ROOM_UPDATED");
         filter.addAction("TOURNAMENT_STATUS_UPDATED");
         filter.addAction("PAYMENT_QR_UPDATED");
+        filter.addAction("NOTIFICATION_PUSH"); // ✅ GAP 3 FIX
 
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
         Log.d(TAG, "✅ BroadcastReceiver registered in onCreate");
@@ -395,6 +400,32 @@ public class DashboardActivity extends AppCompatActivity {
                     JSONObject data = new JSONObject(dataJson);
                     bundle.putString("tournament_id", data.optString("tournamentId"));
                     bundle.putString("new_status", data.optString("status"));
+
+                    // ✅ GAP 2 FIX: backend dev said if tournament:status-updated payload
+                    // contains a "room" object, treat it the same as tournament:room-updated
+                    // and push the room credentials to ParticipatedFragment immediately.
+                    // Previously this data was silently dropped.
+                    if (data.has("room") && !data.isNull("room")) {
+                        try {
+                            JSONObject room = data.getJSONObject("room");
+                            String roomId       = room.optString("roomId",   "");
+                            String roomPassword = room.optString("password", "");
+                            String tId          = data.optString("tournamentId", "");
+                            if (!tId.isEmpty()) {
+                                Bundle roomBundle = new Bundle();
+                                roomBundle.putString("tournament_id",   tId);
+                                roomBundle.putString("room_id",         roomId);
+                                roomBundle.putString("room_password",   roomPassword);
+                                getSupportFragmentManager().setFragmentResult(
+                                        "tournament_room_updated", roomBundle);
+                                Log.d(TAG, "✅ GAP 2: room data inside status payload forwarded"
+                                        + " → tournamentId=" + tId
+                                        + " roomId=" + roomId);
+                            }
+                        } catch (Exception roomEx) {
+                            Log.e(TAG, "Error extracting room from status payload", roomEx);
+                        }
+                    }
                 }
 
                 // ✅ Broadcast to HomeFragment
@@ -456,6 +487,67 @@ public class DashboardActivity extends AppCompatActivity {
 
             } catch (JSONException e) {
                 Log.e(TAG, "Error parsing tournament status update", e);
+            }
+        });
+    }
+
+    /**
+     * ✅ GAP 3 FIX: Handle notification:push events from the server.
+     *
+     * Backend payload shape:
+     *   { type, title, message, body?, timestamp, tournamentId? }
+     *
+     * Types include: "room-updated", "new-lobby-created", "lobby-filling",
+     *                "admin-notification", etc.
+     *
+     * Shows an in-app banner and persists to NotificationManager so the
+     * NotificationActivity bell list also shows these server-pushed alerts.
+     */
+    private void handleNotificationPush(Intent intent) {
+        String dataJson = intent.getStringExtra("data");
+        runOnUiThread(() -> {
+            try {
+                if (dataJson == null) {
+                    Log.w(TAG, "handleNotificationPush: dataJson is null, skipping");
+                    return;
+                }
+
+                JSONObject data   = new JSONObject(dataJson);
+                String type       = data.optString("type",    "");
+                String title      = data.optString("title",   "Notification");
+                String message    = data.optString("message", "");
+
+                // Fallback: some push shapes use "body" instead of "message"
+                if (message.isEmpty()) {
+                    message = data.optString("body", "");
+                }
+                if (message.isEmpty()) {
+                    Log.w(TAG, "handleNotificationPush: empty message, skipping");
+                    return;
+                }
+
+                // Map push type → notification icon/colour in NotificationActivity
+                NotificationType notifType = NotificationType.SYSTEM;
+                if ("room-updated".equalsIgnoreCase(type)) {
+                    notifType = NotificationType.ROOM_UPDATE;
+                } else if ("new-lobby-created".equalsIgnoreCase(type)
+                        || "lobby-filling".equalsIgnoreCase(type)) {
+                    notifType = NotificationType.TOURNAMENT;
+                }
+
+                NotificationManager nm = NotificationManager.getInstance(this);
+                nm.addNotification(new NotificationItem(
+                        title,
+                        message,
+                        System.currentTimeMillis(),
+                        notifType
+                ));
+                NotificationPref.setUnread(this, true);
+                InAppNotificationBanner.show(DashboardActivity.this, title, message);
+                Log.d(TAG, "✅ notification:push handled — type=" + type + " title=" + title);
+
+            } catch (Exception e) {
+                Log.e(TAG, "Error handling notification:push", e);
             }
         });
     }

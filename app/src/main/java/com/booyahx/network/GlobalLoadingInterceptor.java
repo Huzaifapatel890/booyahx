@@ -32,8 +32,19 @@ public class GlobalLoadingInterceptor implements Interceptor {
     public Response intercept(Chain chain) throws IOException {
         Request request = chain.request();
 
-        // Check if this request should skip the loader
-        boolean shouldSkipLoader = shouldSkipLoader(request);
+        // ✅ SILENT MODE: If the request carries the X-Silent-Request header (set by
+        // ApiClient.getSilentClient()), skip the loader entirely and strip the header
+        // so it never reaches the server. This covers ALL broadcast/websocket-driven
+        // background API calls without needing per-URL configuration.
+        boolean isSilent = "true".equals(request.header("X-Silent-Request"));
+        if (isSilent) {
+            request = request.newBuilder()
+                    .removeHeader("X-Silent-Request")
+                    .build();
+        }
+
+        // Check if this request should skip the loader (silent flag OR URL-based rules)
+        boolean shouldSkipLoader = isSilent || shouldSkipLoader(request);
 
         // Increment active requests and show loader (only if not skipping)
         int count = 0;
@@ -60,19 +71,22 @@ public class GlobalLoadingInterceptor implements Interceptor {
     }
 
     /**
-     * Determine if the loader should be skipped for this request
+     * URL-based loader skip rules.
+     * For broadcast/websocket-driven calls use ApiClient.getSilentClient() instead —
+     * that is the global mechanism. Only add URLs here for endpoints that should
+     * ALWAYS be silent regardless of who calls them.
      */
     private boolean shouldSkipLoader(Request request) {
         String url = request.url().toString();
 
-        // Skip loader for withdraw-limit endpoint
-        if (url.contains("/api/wallet/withdraw-limit")) {
+        // wallet balance — also covers withdrawal limit data (same unified endpoint)
+        if (url.contains("/api/wallet/balance")) {
             return true;
         }
 
-        // Add more endpoints here if needed in the future
-        if (url.contains("/api/wallet/balance ")) {
-        //     return true;
+        // legacy withdraw-limit endpoint (deprecated but kept for safety)
+        if (url.contains("/api/wallet/withdraw-limit")) {
+            return true;
         }
 
         return false;
