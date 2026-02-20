@@ -109,6 +109,58 @@ public class ParticipatedFragment extends Fragment {
                     fetchJoinedTournaments();
                 }
         );
+
+        // 🔥 NEW: Listen for room credential updates pushed directly from WebSocket payload.
+        // Backend now sends room: { roomId, password } inside tournament:room-updated event.
+        // DashboardActivity parses that and forwards it here as a bundle — NO API call needed.
+        // Only the specific tournament matching tournamentId in allTournaments is patched,
+        // so users who did NOT join that tournament are completely unaffected.
+        getParentFragmentManager().setFragmentResultListener(
+                "tournament_room_updated",
+                getViewLifecycleOwner(),
+                (requestKey, bundle) -> {
+                    String tournamentId = bundle.getString("tournament_id", "");
+                    String roomId       = bundle.getString("room_id",       "");
+                    String roomPassword = bundle.getString("room_password", "");
+
+                    Log.d(TAG, "============================================");
+                    Log.d(TAG, "🔥 tournament_room_updated received");
+                    Log.d(TAG, "Tournament ID : " + tournamentId);
+                    Log.d(TAG, "Room ID       : " + roomId);
+                    Log.d(TAG, "Room Password : " + roomPassword);
+                    Log.d(TAG, "============================================");
+
+                    if (tournamentId.isEmpty()) {
+                        Log.w(TAG, "⚠️ tournament_room_updated: empty tournamentId, skipping patch");
+                        return;
+                    }
+
+                    // 🔥 Only patch the single tournament that matches tournamentId.
+                    // allTournaments only contains tournaments THIS user has joined,
+                    // so this update is already scoped to joined users only.
+                    boolean found = false;
+                    for (JoinedTournament t : allTournaments) {
+                        if (tournamentId.equals(t.getId())) {
+                            t.setRoomId(roomId);
+                            t.setPassword(roomPassword);
+                            Log.d(TAG, "✅ Patched joined tournament: " + t.getLobbyName()
+                                    + " → roomId=" + roomId
+                                    + " password=" + roomPassword);
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found) {
+                        Log.w(TAG, "⚠️ tournament_room_updated: no matching joined tournament found for id=" + tournamentId
+                                + " (this user may not have joined that tournament — correctly ignored)");
+                        return;
+                    }
+
+                    // Refresh the adapter to show updated room credentials in the list
+                    filterAndSortTournaments();
+                }
+        );
     }
 
     private void setupModeSpinner() {

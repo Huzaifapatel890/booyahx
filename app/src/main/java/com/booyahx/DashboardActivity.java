@@ -18,12 +18,18 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.booyahx.network.ApiClient;
+import com.booyahx.network.ApiService;
+import com.booyahx.network.models.WalletBalanceResponse;
 import com.booyahx.notifications.NotificationItem;
 import com.booyahx.notifications.NotificationManager;
 import com.booyahx.notifications.NotificationType;
 import com.booyahx.socket.SocketManager;
 import com.booyahx.utils.NotificationPref;
 import com.booyahx.utils.InAppNotificationBanner;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -265,36 +271,86 @@ public class DashboardActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e(TAG, "Error saving wallet notification", e);
             }
+
+            // ✅ Silently refresh wallet balance from API and overwrite WalletCacheManager
+            refreshWalletCache();
         });
     }
 
     /**
-     * Handle tournament room update event
-     * ✅ FIX: Now saves notification to NotificationManager so it persists for NotificationActivity
+     * Handle tournament room update event.
+     *
+     * 🔥 NEW IMPLEMENTATION:
+     *   - Old approach: sent a bare "joined_refresh" fragment result → triggered
+     *     fetchJoinedTournaments() API call → room data came back from the server.
+     *   - New approach: backend NOW sends room: { roomId, password } directly inside
+     *     the "tournament:room-updated" WebSocket payload (no API round-trip needed).
+     *     We parse the nested "room" object and push its data straight into a
+     *     "tournament_room_updated" bundle → ParticipatedFragment patches only the
+     *     matching tournament in its local list. Users who did not join that
+     *     tournament are completely unaffected.
+     *
+     * Payload shape from backend:
+     *   { tournamentId, type: 'room-updated', room: { roomId, password }, timestamp }
      */
     private void handleTournamentRoomUpdate(Intent intent) {
         String dataJson = intent.getStringExtra("data");
 
         runOnUiThread(() -> {
-            // Notify fragments about room updates
-            getSupportFragmentManager().setFragmentResult(
-                    "joined_refresh",
-                    new Bundle()
-            );
-
-            // ✅ FIX: Save notification to persistent store so NotificationActivity can show it
             try {
-                NotificationManager nm = NotificationManager.getInstance(this);
+                String tournamentId   = "";
+                String roomId         = "";
+                String roomPassword   = "";
                 String tournamentName = "Tournament";
-                String roomId = "";
-                String roomPassword = "";
 
                 if (dataJson != null) {
                     JSONObject data = new JSONObject(dataJson);
+
+                    // Top-level fields
+                    tournamentId   = data.optString("tournamentId", "");
                     tournamentName = data.optString("tournamentName", "Tournament");
-                    roomId = data.optString("roomId", "");
-                    roomPassword = data.optString("roomPassword", "");
+
+                    // 🔥 NEW: roomId & password now live inside the nested "room" object
+                    //    per the updated WebSocket payload spec.
+                    if (data.has("room") && !data.isNull("room")) {
+                        JSONObject room = data.getJSONObject("room");
+                        roomId       = room.optString("roomId",   "");
+                        roomPassword = room.optString("password", "");
+                        Log.d(TAG, "🔥 Parsed room from nested object → roomId=" + roomId
+                                + " password=" + roomPassword);
+                    } else {
+                        // ⚠️ Fallback for any legacy payload shape — keeps compatibility
+                        roomId       = data.optString("roomId",       "");
+                        roomPassword = data.optString("roomPassword", "");
+                        Log.w(TAG, "⚠️ Fallback: room object not found in payload, reading flat keys");
+                    }
+
+                    Log.d(TAG, "📨 handleTournamentRoomUpdate:"
+                            + " tournamentId=" + tournamentId
+                            + " roomId=" + roomId
+                            + " password=" + roomPassword);
                 }
+
+                // 🔥 NEW: Push roomId + password directly to ParticipatedFragment via bundle.
+                // The fragment will patch ONLY the matching tournament in allTournaments
+                // (which already contains only tournaments the current user has joined),
+                // so no other user's data is affected. No API call is made.
+                Bundle roomBundle = new Bundle();
+                roomBundle.putString("tournament_id",   tournamentId);
+                roomBundle.putString("room_id",         roomId);
+                roomBundle.putString("room_password",   roomPassword);
+
+                getSupportFragmentManager().setFragmentResult(
+                        "tournament_room_updated",
+                        roomBundle
+                );
+
+                Log.d(TAG, "✅ 'tournament_room_updated' fragment result sent"
+                        + " | tournamentId=" + tournamentId
+                        + " | roomId=" + roomId);
+
+                // ✅ FIX: Save notification to persistent store so NotificationActivity can show it
+                NotificationManager nm = NotificationManager.getInstance(this);
 
                 NotificationItem notification = new NotificationItem(
                         "Room ID & Password Updated",
@@ -309,7 +365,7 @@ public class DashboardActivity extends AppCompatActivity {
                 InAppNotificationBanner.show(DashboardActivity.this, notification.getTitle(), notification.getMessage());
 
             } catch (Exception e) {
-                Log.e(TAG, "Error saving room update notification", e);
+                Log.e(TAG, "Error handling tournament room update", e);
             }
         });
     }
@@ -344,11 +400,11 @@ public class DashboardActivity extends AppCompatActivity {
                         bundle
                 );
 
-                // ✅ Broadcast to ParticipatedFragment (through joined_refresh)
-                getSupportFragmentManager().setFragmentResult(
-                        "joined_refresh",
-                        new Bundle()
-                );
+                // NOTE: "joined_refresh" is intentionally NOT sent here.
+                // ParticipatedFragment already listens to "tournament_status_changed" above
+                // and calls fetchJoinedTournaments() from that listener.
+                // Sending "joined_refresh" here too was causing a duplicate API call
+                // (confirmed via logs: two back-to-back hits to /api/tournament/joined).
 
                 Log.d(TAG, "Tournament status update broadcasted to all fragments");
 
@@ -446,6 +502,9 @@ public class DashboardActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e(TAG, "Error saving payment notification", e);
             }
+
+            // ✅ Silently refresh wallet balance from API and overwrite WalletCacheManager
+            refreshWalletCache();
         });
     }
 
@@ -484,6 +543,34 @@ public class DashboardActivity extends AppCompatActivity {
 
     private void reset(TextView tv) {
         tv.setTextColor(0xFFAAAAAA);
+    }
+
+    /**
+     * Silently calls the wallet balance API in the background and overwrites WalletCacheManager.
+     * Called on any wallet-related socket emit (WALLET_UPDATED, PAYMENT_QR_UPDATED).
+     * No UI shown — purely a background cache refresh.
+     */
+    private void refreshWalletCache() {
+        ApiService api = ApiClient.getClient(this).create(ApiService.class);
+        api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
+            @Override
+            public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> response) {
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().data != null) {
+                    double newBalance = response.body().data.balanceGC;
+                    WalletCacheManager.saveBalance(DashboardActivity.this, newBalance);
+                    Log.d(TAG, "✅ WalletCacheManager updated silently: " + newBalance + " GC");
+                } else {
+                    Log.w(TAG, "⚠️ refreshWalletCache: unsuccessful response");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<WalletBalanceResponse> call, Throwable t) {
+                Log.e(TAG, "❌ refreshWalletCache failed: " + t.getMessage());
+            }
+        });
     }
 
     public void showTopRightToast(String message) {

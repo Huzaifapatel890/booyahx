@@ -213,6 +213,36 @@ public class JoinedTournament implements Serializable {
     public List<Team> getTeams() { return teams; }
     public List<JoinedTeamInfo> getJoinedTeamsList() { return joinedTeamsList; }
 
+    /* ================= SETTERS (for WebSocket room updates) ================= */
+
+    /**
+     * 🔥 NEW: Sets the room ID received directly from WebSocket tournament:room-updated payload.
+     * Creates the room object if it does not yet exist so the patch always succeeds.
+     * Called by ParticipatedFragment when it receives the "tournament_room_updated" bundle
+     * from DashboardActivity — no API call is made.
+     * @param roomId The room ID string from the WebSocket payload
+     */
+    public void setRoomId(String roomId) {
+        if (room == null) {
+            room = new Room();
+        }
+        room.roomId = roomId;
+    }
+
+    /**
+     * 🔥 NEW: Sets the room password received directly from WebSocket tournament:room-updated payload.
+     * Creates the room object if it does not yet exist so the patch always succeeds.
+     * Called by ParticipatedFragment when it receives the "tournament_room_updated" bundle
+     * from DashboardActivity — no API call is made.
+     * @param password The room password string from the WebSocket payload
+     */
+    public void setPassword(String password) {
+        if (room == null) {
+            room = new Room();
+        }
+        room.password = password;
+    }
+
     /* ================= INNER MODELS ================= */
 
     // ✅ NEW: This is the actual structure from API
