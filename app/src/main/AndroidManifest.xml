@@ -109,7 +109,9 @@
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar"/>
 
-
+        <activity
+            android:name=".ChatDebugActivity"
+            android:exported="false"/>
         <!-- 🔥 RESULT HISTORY -->
         <activity
             android:name=".settings.ResultHistoryActivity"

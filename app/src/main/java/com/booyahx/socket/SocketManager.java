@@ -31,6 +31,26 @@ public class SocketManager {
     private static String currentUserId = null;
     private static boolean isSubscribed = false;
 
+    // Stored chat listeners — re-applied after socket recreation
+    private static io.socket.emitter.Emitter.Listener chatMessageListener = null;
+    private static io.socket.emitter.Emitter.Listener chatErrorListener = null;
+    private static io.socket.emitter.Emitter.Listener chatClosedListener = null;
+    private static io.socket.emitter.Emitter.Listener userJoinedListener = null;
+    private static io.socket.emitter.Emitter.Listener userLeftListener = null;
+
+    // ✅ FIX: Named reference to the reconnect listener registered in subscribe().
+    // Used to remove ONLY that specific listener on re-subscription, without
+    // wiping other EVENT_CONNECT listeners (e.g. the lobby-chat one in joinTournamentRoom).
+    private static io.socket.emitter.Emitter.Listener reconnectListener = null;
+
+    // ── PERSISTENT LISTENER MAP ──────────────────────────────────────────────
+    // Thread-safe map of all event → listener registrations made through the
+    // public on*() helpers.  Populated BEFORE any null-socket early-exit so
+    // listeners survive the window where the socket is null during recreation.
+    // Key: Socket.IO event name.  Value: the Emitter.Listener to re-attach.
+    private static final java.util.concurrent.ConcurrentHashMap<String, io.socket.emitter.Emitter.Listener>
+            persistentListeners = new java.util.concurrent.ConcurrentHashMap<>();
+
     /**
      * Private constructor for singleton pattern
      */
@@ -181,9 +201,16 @@ public class SocketManager {
         Log.d(TAG, "✅ Subscription complete");
         Log.d(TAG, "============================================");
 
-        // Re-subscribe on reconnection
-        socket.off(Socket.EVENT_CONNECT);
-        socket.on(Socket.EVENT_CONNECT, args -> {
+        // Re-subscribe on reconnection.
+        // ✅ FIX: Remove ONLY our previously registered reconnect listener (if any)
+        // using socket.off(event, specificListener) instead of socket.off(event).
+        // This preserves all other EVENT_CONNECT listeners — in particular the one
+        // registered by joinTournamentRoom() that emits "subscribe:lobby-chat",
+        // which is the root cause of the host not receiving lobby-chat messages.
+        if (reconnectListener != null) {
+            socket.off(Socket.EVENT_CONNECT, reconnectListener);
+        }
+        reconnectListener = args -> {
             Log.d(TAG, "============================================");
             Log.d(TAG, "Socket reconnected, re-subscribing...");
             socket.emit("subscribe:wallet", currentUserId);
@@ -194,7 +221,8 @@ public class SocketManager {
             sendBroadcast("SOCKET_RECONNECTED");
             Log.d(TAG, "✅ SOCKET_RECONNECTED broadcast sent — fragments will re-fetch missed data");
             Log.d(TAG, "============================================");
-        });
+        };
+        socket.on(Socket.EVENT_CONNECT, reconnectListener);
     }
 
     /**
@@ -211,14 +239,24 @@ public class SocketManager {
             Log.w(TAG, "⚠️ subscribeToTournament: socket is null, skipping: " + tournamentId);
             return;
         }
+
         if (tournamentId == null || tournamentId.isEmpty()) {
             Log.w(TAG, "⚠️ subscribeToTournament: tournamentId is null/empty, skipping");
             return;
         }
-        socket.emit("subscribe:tournament", tournamentId);
-        Log.d(TAG, "✅ Emitted: subscribe:tournament → " + tournamentId);
-    }
 
+        if (socket.connected()) {
+            socket.emit("subscribe:tournament", tournamentId);
+            Log.d(TAG, "✅ Emitted immediately: subscribe:tournament → " + tournamentId);
+        } else {
+            Log.d(TAG, "⏳ Socket not connected, waiting to subscribe: " + tournamentId);
+
+            socket.once(Socket.EVENT_CONNECT, args -> {
+                socket.emit("subscribe:tournament", tournamentId);
+                Log.d(TAG, "✅ Emitted after connect: subscribe:tournament → " + tournamentId);
+            });
+        }
+    }
     /**
      * Unsubscribe from user-specific events
      */
@@ -387,6 +425,44 @@ public class SocketManager {
         Log.d(TAG, "✅ Global event listeners attached");
     }
 
+    // ── PERSISTENT LISTENER REATTACHMENT ────────────────────────────────────
+    /**
+     * Reattach every listener stored in {@code persistentListeners} to the
+     * current {@code socket} instance.  Called immediately after a new socket
+     * is created so that no registered callback is ever silently dropped.
+     *
+     * Thread-safety: operates under the class monitor (static synchronized)
+     * so it is safe to call from any thread.
+     *
+     * Duplicate prevention: {@code socket.off(event)} is called before each
+     * {@code socket.on(event, listener)} so a listener is never registered
+     * twice on the same socket instance.
+     */
+    private static synchronized void reattachPersistedListeners() {
+        if (socket == null) {
+            Log.w(TAG, "⚠️ reattachPersistedListeners: socket is null, skipping");
+            return;
+        }
+        if (persistentListeners.isEmpty()) {
+            Log.d(TAG, "ℹ️ reattachPersistedListeners: no persisted listeners to reattach");
+            return;
+        }
+        Log.d(TAG, "============================================");
+        Log.d(TAG, "🔁 REATTACHING PERSISTED LISTENERS");
+        Log.d(TAG, "Total listeners to reattach: " + persistentListeners.size());
+        for (java.util.Map.Entry<String, io.socket.emitter.Emitter.Listener> entry
+                : persistentListeners.entrySet()) {
+            String event    = entry.getKey();
+            io.socket.emitter.Emitter.Listener listener = entry.getValue();
+            // Remove first to guarantee no duplicates
+            socket.off(event, listener);
+            socket.on(event, listener);
+            Log.d(TAG, "↩️ Reattached persisted listener for event: " + event);
+        }
+        Log.d(TAG, "✅ All persisted listeners reattached");
+        Log.d(TAG, "============================================");
+    }
+
     /**
      * Send local broadcast with optional data
      */
@@ -481,29 +557,47 @@ public class SocketManager {
     }
 
     /**
-     * 🔥 FIX: Recreate the socket with a fresh token so the handshake auth is up-to-date.
-     * The existing socket's auth cannot be mutated after the handshake, so we must
-     * tear it down and rebuild it. Global listeners are re-attached automatically.
-     * Subscriptions (wallet, tournaments) are NOT re-emitted here — that is handled
-     * by the EVENT_CONNECT listener already registered inside subscribe().
+     * ✅ CORRECT FIX: Join lobby chat by recreating socket with fresh token.
+     * Flow: 1) Refresh token  2) Disconnect old socket  3) Create new socket
+     *       4) Connect         5) Emit subscribe:lobby-chat on connect
+     * Chat listeners stored in fields are re-applied to the new socket automatically.
+     * Wallet/tournament subscriptions are re-emitted via the EVENT_CONNECT listener
+     * already registered in subscribe().
+     * Matches backend: subscribe:lobby-chat
+     *
+     * @param tournamentId The tournament ID
+     * @param userId       The user ID
+     * @param username     The username
      */
-    private static void recreateSocketWithFreshToken(String freshToken) {
+    public void joinTournamentRoom(String tournamentId, String userId, String username) {
         Log.d(TAG, "============================================");
-        Log.d(TAG, "🔄 Recreating socket with fresh token...");
-
-        // Tear down the existing socket cleanly
-        if (socket != null) {
-            socket.off(); // remove all listeners to avoid leaks
-            socket.disconnect();
-            socket = null;
-            Log.d(TAG, "Old socket torn down");
-        }
+        Log.d(TAG, "🔵 JOINING LOBBY CHAT");
+        Log.d(TAG, "Tournament ID: " + tournamentId);
+        Log.d(TAG, "User ID:       " + userId);
+        Log.d(TAG, "Username:      " + username);
+        Log.d(TAG, "============================================");
 
         try {
+            // ── STEP 1: Refresh token ──────────────────────────────────────
+            String freshToken = getFreshToken();
+            if (freshToken == null || freshToken.isEmpty()) {
+                Log.e(TAG, "❌ Cannot join chat: no token available");
+                return;
+            }
+            Log.d(TAG, "✅ Step 1 complete: token refreshed");
+
+            // ── STEP 2: Disconnect old socket cleanly ──────────────────────
+            if (socket != null) {
+                socket.off(); // remove ALL listeners to prevent leaks
+                socket.disconnect();
+                socket = null;
+                Log.d(TAG, "✅ Step 2 complete: old socket disconnected");
+            }
+
+            // ── STEP 3: Create new socket with fresh token ─────────────────
             IO.Options options = new IO.Options();
             options.auth = new java.util.HashMap<>();
             options.auth.put("token", freshToken);
-
             options.reconnection = true;
             options.reconnectionAttempts = Integer.MAX_VALUE;
             options.reconnectionDelay = 1000;
@@ -511,83 +605,84 @@ public class SocketManager {
             options.timeout = 20000;
 
             socket = IO.socket(SOCKET_URL, options);
+            Log.d(TAG, "✅ Step 3 complete: new socket created with fresh token");
+
+            // Re-attach global listeners (connect/disconnect/wallet/tournament events)
             attachGlobalListeners();
 
-            // Re-register subscription reconnect listener if we had an active user
-            if (currentUserId != null) {
-                isSubscribed = false; // force re-subscription on connect
-                final String uid = currentUserId;
-                socket.once(Socket.EVENT_CONNECT, args -> {
-                    Log.d(TAG, "🔄 Re-subscribing after socket recreate for user: " + uid);
-                    socket.emit("subscribe:wallet", uid);
-                    socket.emit("subscribe:user-tournaments", uid);
-                    isSubscribed = true;
-                });
+            // Re-attach stored chat listeners so TournamentChatActivity keeps working
+            if (chatMessageListener != null) {
+                socket.on("lobby-chat:message", chatMessageListener);
+                Log.d(TAG, "↩️ Re-attached: lobby-chat:message listener");
+            }
+            if (chatErrorListener != null) {
+                socket.on("lobby-chat:error", chatErrorListener);
+                Log.d(TAG, "↩️ Re-attached: lobby-chat:error listener");
+            }
+            if (chatClosedListener != null) {
+                socket.on("lobby-chat:closed", chatClosedListener);
+                Log.d(TAG, "↩️ Re-attached: lobby-chat:closed listener");
+            }
+            if (userJoinedListener != null) {
+                socket.on("tournament:user-joined", userJoinedListener);
+                Log.d(TAG, "↩️ Re-attached: tournament:user-joined listener");
+            }
+            if (userLeftListener != null) {
+                socket.on("tournament:user-left", userLeftListener);
+                Log.d(TAG, "↩️ Re-attached: tournament:user-left listener");
             }
 
-            socket.connect();
-            Log.d(TAG, "✅ New socket created and connecting with fresh token");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Failed to recreate socket: " + e.getMessage());
-            e.printStackTrace();
-        }
+            // ── PERSISTENT LISTENER MAP REATTACHMENT ──────────────────────
+            // This catches every listener stored via persistentListeners, including
+            // tournament:message-history (which has no dedicated static field) and
+            // any listener registered while socket was null during this very
+            // recreation cycle (the core race-condition fix).
+            reattachPersistedListeners();
 
-        Log.d(TAG, "============================================");
-    }
+            // Re-register wallet/tournament subscriptions on connect
+// 🔥 FORCE subscription to guarantee host works even if DashboardActivity
+// did not call SocketManager.subscribe(userId)
 
-    /**
-     * 🔥 UPDATED: Subscribe to lobby chat (join tournament chat room)
-     * Recreates the socket with a fresh token BEFORE joining so the backend's
-     * handshake auth check always sees a valid token.
-     * Matches backend: subscribe:lobby-chat
-     * @param tournamentId The tournament ID
-     * @param userId The user ID (optional, for participants)
-     * @param username The username
-     */
-    public void joinTournamentRoom(String tournamentId, String userId, String username) {
-        try {
-            // 🔥 THE REAL FIX: Refresh the token first, then recreate the socket so the
-            // handshake auth carries the fresh token. The old socket's auth is stale after
-            // a token refresh — the backend will reject subscribe:lobby-chat with that auth.
-            String freshToken = getFreshToken();
-            recreateSocketWithFreshToken(freshToken);
+            final String uid = userId;
 
-            // Wait for the new socket to connect before emitting
+// Set global tracking variables properly
+            currentUserId = uid;
+            isSubscribed = false;
+
             socket.once(Socket.EVENT_CONNECT, args -> {
-                try {
-                    JSONObject data = new JSONObject();
-                    data.put("tournamentId", tournamentId);
-                    data.put("userId", userId);
-                    data.put("username", username);
-                    if (freshToken != null) {
-                        data.put("token", freshToken);
-                        Log.d(TAG, "✅ Fresh auth token added to payload");
-                    }
-                    Log.d(TAG, "============================================");
-                    Log.d(TAG, "🔵 JOINING LOBBY CHAT");
-                    Log.d(TAG, "Tournament ID: " + tournamentId);
-                    Log.d(TAG, "User ID: " + userId);
-                    Log.d(TAG, "Username: " + username);
-                    Log.d(TAG, "============================================");
+                Log.d(TAG, "🔄 Subscribing wallet/tournaments for user (forced): " + uid);
 
-                    socket.emit("subscribe:lobby-chat", data);
+                socket.emit("subscribe:wallet", uid);
+                socket.emit("subscribe:user-tournaments", uid);
 
-                    Log.d(TAG, "✅ Emitted: subscribe:lobby-chat");
-                    Log.d(TAG, "   Payload: " + data.toString());
-                    Log.d(TAG, "   Socket ID: " + socket.id());
-                    Log.d(TAG, "   Socket Connected: " + socket.connected());
-                    Log.d(TAG, "============================================");
-                } catch (Exception e) {
-                    Log.e(TAG, "============================================");
-                    Log.e(TAG, "❌ ERROR joining tournament room");
-                    Log.e(TAG, "Exception: " + e.getMessage());
-                    e.printStackTrace();
-                    Log.e(TAG, "============================================");
-                }
+                isSubscribed = true;
+
+                Log.d(TAG, "✅ Forced subscription complete for user: " + uid);
             });
+            // ── STEP 4: Connect ────────────────────────────────────────────
+            // ── STEP 5: Emit subscribe:lobby-chat once connected ───────────
+            // ✅ ROOT CAUSE FIX: Backend docs show  socket.emit('subscribe:lobby-chat', tournamentId)
+            // — just the tournamentId STRING, NOT a JSON object {tournamentId, userId, username}.
+            // We were sending the full object, which the server couldn't parse → "Failed to join
+            // lobby chat" → host never in the room → host received zero participant messages.
+            // Participants were unaffected because the server auto-delivers lobby-chat:message to
+            // all registered participants via subscribe:user-tournaments. The host has no such
+            // fallback channel and ONLY receives messages via the lobby-chat room subscription.
+            socket.once(Socket.EVENT_CONNECT, args -> {
+                socket.emit("subscribe:lobby-chat", tournamentId);
+                Log.d(TAG, "✅ Step 5 complete: subscribe:lobby-chat emitted");
+                Log.d(TAG, "   Payload (tournamentId): " + tournamentId);
+                Log.d(TAG, "   Socket ID: " + socket.id());
+                Log.d(TAG, "   Socket Connected: " + socket.connected());
+                Log.d(TAG, "============================================");
+            });
+
+            socket.connect();
+            Log.d(TAG, "✅ Step 4 complete: socket connecting...");
+
         } catch (Exception e) {
             Log.e(TAG, "============================================");
-            Log.e(TAG, "❌ ERROR setting up joinTournamentRoom");
+            Log.e(TAG, "❌ ERROR in joinTournamentRoom");
             Log.e(TAG, "Exception: " + e.getMessage());
             e.printStackTrace();
             Log.e(TAG, "============================================");
@@ -674,6 +769,12 @@ public class SocketManager {
      * @param listener The listener callback
      */
     public void onNewMessage(io.socket.emitter.Emitter.Listener listener) {
+        // ── PERSIST FIRST (before any early-exit) ─────────────────────────
+        // Storing the listener here ensures it survives the window where
+        // socket is null during recreation and is picked up by
+        // reattachPersistedListeners() when the new socket is ready.
+        persistentListeners.put("lobby-chat:message", listener);
+
         if (socket == null) {
             Log.e(TAG, "Cannot listen for messages - socket is null");
             return;
@@ -683,6 +784,9 @@ public class SocketManager {
         Log.d(TAG, "🎧 SETTING UP MESSAGE LISTENER");
         Log.d(TAG, "Event: lobby-chat:message");
         Log.d(TAG, "============================================");
+
+        // Store for re-registration after socket recreation
+        chatMessageListener = listener;
 
         // Remove any existing listener first to prevent duplicates
         socket.off("lobby-chat:message");
@@ -696,6 +800,11 @@ public class SocketManager {
      * @param listener The listener callback
      */
     public void onMessageHistory(io.socket.emitter.Emitter.Listener listener) {
+        // ── PERSIST FIRST ──────────────────────────────────────────────────
+        // onMessageHistory had NO dedicated static field; without this line
+        // the history listener was permanently lost on every socket recreation.
+        persistentListeners.put("tournament:message-history", listener);
+
         if (socket == null) {
             Log.e(TAG, "Cannot listen for message history - socket is null");
             return;
@@ -712,10 +821,16 @@ public class SocketManager {
      * @param listener The listener callback
      */
     public void onUserJoined(io.socket.emitter.Emitter.Listener listener) {
+        // ── PERSIST FIRST ──────────────────────────────────────────────────
+        persistentListeners.put("tournament:user-joined", listener);
+
         if (socket == null) {
             Log.e(TAG, "Cannot listen for user joined - socket is null");
             return;
         }
+
+        // Store for re-registration after socket recreation
+        userJoinedListener = listener;
 
         // Remove any existing listener first to prevent duplicates
         socket.off("tournament:user-joined");
@@ -728,10 +843,16 @@ public class SocketManager {
      * @param listener The listener callback
      */
     public void onUserLeft(io.socket.emitter.Emitter.Listener listener) {
+        // ── PERSIST FIRST ──────────────────────────────────────────────────
+        persistentListeners.put("tournament:user-left", listener);
+
         if (socket == null) {
             Log.e(TAG, "Cannot listen for user left - socket is null");
             return;
         }
+
+        // Store for re-registration after socket recreation
+        userLeftListener = listener;
 
         // Remove any existing listener first to prevent duplicates
         socket.off("tournament:user-left");
@@ -744,10 +865,16 @@ public class SocketManager {
      * @param listener The listener callback
      */
     public void onChatError(io.socket.emitter.Emitter.Listener listener) {
+        // ── PERSIST FIRST ──────────────────────────────────────────────────
+        persistentListeners.put("lobby-chat:error", listener);
+
         if (socket == null) {
             Log.e(TAG, "Cannot listen for chat errors - socket is null");
             return;
         }
+
+        // Store for re-registration after socket recreation
+        chatErrorListener = listener;
 
         socket.off("lobby-chat:error");
         socket.on("lobby-chat:error", listener);
@@ -759,10 +886,16 @@ public class SocketManager {
      * @param listener The listener callback
      */
     public void onChatClosed(io.socket.emitter.Emitter.Listener listener) {
+        // ── PERSIST FIRST ──────────────────────────────────────────────────
+        persistentListeners.put("lobby-chat:closed", listener);
+
         if (socket == null) {
             Log.e(TAG, "Cannot listen for chat closed - socket is null");
             return;
         }
+
+        // Store for re-registration after socket recreation
+        chatClosedListener = listener;
 
         socket.off("lobby-chat:closed");
         socket.on("lobby-chat:closed", listener);
@@ -784,6 +917,26 @@ public class SocketManager {
         socket.off("tournament:message-history");
         socket.off("tournament:user-joined");
         socket.off("tournament:user-left");
+
+        // Clear stored references
+        chatMessageListener = null;
+        chatErrorListener = null;
+        chatClosedListener = null;
+        userJoinedListener = null;
+        userLeftListener = null;
+
+        // ── CLEAR PERSISTENT MAP ───────────────────────────────────────────
+        // Remove the exact keys this activity registered so they are not
+        // spuriously re-attached if a different chat session opens later.
+        // Using remove() per-key (not clear()) preserves any unrelated entries.
+        persistentListeners.remove("lobby-chat:message");
+        persistentListeners.remove("lobby-chat:error");
+        persistentListeners.remove("lobby-chat:closed");
+        persistentListeners.remove("tournament:message-history");
+        persistentListeners.remove("tournament:user-joined");
+        persistentListeners.remove("tournament:user-left");
+        Log.d(TAG, "✅ Cleared persistent listener map entries for chat events");
+
         Log.d(TAG, "✅ Removed all tournament chat listeners");
     }
 

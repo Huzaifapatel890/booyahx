@@ -115,7 +115,9 @@ public class EditProfileActivity extends AppCompatActivity {
                 } else {
                     String serverMsg = null;
                     try {
-                        serverMsg = response.errorBody().string();
+                        String raw = response.errorBody().string();
+                        org.json.JSONObject json = new org.json.JSONObject(raw);
+                        serverMsg = json.optString("message", null);
                     } catch (Exception ignored) {}
 
                     if (serverMsg != null && !serverMsg.isEmpty())
@@ -248,7 +250,9 @@ public class EditProfileActivity extends AppCompatActivity {
                 } else {
                     String serverMsg = null;
                     try {
-                        serverMsg = response.errorBody().string();
+                        String raw = response.errorBody().string();
+                        org.json.JSONObject json = new org.json.JSONObject(raw);
+                        serverMsg = json.optString("message", null);
                     } catch (Exception ignored) {}
 
                     if (serverMsg != null && !serverMsg.isEmpty())

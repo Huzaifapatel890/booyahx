@@ -35,22 +35,45 @@ import retrofit2.Response;
 import java.util.List;
 
 /**
- * Tournament Chat Activity
- * Real-time chat using WebSocket for tournament participants
- * FIX LOG (current pass):
- *  - Wired new layout IDs: cvSend, layoutActiveBanner, viewLiveDot
- *  - Live dot pulse animation via ObjectAnimator (alpha 1.0 ↔ 0.3, 1.6s loop)
- *  - Banner visibility driven by tournament status ("live" | "running" → VISIBLE, else GONE)
- *  - Subtitle online count updated from onUserJoined / onUserLeft events
- *  - ChatHistoryResponse.MessageData field fix consumed here:
- *      getSenderNale string
- *  *  - handleNewMessage: reads "sendeme() replaces broken getUsername()
- *      getTimestamp() now parses createdAt ISO string
- *      isHost() now derived from rorName" field (API) with fallback to "username"
- *  - tournamentName shown in header, fallback to "Lobby"
- *  - Input disabled with correct hint when chat not live
+
+ Tournament Chat Activity
+
+ Real-time chat using WebSocket for tournament participants
+
+ FIX LOG (current pass):
+
+ Wired new layout IDs: cvSend, layoutActiveBanner, viewLiveDot
+
+
+ Live dot pulse animation via ObjectAnimator (alpha 1.0 ↔ 0.3, 1.6s loop)
+
+
+ Banner visibility driven by tournament status ("live" | "running" → VISIBLE, else GONE)
+
+
+ Subtitle online count updated from onUserJoined / onUserLeft events
+
+
+ ChatHistoryResponse.MessageData field fix consumed here:
+
+
+ getSenderNale string
+
+ handleNewMessage: reads "sendeme() replaces broken getUsername()
+
+
+
+ getTimestamp() now parses createdAt ISO string
+
+ isHost() now derived from rorName" field (API) with fallback to "username"
+
+ tournamentName shown in header, fallback to "Lobby"
+
+
+ Input disabled with correct hint when chat not live
  */
 public class TournamentChatActivity extends AppCompatActivity {
+
 
     private static final String TAG = "TournamentChat";
 
@@ -92,24 +115,28 @@ public class TournamentChatActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_tournament_chat);   // updated layout name
 
-        // Get data from intent
+// Get data from intent
         tournamentId     = getIntent().getStringExtra("tournament_id");
         tournamentName   = getIntent().getStringExtra("tournament_name");
         tournamentStatus = getIntent().getStringExtra("tournament_status");
         isHost           = getIntent().getBooleanExtra("is_host", false);
 
-        // Get user info from SharedPreferences
-        SharedPreferences prefs = getSharedPreferences("UserSession", MODE_PRIVATE);
-        userId   = prefs.getString("userId", "");
-        username = prefs.getString("username", "");
+// FIX: PRIMARY source for userId is TokenManager — it reads from the authenticated JWT
+// and is always correct. SharedPreferences "UserSession" can contain stale or wrong data
+// (e.g. a participant's ID stored from a previous interaction), causing the backend to
+// reject subscribe:lobby-chat because the userId doesn't match the socket's JWT identity.
+        userId = TokenManager.getUserId(this);
 
-        // FIX: If empty, try TokenManager
+// FALLBACK: only use SharedPreferences if TokenManager returned nothing
         if (TextUtils.isEmpty(userId)) {
-            userId = TokenManager.getUserId(this);
-            Log.w(TAG, "UserId was empty in SharedPreferences, got from TokenManager: " + userId);
+            SharedPreferences prefs = getSharedPreferences("UserSession", MODE_PRIVATE);
+            userId = prefs.getString("userId", "");
+            Log.w(TAG, "TokenManager returned empty userId, fell back to UserSession SharedPrefs: " + userId);
         }
 
-        // FIX: Username fallback chain
+// Get username — try all sources in order
+        SharedPreferences prefs = getSharedPreferences("UserSession", MODE_PRIVATE);
+        username = prefs.getString("username", "");
         if (TextUtils.isEmpty(username)) {
             username = prefs.getString("name", "");
         }
@@ -151,11 +178,12 @@ public class TournamentChatActivity extends AppCompatActivity {
         loadChatHistoryFromAPI();
         setupWebSocket();
         setupClickListeners();
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  INIT VIEWS
-    // ═══════════════════════════════════════════════════════════════
+//  INIT VIEWS
+// ═══════════════════════════════════════════════════════════════
     private void initViews() {
         ivBack            = findViewById(R.id.ivBack);
         tvTournamentName  = findViewById(R.id.tvTournamentName);
@@ -164,13 +192,13 @@ public class TournamentChatActivity extends AppCompatActivity {
         etMessage         = findViewById(R.id.etMessage);
         ivSend            = findViewById(R.id.ivSend);
 
-        // FIX: New IDs from updated layout
+// FIX: New IDs from updated layout
         cvSend            = findViewById(R.id.cvSend);
         layoutActiveBanner = findViewById(R.id.layoutActiveBanner);
         viewLiveDot       = findViewById(R.id.viewLiveDot);
 
-        // ── Header ──
-        // Show tournament name in header; fallback to "Lobby"
+// ── Header ──
+// Show tournament name in header; fallback to "Lobby"
         if (!TextUtils.isEmpty(tournamentName)) {
             tvTournamentName.setText(tournamentName);
         } else {
@@ -178,8 +206,8 @@ public class TournamentChatActivity extends AppCompatActivity {
         }
         updateSubtitleOnlineCount();
 
-        // ── Active banner visibility ──
-        // FIX: Banner only shown when match is live/running
+// ── Active banner visibility ──
+// FIX: Banner only shown when match is live/running
         boolean isLive = "live".equalsIgnoreCase(tournamentStatus)
                 || "running".equalsIgnoreCase(tournamentStatus);
 
@@ -190,14 +218,14 @@ public class TournamentChatActivity extends AppCompatActivity {
             layoutActiveBanner.setVisibility(View.GONE);
         }
 
-        // ── Input setup ──
+// ── Input setup ──
         etMessage.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         etMessage.setMaxLines(4);
         etMessage.setSingleLine(false);
         etMessage.setImeOptions(EditorInfo.IME_ACTION_SEND | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
 
-        // FIX: Disable input when not live
+// FIX: Disable input when not live
         if (!isLive) {
             etMessage.setEnabled(false);
             etMessage.setHint("Chat not available yet");
@@ -208,12 +236,13 @@ public class TournamentChatActivity extends AppCompatActivity {
             ivSend.setEnabled(false);   // enabled by TextWatcher once user types
             ivSend.setAlpha(0.5f);
         }
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  LIVE DOT PULSE ANIMATION
-    //  Matches HTML: @keyframes livePulse — alpha 1.0 ↔ 0.3, 1.6s infinite
-    // ═══════════════════════════════════════════════════════════════
+//  LIVE DOT PULSE ANIMATION
+//  Matches HTML: @keyframes livePulse — alpha 1.0 ↔ 0.3, 1.6s infinite
+// ═══════════════════════════════════════════════════════════════
     private void startLiveDotAnimation() {
         if (viewLiveDot == null) return;
 
@@ -223,11 +252,12 @@ public class TournamentChatActivity extends AppCompatActivity {
         liveDotAnimator.setRepeatMode(ObjectAnimator.REVERSE);     // ping-pong = full pulse
         liveDotAnimator.setInterpolator(new LinearInterpolator());
         liveDotAnimator.start();
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  SUBTITLE HELPER — "Lobby Chat · N online"
-    // ═══════════════════════════════════════════════════════════════
+//  SUBTITLE HELPER — "Lobby Chat · N online"
+// ═══════════════════════════════════════════════════════════════
     private void updateSubtitleOnlineCount() {
         if (tvSubtitle == null) return;
         if (onlineCount > 0) {
@@ -238,8 +268,8 @@ public class TournamentChatActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  RECYCLER VIEW
-    // ═══════════════════════════════════════════════════════════════
+//  RECYCLER VIEW
+// ═══════════════════════════════════════════════════════════════
     private void setupRecyclerView() {
         chatAdapter = new ChatAdapter();
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -249,8 +279,8 @@ public class TournamentChatActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  API: LOAD CHAT HISTORY
-    // ═══════════════════════════════════════════════════════════════
+//  API: LOAD CHAT HISTORY
+// ═══════════════════════════════════════════════════════════════
     private void loadChatHistoryFromAPI() {
         Log.d(TAG, "📡 Loading chat history — /tournament/" + tournamentId + "/chat");
 
@@ -309,12 +339,13 @@ public class TournamentChatActivity extends AppCompatActivity {
                 t.printStackTrace();
             }
         });
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  PROCESS HISTORY — FIX: uses getSenderName() + getTimestamp()
-    //  which now correctly read senderName/createdAt from API
-    // ═══════════════════════════════════════════════════════════════
+//  PROCESS HISTORY — FIX: uses getSenderName() + getTimestamp()
+//  which now correctly read senderName/createdAt from API
+// ═══════════════════════════════════════════════════════════════
     private void handleMessageHistoryFromAPI(List<ChatHistoryResponse.MessageData> messages) {
         try {
             Log.d(TAG, "📜 Processing " + messages.size() + " history messages");
@@ -322,44 +353,55 @@ public class TournamentChatActivity extends AppCompatActivity {
             for (ChatHistoryResponse.MessageData msgData : messages) {
 
                 int messageType;
-                if (msgData.getUserId().equals(userId)) {
+                boolean msgIsHost = "host".equalsIgnoreCase(msgData.getRole());
+                String msgUserId  = msgData.getUserId();
+
+                if (msgUserId != null && msgUserId.equals(userId)) {
                     messageType = ChatMessage.TYPE_SENT;
-                } else if (msgData.isHost()) {               // FIX: now reads role field
+                } else if (msgIsHost) {
                     messageType = ChatMessage.TYPE_HOST;
                 } else {
                     messageType = ChatMessage.TYPE_RECEIVED;
                 }
 
-                ChatMessage message = new ChatMessage(
-                        msgData.getUserId(),
-                        msgData.getSenderName(),             // FIX: was getUsername() — broken
+                long timestamp;
+                try {
+                    String createdAt = msgData.getCreatedAt();
+                    java.text.SimpleDateFormat sdf =
+                            new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                                    java.util.Locale.US);
+                    sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                    java.util.Date date = sdf.parse(createdAt);
+                    timestamp = date != null ? date.getTime() : System.currentTimeMillis();
+                } catch (Exception e) {
+                    timestamp = System.currentTimeMillis();
+                }
+
+                ChatMessage chatMessage = new ChatMessage(
+                        msgUserId,
+                        msgData.getSenderName(),
                         msgData.getMessage(),
-                        msgData.getTimestamp(),              // FIX: now parses createdAt ISO string
-                        msgData.isHost(),
+                        timestamp,
+                        msgIsHost,
                         messageType
                 );
-
-                chatAdapter.addMessage(message);
+                chatAdapter.addMessage(chatMessage);
             }
-
-            if (chatAdapter.getItemCount() > 0) {
-                rvMessages.scrollToPosition(chatAdapter.getItemCount() - 1);
-            }
-
-            // ANIMATION: mark boundary so all subsequent live messages animate in
-            chatAdapter.markHistoryLoaded();
 
             Log.d(TAG, "✅ History loaded: " + messages.size() + " messages");
+            chatAdapter.markHistoryLoaded();
+            rvMessages.scrollToPosition(chatAdapter.getItemCount() - 1);
 
         } catch (Exception e) {
-            Log.e(TAG, "❌ Error processing history messages", e);
+            Log.e(TAG, "❌ Error processing history", e);
             e.printStackTrace();
         }
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  WEBSOCKET SETUP
-    // ═══════════════════════════════════════════════════════════════
+//  WEBSOCKET SETUP
+// ═══════════════════════════════════════════════════════════════
     private void setupWebSocket() {
         Log.d(TAG, "============================================");
         Log.d(TAG, "Setting up WebSocket");
@@ -383,8 +425,8 @@ public class TournamentChatActivity extends AppCompatActivity {
             // Input is already disabled in initViews()
         }
 
-        // ── lobby-chat:message ──
-        // Payload: { _id, tournamentId, userId, senderName, role, message, createdAt }
+// ── lobby-chat:message ──
+// Payload: { _id, tournamentId, userId, senderName, role, message, createdAt }
         socketManager.onNewMessage(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
@@ -404,7 +446,7 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
-        // ── lobby-chat:error ──
+// ── lobby-chat:error ──
         socketManager.onChatError(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
@@ -422,8 +464,8 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
-        // ── lobby-chat:closed ──
-        // Payload: { tournamentId, status }
+// ── lobby-chat:closed ──
+// Payload: { tournamentId, status }
         socketManager.onChatClosed(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
@@ -469,7 +511,7 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
-        // ── user joined — update online count ──
+// ── user joined — update online count ──
         socketManager.onUserJoined(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
@@ -487,7 +529,7 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
-        // ── user left — update online count ──
+// ── user left — update online count ──
         socketManager.onUserLeft(new Emitter.Listener() {
             @Override
             public void call(Object... args) {
@@ -506,15 +548,16 @@ public class TournamentChatActivity extends AppCompatActivity {
         });
 
         Log.d(TAG, "✅ WebSocket listeners attached");
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  CLICK LISTENERS
-    // ═══════════════════════════════════════════════════════════════
+//  CLICK LISTENERS
+// ═══════════════════════════════════════════════════════════════
     private void setupClickListeners() {
         ivBack.setOnClickListener(v -> finish());
 
-        // FIX: Click listener on cvSend (CardView container) — works even if tap misses ivSend
+// FIX: Click listener on cvSend (CardView container) — works even if tap misses ivSend
         View sendTarget = cvSend != null ? cvSend : ivSend;
         sendTarget.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -533,7 +576,7 @@ public class TournamentChatActivity extends AppCompatActivity {
             }
         });
 
-        // IME send key
+// IME send key
         etMessage.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
                 if (!isSending) sendMessage();
@@ -547,7 +590,7 @@ public class TournamentChatActivity extends AppCompatActivity {
             return false;
         });
 
-        // Enable/disable send button based on text
+// Enable/disable send button based on text
         etMessage.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void afterTextChanged(Editable s) {}
@@ -561,11 +604,12 @@ public class TournamentChatActivity extends AppCompatActivity {
                 if (cvSend != null) cvSend.setAlpha(enabled ? 1.0f : 0.5f);
             }
         });
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  SEND MESSAGE
-    // ═══════════════════════════════════════════════════════════════
+//  SEND MESSAGE
+// ═══════════════════════════════════════════════════════════════
     private void sendMessage() {
         String messageText = etMessage.getText().toString().trim();
 
@@ -578,7 +622,7 @@ public class TournamentChatActivity extends AppCompatActivity {
         isSending = true;
         lastSendTime = System.currentTimeMillis();
 
-        // Disable send during send
+// Disable send during send
         ivSend.setEnabled(false);
         ivSend.setAlpha(0.5f);
         if (cvSend != null) cvSend.setAlpha(0.5f);
@@ -596,10 +640,10 @@ public class TournamentChatActivity extends AppCompatActivity {
             return;
         }
 
-        // Clear input immediately
+// Clear input immediately
         etMessage.setText("");
 
-        // Add to local UI immediately
+// Add to local UI immediately
         ChatMessage sentMessage = new ChatMessage(
                 userId,
                 username,
@@ -614,12 +658,13 @@ public class TournamentChatActivity extends AppCompatActivity {
             rvMessages.smoothScrollToPosition(chatAdapter.getItemCount() - 1);
         }
 
-        // Reset sending flag after cooldown
+// Reset sending flag after cooldown
         rvMessages.postDelayed(() -> {
             isSending = false;
             updateSendButtonState();
             Log.d(TAG, "✅ Send cooldown complete");
         }, SEND_COOLDOWN_MS);
+
     }
 
     private void updateSendButtonState() {
@@ -631,17 +676,17 @@ public class TournamentChatActivity extends AppCompatActivity {
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  HANDLE INCOMING WEBSOCKET MESSAGE
-    //  Payload: { _id, tournamentId, userId, senderName, role, message, createdAt }
-    //  FIX: reads "senderName" (API field) with fallback to "username"
-    //  FIX: reads "role" ("host"|"participant") instead of boolean isHost
-    //  FIX: parses "createdAt" ISO string for timestamp
-    // ═══════════════════════════════════════════════════════════════
+//  HANDLE INCOMING WEBSOCKET MESSAGE
+//  Payload: { _id, tournamentId, userId, senderName, role, message, createdAt }
+//  FIX: reads "senderName" (API field) with fallback to "username"
+//  FIX: reads "role" ("host"|"participant") instead of boolean isHost
+//  FIX: parses "createdAt" ISO string for timestamp
+// ═══════════════════════════════════════════════════════════════
     private void handleNewMessage(JSONObject data) {
         try {
             Log.d(TAG, "📝 Parsing incoming message...");
 
-            // Payload field: userId
+// Payload field: userId
             String messageUserId = data.getString("userId");
 
             // Payload field: senderName (FIX: API sends "senderName" not "username")
@@ -708,27 +753,29 @@ public class TournamentChatActivity extends AppCompatActivity {
             Log.e(TAG, "❌ Error parsing message: " + data.toString(), e);
             e.printStackTrace();
         }
+
     }
 
     // ═══════════════════════════════════════════════════════════════
-    //  LIFECYCLE
-    // ═══════════════════════════════════════════════════════════════
+//  LIFECYCLE
+// ═══════════════════════════════════════════════════════════════
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
         Log.d(TAG, "🔴 Activity destroyed — cleaning up");
 
-        // Cancel live dot animation
+// Cancel live dot animation
         if (liveDotAnimator != null) {
             liveDotAnimator.cancel();
             liveDotAnimator = null;
         }
 
-        // Leave room and remove listeners
+// Leave room and remove listeners
         if (socketManager != null) {
             socketManager.leaveTournamentRoom(tournamentId, userId);
             socketManager.removeAllListeners();
         }
+
     }
 }

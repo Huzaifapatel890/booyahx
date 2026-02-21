@@ -40,6 +40,7 @@ import com.booyahx.network.models.HostTournament;
 import com.booyahx.network.models.HostTournamentResponse;
 import com.booyahx.network.models.UpdateRoomRequest;
 import com.booyahx.network.models.UpdateRoomResponse;
+import com.booyahx.socket.SocketManager;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -218,6 +219,17 @@ public class HostTournamentFragment extends Fragment {
 
                         if (l.getCancelled() != null && !l.getCancelled().isEmpty()) {
                             allCancelled.addAll(l.getCancelled());
+                        }
+
+                        // Subscribe host to realtime socket updates for all their tournaments
+                        List<HostTournament> allHostTournaments = new ArrayList<>();
+                        allHostTournaments.addAll(allUpcoming);
+                        allHostTournaments.addAll(allLive);
+                        allHostTournaments.addAll(allResultPending);
+                        allHostTournaments.addAll(allCompleted);
+                        allHostTournaments.addAll(allCancelled);
+                        for (HostTournament tournament : allHostTournaments) {
+                            SocketManager.subscribeToTournament(tournament.getId());
                         }
 
                         sortTournamentsByTime(allUpcoming, false);  // Ascending (closest upcoming first: 7 PM → 8 PM → 9 PM)
