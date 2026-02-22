@@ -80,6 +80,9 @@ public class JoinedTournamentAdapter
 
         TextView btnResults, btnRules, btnChat;
 
+        // ✅ NEW: "VIEW ALL SLOTS ›" tap target
+        TextView tvViewSlots;
+
         CountDownTimer timer;
 
         // ✅ Store room details when received from API
@@ -103,6 +106,9 @@ public class JoinedTournamentAdapter
             btnResults = itemView.findViewById(R.id.btnResults);
             btnRules   = itemView.findViewById(R.id.btnRules);
             btnChat    = itemView.findViewById(R.id.btnChat);
+
+            // ✅ NEW: bind the slots hint text view
+            tvViewSlots = itemView.findViewById(R.id.tvViewSlots);
 
             Log.d(TAG, "ViewHolder created, tvSlot is " + (tvSlot == null ? "NULL" : "NOT NULL"));
         }
@@ -177,6 +183,20 @@ public class JoinedTournamentAdapter
             Log.d(TAG, "========================================");
             Log.d(TAG, "🔍 SLOT NUMBER LOGIC END");
             Log.d(TAG, "========================================");
+
+            // ✅ NEW: Wire "VIEW ALL SLOTS ›" to open SlotsBottomSheetDialog
+            if (tvViewSlots != null) {
+                final String finalUserId = myUserId;
+                tvViewSlots.setOnClickListener(v -> {
+                    if (!(v.getContext() instanceof androidx.fragment.app.FragmentActivity)) return;
+                    SlotsBottomSheetDialog.newInstance(t, finalUserId)
+                            .show(
+                                    ((androidx.fragment.app.FragmentActivity) v.getContext())
+                                            .getSupportFragmentManager(),
+                                    "SlotsBottomSheetDialog"
+                            );
+                });
+            }
 
             handleCountdown(t);
             handleRoomAndPassword(t);
