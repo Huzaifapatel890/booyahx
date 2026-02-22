@@ -162,7 +162,17 @@ public class JoinTournamentDialog extends DialogFragment {
                                     result
                             );
 
-                            dismiss();
+                            // ✅ Delay dismiss so the loader finishes its hide animation
+                            // before the dialog closes — makes the transition feel smooth.
+                            // The GlobalLoadingInterceptor hides the loader on the same
+                            // onResponse chain; 350ms gives it time to fully complete.
+                            if (getView() != null) {
+                                getView().postDelayed(() -> {
+                                    if (isAdded()) dismiss();
+                                }, 350);
+                            } else {
+                                dismiss();
+                            }
 
                         } else {
                             showToast(parseErrorMessage(response));

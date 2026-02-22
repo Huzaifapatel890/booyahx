@@ -13,10 +13,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.LinearInterpolator;
-import android.view.animation.RotateAnimation;
-import android.view.animation.ScaleAnimation;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -71,28 +67,33 @@ public class HomeFragment extends Fragment {
     private LinearLayout tournamentsContainer;
     private LinearLayout btnBermuda, btnClashSquad, btnSpecial;
 
-    // ✅ REPLACED: Status spinner → SubMode spinner (Solo / Duo / Squad)
-    // Bound to the same R.id.spinnerTournamentStatus view in layout.
-    // Visible only for Bermuda (BR) mode; GONE for ClashSquad and Special.
+    // ✅ SubMode spinner (Solo / Duo / Squad) — visible only for Bermuda (BR).
     private Spinner spinnerSubMode;
     private TournamentStatusAdapter subModeAdapter;
 
     private String currentMode = "BR";
-    // ✅ currentStatus fixed to "upcoming" — status filter removed from UI
+    // currentStatus fixed to "upcoming" — status filter removed from UI
     private String currentStatus = "upcoming";
-    // ✅ NEW: active subMode filter; null = show all submodes
+    // Active subMode filter; null = show all submodes
     private String currentSubMode = null;
     private ApiService api;
 
-    private View fragmentLoader;
-    private ImageView loaderRing, loaderGlow;
-    private int pendingCalls = 0;
-
     private boolean tournamentsLoaded = false;
 
-    // ✅ FIX: BroadcastReceiver — listens to socket events broadcast by SocketManager.
-    // Marks notification as unread, updates bell icon, and reloads tournaments when needed.
-    // This was present in file 1 and missing from file 2 — hence bell & socket weren't working.
+    // ─────────────────────────────────────────────────────────────────────────
+    // SOCKET BROADCAST RECEIVER
+    //
+    // Behavior per event:
+    //   • TOURNAMENT_STATUS_UPDATED → full reload WITH loader (removeAllViews +
+    //     regular API client so GlobalLoadingInterceptor fires).
+    //     This is intentional: a status change (upcoming→live etc.) means the
+    //     card set itself may change, so we want a clean redraw with visual feedback.
+    //
+    //   • WALLET_UPDATED → refresh wallet balance only.
+    //
+    //   • TOURNAMENT_ROOM_UPDATED / PAYMENT_QR_UPDATED → notification bell only;
+    //     no card reload (room-level events must NOT wipe tournament cards).
+    // ─────────────────────────────────────────────────────────────────────────
     private final BroadcastReceiver socketEventReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -105,13 +106,28 @@ public class HomeFragment extends Fragment {
             NotificationPref.setUnread(requireContext(), true);
             updateNotificationIcon();
 
-            // For tournament status changes, also reload the tournament list
-            if ("TOURNAMENT_STATUS_UPDATED".equals(action) || "TOURNAMENT_ROOM_UPDATED".equals(action)) {
+            // ✅ FIX: TOURNAMENT_STATUS_UPDATED → full reload WITH loader.
+            // Previously this called silentRefreshTournaments() which skipped the loader
+            // and did an in-place patch. A status change warrants a full, visible reload
+            // so the user sees updated cards with correct state immediately.
+            //
+            // TOURNAMENT_ROOM_UPDATED → bell only (already updated above).
+            // No card reload — room credentials are pushed directly to ParticipatedFragment
+            // via the "tournament_room_updated" fragment result in DashboardActivity.
+            if ("TOURNAMENT_STATUS_UPDATED".equals(action)) {
+                Log.d(TAG, action + " received — doing full reload with loader");
                 tournamentsLoaded = false;
                 loadTournaments();
             }
 
-            // For wallet updates, refresh wallet balance
+            // ✅ FIX: NOTIFICATION_PUSH — admin created a new tournament.
+            // Bell already updated above. Reload list so new card appears immediately.
+            if ("NOTIFICATION_PUSH".equals(action)) {
+                tournamentsLoaded = false;
+                loadTournaments();
+            }
+
+            // Wallet balance refresh
             if ("WALLET_UPDATED".equals(action)) {
                 loadWalletBalanceFromAPI();
             }
@@ -143,16 +159,10 @@ public class HomeFragment extends Fragment {
         btnClashSquad = view.findViewById(R.id.btnClashSquad);
         btnSpecial = view.findViewById(R.id.btnSpecial);
 
-        // ✅ Bind subMode spinner to the same view ID that was used for status spinner
         spinnerSubMode = view.findViewById(R.id.spinnerTournamentStatus);
-
-        fragmentLoader = view.findViewById(R.id.fragmentLoaderContainer);
-        loaderRing = view.findViewById(R.id.fragmentLoaderRing);
-        loaderGlow = view.findViewById(R.id.fragmentLoaderGlow);
 
         api = ApiClient.getClient(requireContext()).create(ApiService.class);
 
-        // ✅ REPLACED: setupStatusSpinner() → setupSubModeSpinner()
         setupSubModeSpinner();
         updateNotificationIcon();
 
@@ -173,13 +183,26 @@ public class HomeFragment extends Fragment {
                 }
         );
 
+        // ─────────────────────────────────────────────────────────────────────
+        // join_success → SILENT in-place update only.
+        //
+        // After the user joins a tournament:
+        //   1. Refresh wallet balance (entry fee was deducted).
+        //   2. Locally mark the tournament as joined (TournamentJoinStateManager).
+        //   3. Immediately update the join button on the existing card (markTournamentAsJoined).
+        //   4. Silently re-fetch the tournament list to sync slot counts / PP values
+        //      WITHOUT removing or recreating any card views (silentRefreshTournaments).
+        //
+        // ✅ silentRefreshTournaments uses ApiClient.getSilentClient() so the
+        //    GlobalLoadingInterceptor is bypassed — no loader flicker, no removeAllViews().
+        // ─────────────────────────────────────────────────────────────────────
         getParentFragmentManager().setFragmentResultListener(
                 "join_success",
                 this,
                 (requestKey, bundle) -> {
                     if (isAdded()) {
-                        // ✅ ONLY UPDATE WALLET & MARK BUTTON
-                        loadWalletBalanceFromAPI();
+                        // ✅ Silent wallet refresh — no loader shown after successful join
+                        silentRefreshWalletBalance();
 
                         String tournamentId = bundle.getString("tournament_id");
                         String userId = ProfileCacheManager.getUserId(requireContext());
@@ -190,20 +213,34 @@ public class HomeFragment extends Fragment {
                                     userId,
                                     tournamentId
                             );
+                            // Immediately grey out the join button on the existing card
                             markTournamentAsJoined(tournamentId);
                         }
-                        // ❌ NO API RELOAD HERE
+
+                        // ✅ Silent API re-fetch: updates slot counts, PP values, etc. in-place.
+                        // Only patches existing card fields — does NOT recreate or add cards.
+                        silentRefreshTournamentsFieldsOnly();
                     }
                 }
         );
 
+        // ─────────────────────────────────────────────────────────────────────
+        // tournament_status_changed → notification bell update ONLY.
+        //
+        // loadTournaments() is intentionally NOT called here — the
+        // socketEventReceiver already handles it for TOURNAMENT_STATUS_UPDATED.
+        // This listener exists purely as a reliable fallback so the notification
+        // bell is always refreshed even if the socket broadcast arrived while
+        // HomeFragment was briefly stopped (e.g. during dialog transitions when
+        // isAdded() returns false and the broadcast is dropped early).
+        // ─────────────────────────────────────────────────────────────────────
         getParentFragmentManager().setFragmentResultListener(
                 "tournament_status_changed",
                 this,
                 (requestKey, bundle) -> {
                     if (isAdded()) {
-                        tournamentsLoaded = false;
-                        loadTournaments();
+                        NotificationPref.setUnread(requireContext(), true);
+                        updateNotificationIcon();
                     }
                 }
         );
@@ -224,13 +261,15 @@ public class HomeFragment extends Fragment {
 
         updateButtonStates(currentMode);
 
+        // ✅ First app start: loadTournaments() uses ApiClient.getClient() (regular client)
+        // so GlobalLoadingInterceptor shows the loader automatically.
         view.post(() -> {
             loadProfileData();
             loadWalletData();
         });
     }
 
-    // ✅ FIX: Register BroadcastReceiver when fragment is visible — listens to socket events
+    // ✅ Register BroadcastReceiver when fragment is visible
     @Override
     public void onStart() {
         super.onStart();
@@ -239,11 +278,12 @@ public class HomeFragment extends Fragment {
         filter.addAction("TOURNAMENT_ROOM_UPDATED");
         filter.addAction("TOURNAMENT_STATUS_UPDATED");
         filter.addAction("PAYMENT_QR_UPDATED");
+        filter.addAction("NOTIFICATION_PUSH");
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(socketEventReceiver, filter);
         Log.d(TAG, "✅ Socket BroadcastReceiver registered");
     }
 
-    // ✅ FIX: Unregister BroadcastReceiver when fragment is not visible
+    // ✅ Unregister BroadcastReceiver when fragment is not visible
     @Override
     public void onStop() {
         super.onStop();
@@ -251,8 +291,6 @@ public class HomeFragment extends Fragment {
         Log.d(TAG, "✅ Socket BroadcastReceiver unregistered");
     }
 
-    // ✅ REPLACED: setupStatusSpinner() removed entirely.
-    // New: SubMode spinner — Solo / Duo / Squad, visible only for Bermuda (BR).
     private void setupSubModeSpinner() {
         List<TournamentStatusAdapter.StatusItem> subModeItems = new ArrayList<>();
         subModeItems.add(new TournamentStatusAdapter.StatusItem(null,    "All Modes"));
@@ -264,7 +302,7 @@ public class HomeFragment extends Fragment {
         spinnerSubMode.setAdapter(subModeAdapter);
         spinnerSubMode.setSelection(0);
 
-        // Only visible for Bermuda mode; hidden for CS and LW
+        // Only visible for Bermuda mode
         spinnerSubMode.setVisibility("BR".equals(currentMode) ? View.VISIBLE : View.GONE);
 
         spinnerSubMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -272,7 +310,7 @@ public class HomeFragment extends Fragment {
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 TournamentStatusAdapter.StatusItem selected = subModeAdapter.getItem(position);
                 if (selected != null) {
-                    String newSubMode = selected.apiValue; // null means "All Modes"
+                    String newSubMode = selected.apiValue;
                     boolean changed = (newSubMode == null)
                             ? currentSubMode != null
                             : !newSubMode.equals(currentSubMode);
@@ -315,12 +353,9 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadProfileFromAPI() {
-        showLoader();
         api.getProfile().enqueue(new Callback<ProfileResponse>() {
             @Override
             public void onResponse(Call<ProfileResponse> call, Response<ProfileResponse> response) {
-                hideLoader();
-
                 if (response.isSuccessful()
                         && response.body() != null
                         && response.body().data != null) {
@@ -348,7 +383,6 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onFailure(Call<ProfileResponse> call, Throwable t) {
-                hideLoader();
             }
         });
     }
@@ -369,7 +403,6 @@ public class HomeFragment extends Fragment {
     private void updateProfileUI(ProfileResponse.Data data) {
         txtUsername.setText(data.name != null ? data.name : "User");
 
-        // Generate avatar
         try {
             Bitmap avatarBitmap = AvatarGenerator.generateAvatar(
                     data.name != null ? data.name : "U", 48, requireContext());
@@ -400,11 +433,9 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadWalletBalanceFromAPI() {
-        showLoader();
-        api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
+        ApiClient.getSilentClient(requireContext()).create(ApiService.class).getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
             @Override
             public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> response) {
-                hideLoader();
                 if (response.isSuccessful()
                         && response.body() != null
                         && response.body().data != null) {
@@ -417,61 +448,48 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onFailure(Call<WalletBalanceResponse> call, Throwable t) {
-                hideLoader();
             }
         });
     }
 
-    private void showLoader() {
-        if (pendingCalls == 0 && isAdded() && fragmentLoader != null) {
-            fragmentLoader.setVisibility(View.VISIBLE);
-            fragmentLoader.bringToFront();
-
-            RotateAnimation rotate = new RotateAnimation(
-                    0, 360,
-                    Animation.RELATIVE_TO_SELF, 0.5f,
-                    Animation.RELATIVE_TO_SELF, 0.5f
-            );
-            rotate.setDuration(900);
-            rotate.setRepeatCount(Animation.INFINITE);
-            rotate.setInterpolator(new LinearInterpolator());
-            loaderRing.startAnimation(rotate);
-
-            ScaleAnimation pulse = new ScaleAnimation(
-                    1f, 1.25f,
-                    1f, 1.25f,
-                    Animation.RELATIVE_TO_SELF, 0.5f,
-                    Animation.RELATIVE_TO_SELF, 0.5f
-            );
-            pulse.setDuration(850);
-            pulse.setRepeatCount(Animation.INFINITE);
-            pulse.setRepeatMode(Animation.REVERSE);
-            loaderGlow.startAnimation(pulse);
-        }
-        pendingCalls++;
-    }
-
-    private void hideLoader() {
-        pendingCalls--;
-        if (pendingCalls <= 0) {
-            pendingCalls = 0;
-            if (isAdded() && fragmentLoader != null) {
-                fragmentLoader.setVisibility(View.GONE);
-                loaderRing.clearAnimation();
-                loaderGlow.clearAnimation();
+    // ─────────────────────────────────────────────────────────────────────────
+    // SILENT WALLET REFRESH (join_success only)
+    //
+    // Uses ApiClient.getSilentClient() → GlobalLoadingInterceptor is bypassed.
+    // Updates both WalletCacheManager and the balance TextView in-place.
+    // No loader is shown — called after a successful tournament join so the
+    // deducted entry fee is reflected without any visual loading flicker.
+    // ─────────────────────────────────────────────────────────────────────────
+    private void silentRefreshWalletBalance() {
+        if (!isAdded()) return;
+        ApiService silentApi = ApiClient.getSilentClient(requireContext()).create(ApiService.class);
+        silentApi.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
+            @Override
+            public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> response) {
+                if (!isAdded()) return;
+                if (response.isSuccessful()
+                        && response.body() != null
+                        && response.body().data != null) {
+                    double balance = response.body().data.balanceGC;
+                    WalletCacheManager.saveBalance(requireContext(), balance);
+                    txtWalletBalance.setText(String.format("%.2f GC", balance));
+                }
             }
-        }
+
+            @Override
+            public void onFailure(Call<WalletBalanceResponse> call, Throwable t) {
+            }
+        });
     }
 
     private void switchMode(String mode) {
         currentMode = mode;
         updateButtonStates(mode);
-        // ✅ Show subMode spinner only for Bermuda; hide + reset for CS and LW
         if ("BR".equals(mode)) {
             spinnerSubMode.setVisibility(View.VISIBLE);
         } else {
             spinnerSubMode.setVisibility(View.GONE);
-            currentSubMode = null; // clear subMode filter for non-BR modes
+            currentSubMode = null;
         }
         tournamentsLoaded = false;
         loadTournaments();
@@ -487,13 +505,24 @@ public class HomeFragment extends Fragment {
         if ("LW".equals(mode)) btnSpecial.setAlpha(1f);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // FULL LOAD — with loader (GlobalLoadingInterceptor fires automatically
+    // because we use ApiClient.getClient(), not getSilentClient()).
+    // Called on: first app start, mode/submode switch, TOURNAMENT_STATUS_UPDATED.
+    // ─────────────────────────────────────────────────────────────────────────
     private void loadTournaments() {
         if (tournamentsLoaded) {
             return;
         }
 
-        tournamentsContainer.removeAllViews();
+        // Special / LW mode — no API, show Coming Soon immediately.
+        if ("LW".equals(currentMode)) {
+            showComingSoon();
+            tournamentsLoaded = true;
+            return;
+        }
 
+        tournamentsContainer.removeAllViews();
 
         String role = ProfileCacheManager.getRole(requireContext());
 
@@ -509,7 +538,6 @@ public class HomeFragment extends Fragment {
                 .enqueue(new Callback<TournamentResponse>() {
                     @Override
                     public void onResponse(Call<TournamentResponse> call, Response<TournamentResponse> response) {
-                        hideLoader();
                         if (response.isSuccessful()
                                 && response.body() != null
                                 && response.body().data != null
@@ -519,12 +547,8 @@ public class HomeFragment extends Fragment {
                                     response.body().data.tournaments
                             );
 
-                            // ✅ Filter by subMode if spinner selection is not "All Modes"
                             uniqueTournaments = filterBySubMode(uniqueTournaments);
-
-                            // Sort tournaments by time
                             sortTournamentsByTime(uniqueTournaments);
-
                             renderTournaments(uniqueTournaments);
                             tournamentsLoaded = true;
                         }
@@ -532,7 +556,6 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onFailure(Call<TournamentResponse> call, Throwable t) {
-                        hideLoader();
                     }
                 });
     }
@@ -542,7 +565,6 @@ public class HomeFragment extends Fragment {
                 .enqueue(new Callback<HostTournamentsListResponse>() {
                     @Override
                     public void onResponse(Call<HostTournamentsListResponse> call, Response<HostTournamentsListResponse> response) {
-                        hideLoader();
                         if (response.isSuccessful()
                                 && response.body() != null
                                 && response.body().data != null
@@ -552,12 +574,8 @@ public class HomeFragment extends Fragment {
                                     response.body().data.tournaments
                             );
 
-                            // ✅ Filter by subMode if spinner selection is not "All Modes"
                             uniqueTournaments = filterBySubMode(uniqueTournaments);
-
-                            // Sort tournaments by time
                             sortTournamentsByTime(uniqueTournaments);
-
                             renderTournaments(uniqueTournaments);
                             tournamentsLoaded = true;
                         }
@@ -565,7 +583,6 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onFailure(Call<HostTournamentsListResponse> call, Throwable t) {
-                        hideLoader();
                     }
                 });
     }
@@ -590,11 +607,10 @@ public class HomeFragment extends Fragment {
         return new ArrayList<>(uniqueMap.values());
     }
 
-    // ✅ NEW: Client-side subMode filter — only applied when a specific subMode is selected.
-    // When currentSubMode is null ("All Modes"), the full list is returned unchanged.
+    // Client-side subMode filter — only applied when a specific subMode is selected.
     private List<Tournament> filterBySubMode(List<Tournament> tournaments) {
         if (currentSubMode == null || currentSubMode.isEmpty()) {
-            return tournaments; // "All Modes" — no filtering
+            return tournaments;
         }
         List<Tournament> filtered = new ArrayList<>();
         for (Tournament t : tournaments) {
@@ -605,13 +621,12 @@ public class HomeFragment extends Fragment {
         return filtered;
     }
 
-    // ========== NEW: TOURNAMENT SORTING METHODS ==========
+    // ========== TOURNAMENT SORTING ==========
     private void sortTournamentsByTime(List<Tournament> tournaments) {
         if (tournaments == null || tournaments.isEmpty()) {
             return;
         }
 
-        // Determine if we need reverse order based on current status
         boolean reverseOrder = "completed".equalsIgnoreCase(currentStatus)
                 || "cancelled".equalsIgnoreCase(currentStatus)
                 || "pendingResult".equalsIgnoreCase(currentStatus);
@@ -626,12 +641,10 @@ public class HomeFragment extends Fragment {
                 if (date1 == null) return 1;
                 if (date2 == null) return -1;
 
-                // Normal order: earliest first (for upcoming/live)
-                // Reverse order: latest first (for cancelled/completed)
                 if (reverseOrder) {
-                    return date2.compareTo(date1);  // Reverse: latest first
+                    return date2.compareTo(date1);
                 } else {
-                    return date1.compareTo(date2);  // Normal: earliest first
+                    return date1.compareTo(date2);
                 }
             }
         });
@@ -646,14 +659,12 @@ public class HomeFragment extends Fragment {
                 return null;
             }
 
-            // Extract just the date part from ISO 8601 format (2026-01-31T00:00:00.000Z -> 2026-01-31)
             if (dateStr.contains("T")) {
                 dateStr = dateStr.substring(0, dateStr.indexOf("T"));
             }
 
             String dateTimeStr = dateStr + " " + timeStr;
 
-            // Try formats with AM/PM first (most common in your app)
             SimpleDateFormat[] formats = {
                     new SimpleDateFormat("yyyy-MM-dd hh:mm a", Locale.US),
                     new SimpleDateFormat("yyyy-MM-dd h:mm a", Locale.US),
@@ -686,7 +697,7 @@ public class HomeFragment extends Fragment {
             return null;
         }
     }
-    // ========== END: TOURNAMENT SORTING METHODS ==========
+    // ========== END TOURNAMENT SORTING ==========
 
     private void renderTournaments(List<Tournament> tournaments) {
         if (!isAdded() || tournamentsContainer == null) {
@@ -702,6 +713,268 @@ public class HomeFragment extends Fragment {
             }
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // SILENT REFRESH (join_success only)
+    //
+    // Uses ApiClient.getSilentClient() → GlobalLoadingInterceptor is bypassed.
+    // After fetching fresh data, ONLY patches existing card fields in-place.
+    // Does NOT add new cards (silentUpdateCards is NOT called here — we use
+    // silentUpdateExistingCardsOnly instead to guarantee no card is ever created
+    // from this path).
+    // ─────────────────────────────────────────────────────────────────────────
+    private void silentRefreshTournamentsFieldsOnly() {
+        if (!isAdded()) return;
+
+        // Guard: if initial load is still in-flight, skip — it will already bring fresh data.
+        if (!tournamentsLoaded) {
+            Log.d(TAG, "silentRefreshTournamentsFieldsOnly: skipped — initial load still in flight");
+            return;
+        }
+
+        if ("LW".equals(currentMode)) {
+            return;
+        }
+
+        String role = ProfileCacheManager.getRole(requireContext());
+        ApiService silentApi = ApiClient.getSilentClient(requireContext()).create(ApiService.class);
+
+        if ("host".equalsIgnoreCase(role)) {
+            silentApi.getHostTournaments(currentStatus, currentMode)
+                    .enqueue(new Callback<HostTournamentsListResponse>() {
+                        @Override
+                        public void onResponse(Call<HostTournamentsListResponse> call, Response<HostTournamentsListResponse> response) {
+                            if (!isAdded()) return;
+                            if (response.isSuccessful()
+                                    && response.body() != null
+                                    && response.body().data != null
+                                    && response.body().data.tournaments != null) {
+
+                                List<Tournament> fresh = removeDuplicateTournaments(
+                                        response.body().data.tournaments);
+                                fresh = filterBySubMode(fresh);
+                                sortTournamentsByTime(fresh);
+                                // ✅ Only patch fields — never create new cards
+                                silentUpdateExistingCardsOnly(fresh);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<HostTournamentsListResponse> call, Throwable t) {
+                            Log.w(TAG, "silentRefreshTournamentsFieldsOnly (host) failed: " + t.getMessage());
+                        }
+                    });
+        } else {
+            silentApi.getTournaments(currentStatus, currentMode)
+                    .enqueue(new Callback<TournamentResponse>() {
+                        @Override
+                        public void onResponse(Call<TournamentResponse> call, Response<TournamentResponse> response) {
+                            if (!isAdded()) return;
+                            if (response.isSuccessful()
+                                    && response.body() != null
+                                    && response.body().data != null
+                                    && response.body().data.tournaments != null) {
+
+                                List<Tournament> fresh = removeDuplicateTournaments(
+                                        response.body().data.tournaments);
+                                fresh = filterBySubMode(fresh);
+                                sortTournamentsByTime(fresh);
+                                // ✅ Only patch fields — never create new cards
+                                silentUpdateExistingCardsOnly(fresh);
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<TournamentResponse> call, Throwable t) {
+                            Log.w(TAG, "silentRefreshTournamentsFieldsOnly (user) failed: " + t.getMessage());
+                        }
+                    });
+        }
+    }
+
+    /**
+     * Patches ONLY the existing card views already in tournamentsContainer.
+     * Called exclusively from the join_success path.
+     *
+     * Key difference from silentUpdateCards():
+     *   • Does NOT add cards for tournaments that have no existing view.
+     *   • Does NOT remove cards that are absent from the fresh list.
+     *   → The card set is frozen; only text/button fields are refreshed.
+     *
+     * This guarantees joining a tournament never recreates or reshuffles cards.
+     */
+    private void silentUpdateExistingCardsOnly(List<Tournament> freshTournaments) {
+        if (!isAdded() || tournamentsContainer == null) return;
+
+        // Build lookup map for O(1) access
+        Map<String, Tournament> freshMap = new LinkedHashMap<>();
+        for (Tournament t : freshTournaments) {
+            if (t != null && t.getId() != null) {
+                freshMap.put(t.getId(), t);
+            }
+        }
+
+        // Walk existing cards and patch only those present in the fresh response
+        for (int i = 0; i < tournamentsContainer.getChildCount(); i++) {
+            View card = tournamentsContainer.getChildAt(i);
+            Object tag = card.getTag();
+            if (tag instanceof String) {
+                String cardId = (String) tag;
+                Tournament freshTournament = freshMap.get(cardId);
+                if (freshTournament != null) {
+                    updateCardFields(card, freshTournament);
+                }
+                // If not in freshMap, leave the card untouched — do NOT remove it.
+                // A full loadTournaments() (e.g. from TOURNAMENT_STATUS_UPDATED) will
+                // clean up stale cards with a proper reload.
+            }
+        }
+
+        Log.d(TAG, "silentUpdateExistingCardsOnly: patched " + tournamentsContainer.getChildCount() + " existing cards");
+    }
+
+    /**
+     * Full in-place card update — adds/removes cards as needed.
+     * Used by the broader silentRefreshTournaments() path if ever needed.
+     * (Currently only silentUpdateExistingCardsOnly is used.)
+     */
+    private void silentUpdateCards(List<Tournament> freshTournaments) {
+        if (!isAdded() || tournamentsContainer == null) return;
+
+        Map<String, Tournament> freshMap = new LinkedHashMap<>();
+        for (Tournament t : freshTournaments) {
+            if (t != null && t.getId() != null) {
+                freshMap.put(t.getId(), t);
+            }
+        }
+
+        Map<String, View> existingCards = new LinkedHashMap<>();
+        for (int i = 0; i < tournamentsContainer.getChildCount(); i++) {
+            View card = tournamentsContainer.getChildAt(i);
+            Object tag = card.getTag();
+            if (tag instanceof String) {
+                existingCards.put((String) tag, card);
+            }
+        }
+
+        // Update or remove existing cards
+        for (Map.Entry<String, View> entry : existingCards.entrySet()) {
+            String cardId = entry.getKey();
+            View card = entry.getValue();
+            if (freshMap.containsKey(cardId)) {
+                updateCardFields(card, freshMap.get(cardId));
+            } else {
+                tournamentsContainer.removeView(card);
+                Log.d(TAG, "silentUpdateCards: removed card for tournament " + cardId);
+            }
+        }
+
+        // Append cards for genuinely new tournaments
+        for (Tournament t : freshTournaments) {
+            if (t == null || t.getId() == null) continue;
+            if (!existingCards.containsKey(t.getId())) {
+                View newCard = createTournamentCard(t);
+                if (newCard != null) {
+                    tournamentsContainer.addView(newCard);
+                    Log.d(TAG, "silentUpdateCards: added new card for tournament " + t.getId());
+                }
+            }
+        }
+    }
+
+    /**
+     * Updates only the mutable display fields of an already-inflated card view.
+     * Does NOT re-inflate or alter click listeners already set by createTournamentCard().
+     */
+    private void updateCardFields(View card, Tournament t) {
+        if (card == null || t == null) return;
+
+        TextView txtTitle       = card.findViewById(R.id.txtT1Title);
+        TextView txtExpectedPP  = card.findViewById(R.id.txtExpectedPP);
+        TextView txtCurrentPP   = card.findViewById(R.id.txtCurrentPP);
+        TextView txtSub         = card.findViewById(R.id.txtT1Sub);
+        TextView txtTime        = card.findViewById(R.id.txtT1Time);
+        TextView txtMode        = card.findViewById(R.id.txtT1Mode);
+        LinearLayout mapRotationContainer = card.findViewById(R.id.mapRotationContainer);
+        TextView txtMapRotation = card.findViewById(R.id.txtMapRotation);
+        View btnJoin            = card.findViewById(R.id.btnT1Join);
+
+        if (txtTitle != null)      txtTitle.setText(t.getTitle());
+        if (txtExpectedPP != null) txtExpectedPP.setText(t.getExpectedPP() + " GC");
+        if (txtCurrentPP != null)  txtCurrentPP.setText("(" + t.getCurrentPP() + "/" + t.getExpectedPP() + ") GC");
+        if (txtSub != null) {
+            txtSub.setText("Entry GC " + t.getEntryFee()
+                    + " • Slots " + t.getUsedSlots() + " / " + t.getTotalSlots());
+        }
+        if (txtTime != null) txtTime.setText(t.getFormattedDateTime());
+        if (txtMode != null) txtMode.setText("Mode: " + t.getDisplayMode());
+
+        if (mapRotationContainer != null && txtMapRotation != null) {
+            String mapRotation = t.getMapRotationShort();
+            if (mapRotation != null && !mapRotation.isEmpty()) {
+                mapRotationContainer.setVisibility(View.VISIBLE);
+                txtMapRotation.setText(mapRotation);
+            } else {
+                mapRotationContainer.setVisibility(View.GONE);
+            }
+        }
+
+        // Refresh join-button state so slot counts / joined status stay accurate.
+        // Does NOT re-attach click listeners.
+        if (btnJoin != null) {
+            String myUserId = ProfileCacheManager.getUserId(requireContext());
+
+            if (!"upcoming".equalsIgnoreCase(t.getStatus())) {
+                btnJoin.setVisibility(View.GONE);
+            } else {
+                btnJoin.setVisibility(View.VISIBLE);
+
+                boolean isJoinedLocally = TournamentJoinStateManager.hasJoined(
+                        requireContext(), myUserId, t.getId());
+                boolean isJoinedAPI = t.isJoinedDerived(myUserId);
+
+                if (isJoinedLocally || isJoinedAPI) {
+                    btnJoin.setEnabled(false);
+                    btnJoin.setAlpha(0.5f);
+                    ((TextView) btnJoin).setText("Joined");
+                } else {
+                    String currentText = ((TextView) btnJoin).getText().toString();
+                    if ("Joined".equalsIgnoreCase(currentText)) {
+                        btnJoin.setEnabled(true);
+                        btnJoin.setAlpha(1f);
+                        ((TextView) btnJoin).setText("Join");
+                    }
+                }
+            }
+        }
+
+        Log.d(TAG, "updateCardFields: patched card for tournament " + t.getId());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void showComingSoon() {
+        if (!isAdded() || tournamentsContainer == null) return;
+
+        tournamentsContainer.removeAllViews();
+
+        TextView comingSoon = new TextView(requireContext());
+        comingSoon.setText("Coming Soon");
+        comingSoon.setTextSize(18f);
+        comingSoon.setTextColor(android.graphics.Color.WHITE);
+        comingSoon.setTypeface(comingSoon.getTypeface(), android.graphics.Typeface.BOLD);
+        comingSoon.setGravity(android.view.Gravity.CENTER);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
+        );
+        comingSoon.setLayoutParams(params);
+
+        tournamentsContainer.addView(comingSoon);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     private void markTournamentAsJoined(String tournamentId) {
         if (tournamentId == null || !isAdded() || tournamentsContainer == null) {
@@ -727,6 +1000,10 @@ public class HomeFragment extends Fragment {
 
         View card = LayoutInflater.from(getContext())
                 .inflate(R.layout.item_tournament_card, tournamentsContainer, false);
+
+        // Tag the card root with tournament id — used by silentUpdateExistingCardsOnly()
+        // and silentUpdateCards() to locate existing cards for in-place data updates.
+        card.setTag(t.getId());
 
         TextView txtTitle = card.findViewById(R.id.txtT1Title);
         TextView txtExpectedPP = card.findViewById(R.id.txtExpectedPP);
@@ -817,16 +1094,13 @@ public class HomeFragment extends Fragment {
 
                 return card;
             } else {
-                // ✅ CHECK IGN BEFORE OPENING DIALOG
                 btnJoin.setOnClickListener(v -> {
                     ProfileResponse.Data profile = ProfileCacheManager.getProfile(requireContext());
 
                     if (profile == null || profile.ign == null || profile.ign.trim().isEmpty()) {
-                        // ✅ NO IGN → REDIRECT TO EDIT PROFILE
                         Intent intent = new Intent(requireContext(), EditProfileActivity.class);
                         startActivity(intent);
                     } else {
-                        // ✅ HAS IGN → OPEN JOIN DIALOG
                         JoinTournamentDialog dialog = JoinTournamentDialog.newInstance(t);
                         dialog.show(getParentFragmentManager(), "JoinTournamentDialog");
                     }
@@ -897,7 +1171,7 @@ public class HomeFragment extends Fragment {
 
         checkAccountSwitch();
 
-        // ✅ FIX: Refresh bell icon on resume — so red dot shows correctly when returning to this screen
+        // Refresh bell icon on resume — red dot shows correctly when returning to this screen
         updateNotificationIcon();
     }
 }
