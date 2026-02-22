@@ -239,32 +239,58 @@ public class DashboardActivity extends AppCompatActivity {
 
                 if (dataJson != null) {
                     JSONObject data = new JSONObject(dataJson);
-                    double balanceGC = data.optDouble("balanceGC", -1);
-                    String txAction = data.optString("action", "");
 
-                    if (balanceGC >= 0) {
-                        notification = new NotificationItem(
-                                "Wallet Balance Updated",
-                                "Your new balance is " + (int) Math.round(balanceGC) + " GC",
-                                System.currentTimeMillis(),
-                                NotificationType.REWARD
-                        );
-                    } else if (!txAction.isEmpty()) {
+                    // ✅ FIX: balanceGC is nested inside "wallet" object, NOT at root level
+                    double balanceGC = -1;
+                    if (data.has("wallet") && !data.isNull("wallet")) {
+                        balanceGC = data.getJSONObject("wallet").optDouble("balanceGC", -1);
+                    }
+
+                    // ✅ FIX: amountGC, status, type are nested inside "transaction" object
+                    double txAmountGC = -1;
+                    String txStatus   = "";
+                    String txType     = "";
+                    if (data.has("transaction") && !data.isNull("transaction")) {
+                        JSONObject tx = data.getJSONObject("transaction");
+                        txAmountGC = tx.optDouble("amountGC", -1);
+                        txStatus   = tx.optString("status", "");
+                        txType     = tx.optString("type", "");
+                    }
+
+                    if (txAmountGC >= 0 && !txStatus.isEmpty()) {
+                        // ✅ Transaction available — build amount-aware message
                         String message = "";
                         NotificationType type = NotificationType.REWARD;
-                        if ("approved".equalsIgnoreCase(txAction)) {
-                            message = "Your transaction has been approved";
-                        } else if ("rejected".equalsIgnoreCase(txAction)) {
-                            message = "Your transaction has been rejected";
+
+                        if ("success".equalsIgnoreCase(txStatus) || "approved".equalsIgnoreCase(txStatus)) {
+                            if ("withdrawal".equalsIgnoreCase(txType)) {
+                                message = (int) Math.round(txAmountGC) + " GC withdrawn from your wallet";
+                            } else {
+                                message = (int) Math.round(txAmountGC) + " GC added to your wallet";
+                            }
+                            type = NotificationType.REWARD;
+                        } else if ("rejected".equalsIgnoreCase(txStatus) || "failed".equalsIgnoreCase(txStatus)) {
+                            message = "Your transaction of " + (int) Math.round(txAmountGC) + " GC was rejected";
                             type = NotificationType.SYSTEM;
-                        } else if ("updated".equalsIgnoreCase(txAction)) {
-                            message = "Your transaction has been updated";
+                        } else if ("pending".equalsIgnoreCase(txStatus)) {
+                            message = "Your transaction of " + (int) Math.round(txAmountGC) + " GC is pending";
+                            type = NotificationType.SYSTEM;
                         }
+
                         if (!message.isEmpty()) {
                             notification = new NotificationItem(
                                     "Transaction Update", message,
                                     System.currentTimeMillis(), type);
                         }
+
+                    } else if (balanceGC >= 0) {
+                        // ✅ Fallback: no transaction object, use balance
+                        notification = new NotificationItem(
+                                "Wallet Balance Updated",
+                                "New balance: " + (int) Math.round(balanceGC) + " GC",
+                                System.currentTimeMillis(),
+                                NotificationType.REWARD
+                        );
                     } else {
                         notification = new NotificationItem(
                                 "Transaction History Updated",
@@ -290,7 +316,6 @@ public class DashboardActivity extends AppCompatActivity {
             refreshWalletCache();
         });
     }
-
     /**
      * Handle tournament room update event.
      *

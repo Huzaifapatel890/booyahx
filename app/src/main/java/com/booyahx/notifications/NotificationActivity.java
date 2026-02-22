@@ -20,6 +20,9 @@ import com.booyahx.utils.NotificationPref;
 
 import org.json.JSONObject;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class NotificationActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
@@ -28,6 +31,12 @@ public class NotificationActivity extends AppCompatActivity {
     private TextView emptyText;
     private NotificationManager notificationManager;
     private static final String TAG = "NotificationActivity";
+
+    // ✅ FIX: Dedup map for tournament notifications.
+    // Key = tournamentId + "|" + status, Value = last seen timestamp (ms).
+    // If the same tournament+status combo arrives within 5 seconds, it is dropped.
+    private final Map<String, Long> lastTournamentNotifTime = new HashMap<>();
+    private static final long TOURNAMENT_DEDUP_WINDOW_MS = 5000;
 
     // ✅ FIX: BroadcastReceiver replaces direct socket.on() listeners in this Activity.
     // SocketManager already listens to the socket globally and broadcasts these actions.
@@ -66,12 +75,23 @@ public class NotificationActivity extends AppCompatActivity {
 
                     addNewNotification(notification);
 
-                    // ✅ TOURNAMENT STATUS UPDATED — same logic as before
+                    // ✅ TOURNAMENT STATUS UPDATED — with dedup check to prevent duplicate notifications
                 } else if ("TOURNAMENT_STATUS_UPDATED".equals(action)) {
                     Log.d(TAG, "🔥 Status update notification received");
 
+                    String tournamentId   = data.optString("tournamentId", "");
                     String tournamentName = data.optString("tournamentName", "Tournament");
-                    String status = data.optString("status", "");
+                    String status         = data.optString("status", "");
+
+                    // ✅ FIX: Dedup — skip if same tournamentId+status was just received within 5s
+                    String dedupKey = tournamentId + "|" + status;
+                    long now = System.currentTimeMillis();
+                    Long lastSeen = lastTournamentNotifTime.get(dedupKey);
+                    if (lastSeen != null && (now - lastSeen) < TOURNAMENT_DEDUP_WINDOW_MS) {
+                        Log.d(TAG, "⚠️ Duplicate tournament notification suppressed: " + dedupKey);
+                        return;
+                    }
+                    lastTournamentNotifTime.put(dedupKey, now);
 
                     String message = "";
                     NotificationType type = NotificationType.SYSTEM;
@@ -103,14 +123,25 @@ public class NotificationActivity extends AppCompatActivity {
                     // ✅ WALLET UPDATED — covers wallet:balance-updated, wallet:transaction-updated,
                     //    wallet:history-updated (all broadcast as WALLET_UPDATED by SocketManager)
                 } else if ("WALLET_UPDATED".equals(action)) {
-                    double balanceGC = data.optDouble("balanceGC", -1);
-                    String txAction = data.optString("action", "");
+
+                    // ✅ FIX: balanceGC is nested inside the "wallet" object, NOT at root level
+                    double balanceGC = -1;
+                    if (data.has("wallet") && !data.isNull("wallet")) {
+                        balanceGC = data.getJSONObject("wallet").optDouble("balanceGC", -1);
+                    }
+
+                    // ✅ FIX: transaction status and amount are nested inside "transaction" object
+                    String txStatus  = "";
+                    double txAmountGC = 0;
+                    if (data.has("transaction") && !data.isNull("transaction")) {
+                        JSONObject tx = data.getJSONObject("transaction");
+                        txStatus   = tx.optString("status", "");
+                        txAmountGC = tx.optDouble("amountGC", 0);
+                    }
 
                     if (balanceGC >= 0) {
                         // wallet:balance-updated
                         Log.d(TAG, "🔥 Wallet balance update notification received");
-
-                        double updatedAt = data.optDouble("updatedAt", 0);
 
                         NotificationItem notification = new NotificationItem(
                                 "Wallet Balance Updated",
@@ -120,19 +151,22 @@ public class NotificationActivity extends AppCompatActivity {
                         );
                         addNewNotification(notification);
 
-                    } else if (!txAction.isEmpty()) {
-                        // wallet:transaction-updated
+                    } else if (!txStatus.isEmpty()) {
+                        // wallet:transaction-updated or wallet:history-updated
                         Log.d(TAG, "🔥 Wallet transaction update notification received");
 
                         String message = "";
                         NotificationType type = NotificationType.REWARD;
 
-                        if ("approved".equalsIgnoreCase(txAction)) {
-                            message = "Your transaction has been approved";
-                        } else if ("rejected".equalsIgnoreCase(txAction)) {
+                        if ("approved".equalsIgnoreCase(txStatus) || "success".equalsIgnoreCase(txStatus)) {
+                            message = "Your transaction of " + (int) Math.round(txAmountGC) + " GC has been approved";
+                        } else if ("rejected".equalsIgnoreCase(txStatus) || "failed".equalsIgnoreCase(txStatus)) {
                             message = "Your transaction has been rejected";
                             type = NotificationType.SYSTEM;
-                        } else if ("updated".equalsIgnoreCase(txAction)) {
+                        } else if ("pending".equalsIgnoreCase(txStatus)) {
+                            message = "Your transaction of " + (int) Math.round(txAmountGC) + " GC is pending";
+                            type = NotificationType.SYSTEM;
+                        } else if ("updated".equalsIgnoreCase(txStatus)) {
                             message = "Your transaction has been updated";
                         }
 
@@ -145,7 +179,6 @@ public class NotificationActivity extends AppCompatActivity {
                             );
                             addNewNotification(notification);
                         }
-
                     }
 
                     // ✅ PAYMENT QR UPDATED — same logic as before
