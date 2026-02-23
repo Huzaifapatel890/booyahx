@@ -56,6 +56,10 @@ public interface ApiService {
     @POST("/api/auth/logout")
     Call<LogoutResponse> logout(@Body LogoutRequest request);
 
+    // 🔥 FCM: Save device push notification token to backend after login
+    @POST("/api/profile/fcm-token")
+    Call<SimpleResponse> saveFcmToken(@Body FcmTokenRequest request);
+
 
     /* ================= WALLET ================= */
 

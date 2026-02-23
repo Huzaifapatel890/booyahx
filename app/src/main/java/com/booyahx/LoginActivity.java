@@ -151,6 +151,9 @@ public class LoginActivity extends AppCompatActivity {
 
                         showTopRightToast(resp.message != null ? resp.message : "Login success!");
 
+                        // 🔥 FCM: Save device token to backend so user receives push notifications
+                        FcmHelper.saveTokenToServer(LoginActivity.this);
+
                         Intent intent = new Intent(LoginActivity.this, DashboardActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);

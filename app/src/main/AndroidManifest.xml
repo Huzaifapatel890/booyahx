@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <!-- 🔥 FCM: Required for showing notifications on Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <!-- ✅ ADD THIS: Required for Android 11+ to detect installed UPI apps -->
     <queries>
@@ -34,6 +36,20 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- 🔥 FCM: Firebase Messaging Service -->
+        <service
+            android:name=".MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- 🔥 FCM: Default notification channel (shown on app icon badge on some launchers) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="general" />
+
         <!-- SPLASH SCREEN (Launcher) -->
         <activity
             android:name="com.booyahx.SplashActivity"
@@ -44,14 +60,14 @@
             </intent-filter>
         </activity>
 
-            <!-- Your existing activities -->
+        <!-- Your existing activities -->
 
-            <activity
-                android:name=".TournamentChatActivity"
-                android:screenOrientation="portrait"
-                android:exported="false"
-                android:windowSoftInputMode="adjustResize"
-                android:theme="@style/Theme.BooyahX.NoActionBar"/>
+        <activity
+            android:name=".TournamentChatActivity"
+            android:screenOrientation="portrait"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.BooyahX.NoActionBar"/>
 
         <!-- LOGIN SELECTION PAGE -->
         <activity
@@ -109,9 +125,7 @@
             android:exported="false"
             android:theme="@style/Theme.BooyahX.NoActionBar"/>
 
-        <activity
-            android:name=".ChatDebugActivity"
-            android:exported="false"/>
+
         <!-- 🔥 RESULT HISTORY -->
         <activity
             android:name=".settings.ResultHistoryActivity"

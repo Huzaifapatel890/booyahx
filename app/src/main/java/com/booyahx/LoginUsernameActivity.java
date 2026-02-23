@@ -182,6 +182,9 @@ public class LoginUsernameActivity extends AppCompatActivity {
                         );
                         TokenManager.saveRole(LoginUsernameActivity.this, resp.data.role);
 
+                        // 🔥 FCM: Save device token to backend so user receives push notifications
+                        FcmHelper.saveTokenToServer(LoginUsernameActivity.this);
+
                         Intent intent = new Intent(LoginUsernameActivity.this, DashboardActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         startActivity(intent);
