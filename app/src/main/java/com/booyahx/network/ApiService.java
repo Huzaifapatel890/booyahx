@@ -1,7 +1,6 @@
 package com.booyahx.network;
 
 import com.booyahx.network.models.*;
-import org.json.JSONObject;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.GET;
@@ -37,12 +36,9 @@ public interface ApiService {
 
     @GET("/api/auth/csrf-token")
     Call<CsrfResponse> getCsrfToken();
-    // CHANGE PASSWORD
-    @PUT("/api/auth/change-password")
-    Call<SimpleResponse> changePassword(
-            @Body ChangePasswordRequest request
-    );
 
+    @PUT("/api/auth/change-password")
+    Call<SimpleResponse> changePassword(@Body ChangePasswordRequest request);
 
 
     /* ================= PROFILE ================= */
@@ -56,7 +52,6 @@ public interface ApiService {
     @POST("/api/auth/logout")
     Call<LogoutResponse> logout(@Body LogoutRequest request);
 
-    // 🔥 FCM: Save device push notification token to backend after login
     @POST("/api/profile/fcm-token")
     Call<SimpleResponse> saveFcmToken(@Body FcmTokenRequest request);
 
@@ -66,38 +61,48 @@ public interface ApiService {
     @GET("/api/wallet/history")
     Call<WalletHistoryResponse> getWalletHistory(
             @Query("limit") int limit,
-            @Query("skip") int skip
-    );
-    @GET("/api/wallet/topup-history")
-    Call<TopUpHistoryResponse> getTopUpHistory(
-            @Query("limit") int limit,
-            @Query("skip") int skip
+            @Query("skip")  int skip
     );
 
     /**
-     * @deprecated This endpoint has been removed from backend.
-     * Use getWalletBalance() instead which returns both balance and withdrawal limits.
+     * Get top-up and withdrawal history.
+     *
+     * Supports:
+     *   - type      : "topup" | "withdrawal" (omit for both)
+     *   - page      : page number (default 1)
+     *   - limit     : items per page (max 100, default 20)
+     *   - fromDate  : start of date range YYYY-MM-DD  (nullable)
+     *   - toDate    : end of date range YYYY-MM-DD    (nullable)
      */
+    @GET("/api/wallet/topup-history")
+    Call<TopUpHistoryResponse> getTopUpHistory(
+            @Query("page")     int    page,
+            @Query("limit")    int    limit,
+            @Query("type")     String type,      // "topup" | "withdrawal" | null
+            @Query("fromDate") String fromDate,  // "YYYY-MM-DD" | null
+            @Query("toDate")   String toDate     // "YYYY-MM-DD" | null
+    );
+
+    /** @deprecated Use getWalletBalance() instead. */
     @Deprecated
     @GET("/api/wallet/withdraw-limit")
     Call<WithdrawalLimitResponse> getWithdrawLimit();
 
-
     @POST("/api/wallet/withdraw")
     Call<WithdrawalResponse> requestWithdrawal(@Body WithdrawalRequest request);
 
-    /**
-     * Returns both wallet balance AND withdrawal limit data.
-     *
-     * Response includes:
-     * - balanceGC: Current wallet balance
-     * - maxWithdrawableGC: Maximum amount user can withdraw
-     * - totalDepositedGC: Total amount deposited
-     * - withdrawnGC: Total amount already withdrawn
-     * - dailyLimit: Daily withdrawal limits (count, totalGC, maxGC, maxCount)
-     */
+    /** Returns wallet balance AND withdrawal limit data. */
     @GET("/api/wallet/balance")
     Call<WalletBalanceResponse> getWalletBalance();
+
+    /**
+     * Cancel a pending withdrawal. Only the owner can cancel while status = "pending".
+     * Amount is immediately refunded to wallet on success.
+     */
+    @POST("/api/wallet/withdraw/{transactionId}/cancel")
+    Call<CancelWithdrawalResponse> cancelWithdrawal(
+            @Path("transactionId") String transactionId
+    );
 
 
     /* ================= TOURNAMENT ================= */
@@ -105,39 +110,30 @@ public interface ApiService {
     @GET("/api/tournament/list")
     Call<TournamentResponse> getTournaments(
             @Query("status") String status,
-            @Query("mode") String mode
+            @Query("mode")   String mode
     );
 
-
-// Inside your ApiService interface:
-
-    // 🔥 GET /api/tournament/userHistory
     @GET("api/tournament/userHistory")
     Call<TournamentHistoryResponse> getUserTournamentHistory(
             @Query("limit")  int limit,
             @Query("offset") int offset
     );
 
-// ============================================================
-// OPTIONAL — if you want mode/win filters too, use this instead:
-// ============================================================
-
     @GET("/api/tournament/userHistory")
     Call<TournamentHistoryResponse> getUserTournamentHistoryFiltered(
-            @Query("limit")    int limit,
-            @Query("offset")   int offset,
-            @Query("mode")     String mode,   // "BR", "CS", "LW" or null
-            @Query("win")      String win      // "true" / "false" or null
+            @Query("limit")  int limit,
+            @Query("offset") int offset,
+            @Query("mode")   String mode,
+            @Query("win")    String win
     );
+
     @GET("/api/tournament/{tournamentId}/live-results")
     Call<LiveResultResponse> getLiveResults(
             @Path("tournamentId") String tournamentId
     );
 
     @POST("/api/tournament/join")
-    Call<JoinTournamentResponse> joinTournament(
-            @Body JoinTournamentRequest request
-    );
+    Call<JoinTournamentResponse> joinTournament(@Body JoinTournamentRequest request);
 
     @GET("/api/tournament/joined")
     Call<JoinedTournamentResponse> getJoinedTournaments();
@@ -147,21 +143,21 @@ public interface ApiService {
 
     @GET("/api/support/tickets")
     Call<TicketResponse> getTickets(
-            @Query("page") int page,
-            @Query("limit") int limit,
+            @Query("page")   int page,
+            @Query("limit")  int limit,
             @Query("status") String status
     );
 
     @POST("/api/support/tickets")
-    Call<TicketResponse> createTicket(
-            @Body CreateTicketRequest request
-    );
+    Call<TicketResponse> createTicket(@Body CreateTicketRequest request);
+
     @GET("/api/tournament/{tournamentId}/chat")
     Call<ChatHistoryResponse> getChatHistory(
             @Path("tournamentId") String tournamentId,
             @Query("limit") int limit,
-            @Query("skip") int skip
+            @Query("skip")  int skip
     );
+
 
     /* ================= HOST ================= */
 
@@ -174,7 +170,7 @@ public interface ApiService {
     @GET("/api/host/tournaments/available")
     Call<HostTournamentsListResponse> getHostTournaments(
             @Query("status") String status,
-            @Query("mode") String mode
+            @Query("mode")   String mode
     );
 
     @POST("/api/host/tournaments/{tournamentId}/update-room")
@@ -182,18 +178,16 @@ public interface ApiService {
             @Path("tournamentId") String tournamentId,
             @Body UpdateRoomRequest request
     );
+
     @POST("/api/tournament/submit-match-result")
     Call<MatchResultResponse> submitMatchResult(@Body MatchResultRequest request);
 
-    /**
-     * Submit final tournament result (called after all 6 matches)
-     * Endpoint: POST /api/tournament/submit-final-result
-     */
     @POST("/api/tournament/submit-final-result")
     Call<FinalResultResponse> submitFinalResult(@Body FinalResultRequest request);
 
 
     /* ================= PAYMENT ================= */
+
     @POST("/api/payment/create-qr")
     Call<CreateQRResponse> createQR(@Body CreateQRRequest request);
 
@@ -208,5 +202,4 @@ public interface ApiService {
 
     @GET("/api/host/my-lobbies")
     Call<HostTournamentResponse> getHostMyLobbies();
-
 }

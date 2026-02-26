@@ -38,7 +38,8 @@ public class FcmHelper {
 
                     Log.d(TAG, "✅ FCM token retrieved: " + fcmToken.substring(0, 20) + "...");
 
-                    ApiService api = ApiClient.getClient(context).create(ApiService.class);
+                    ApiService api = ApiClient.getSilentClient(context).create(ApiService.class);
+
                     api.saveFcmToken(new FcmTokenRequest(fcmToken))
                             .enqueue(new Callback<SimpleResponse>() {
                                 @Override

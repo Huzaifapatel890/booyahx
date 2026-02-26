@@ -138,122 +138,143 @@
             android:background="#00D4FF"
             android:layout_marginBottom="12dp"/>
 
-        <!-- ================= FILTER CHIPS ================= -->
-        <HorizontalScrollView
-            android:layout_width="match_parent"
+        <!-- ====== FILTER CHIPS: Top-Up | Withdraw ====== -->
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:scrollbars="none"
-            android:overScrollMode="never"
-            android:layout_marginBottom="4dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
 
-            <LinearLayout
-                android:id="@+id/filterChipsRow"
+            <TextView
+                android:id="@+id/chipTopUp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:text="Top-Up"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <TextView
+                android:id="@+id/chipWithdraw"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Withdraw"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="7dp"
+                android:paddingBottom="7dp"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"/>
+
+        </LinearLayout>
+        <!-- =============================================== -->
+
+        <!-- ====== DATE FILTER ROW ====== -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="4dp"
+            android:gravity="center_vertical">
+
+            <!-- FROM date picker -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="8dp">
 
                 <TextView
-                    android:id="@+id/chipAll"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="All"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="7dp"
-                    android:paddingBottom="7dp"
-                    android:layout_marginEnd="8dp"
+                    android:text="FROM"
+                    android:textSize="9sp"
+                    android:textColor="#6B7F8A"
+                    android:letterSpacing="0.12"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tvFromDate"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="📅 Start date"
+                    android:textSize="12sp"
+                    android:textColor="#8A9BB0"
+                    android:background="@drawable/date_picker_bg"
                     android:clickable="true"
-                    android:focusable="true"/>
-
-                <TextView
-                    android:id="@+id/chipTopUp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Top-Up"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="7dp"
-                    android:paddingBottom="7dp"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true"/>
-
-                <TextView
-                    android:id="@+id/chipWithdraw"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Withdraw"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="7dp"
-                    android:paddingBottom="7dp"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true"/>
-
-                <TextView
-                    android:id="@+id/chipSuccess"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Success"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="7dp"
-                    android:paddingBottom="7dp"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true"/>
-
-                <TextView
-                    android:id="@+id/chipPending"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Pending"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="7dp"
-                    android:paddingBottom="7dp"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="true"
-                    android:focusable="true"/>
-
-                <!-- Cancelled chip: visible but NOT clickable until cancel API is wired -->
-                <TextView
-                    android:id="@+id/chipCancelled"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Cancelled"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="7dp"
-                    android:paddingBottom="7dp"
-                    android:layout_marginEnd="8dp"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:alpha="0.4"/>
-
+                    android:focusable="true"
+                    android:singleLine="true"
+                    android:ellipsize="end"/>
             </LinearLayout>
-        </HorizontalScrollView>
-        <!-- ============================================== -->
+
+            <!-- TO date picker -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TO"
+                    android:textSize="9sp"
+                    android:textColor="#6B7F8A"
+                    android:letterSpacing="0.12"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:id="@+id/tvToDate"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="📅 End date"
+                    android:textSize="12sp"
+                    android:textColor="#8A9BB0"
+                    android:background="@drawable/date_picker_bg"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:singleLine="true"
+                    android:ellipsize="end"/>
+            </LinearLayout>
+
+            <!-- Clear dates button -->
+            <TextView
+                android:id="@+id/btnClearDates"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:text="✕"
+                android:textSize="16sp"
+                android:textColor="#FF4444"
+                android:paddingStart="10dp"
+                android:paddingEnd="4dp"
+                android:visibility="gone"
+                android:clickable="true"
+                android:focusable="true"/>
+
+        </LinearLayout>
+        <!-- ================================ -->
 
     </LinearLayout>
 
-    <!-- ================= RECYCLERVIEW (NO SCROLLVIEW!) ================= -->
-
-    <!-- RecyclerView - handles its own scrolling -->
+    <!-- ================= RECYCLERVIEW ================= -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvTransactions"
         android:layout_width="match_parent"

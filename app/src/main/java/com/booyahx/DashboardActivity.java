@@ -696,7 +696,10 @@ public class DashboardActivity extends AppCompatActivity {
      * No UI shown — purely a background cache refresh.
      */
     private void refreshWalletCache() {
-        ApiService api = ApiClient.getClient(this).create(ApiService.class);
+        // ✅ SILENT CLIENT: replaces getClient() so no loader is shown for this
+        // background cache refresh. Called only from socket broadcast handlers
+        // (WALLET_UPDATED, PAYMENT_QR_UPDATED) — never from user-initiated actions.
+        ApiService api = ApiClient.getSilentClient(this).create(ApiService.class);
         api.getWalletBalance().enqueue(new Callback<WalletBalanceResponse>() {
             @Override
             public void onResponse(Call<WalletBalanceResponse> call, Response<WalletBalanceResponse> response) {

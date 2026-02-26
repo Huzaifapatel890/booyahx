@@ -13,6 +13,7 @@
         android:padding="16dp"
         android:gravity="center_vertical">
 
+        <!-- Back Button -->
         <ImageView
             android:id="@+id/backButton"
             android:layout_width="40dp"
@@ -22,6 +23,7 @@
             android:background="@drawable/neon_button"
             android:contentDescription="Back" />
 
+        <!-- Title — centered between back button and clear all -->
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -30,8 +32,23 @@
             android:textColor="#00C3FF"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:gravity="center"
-            android:layout_marginEnd="40dp" />
+            android:gravity="center" />
+
+        <!-- Clear All Button -->
+        <TextView
+            android:id="@+id/clearAllButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear All"
+            android:textColor="#00C3FF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:background="@drawable/neon_button"
+            android:visibility="gone" />
 
     </LinearLayout>
 

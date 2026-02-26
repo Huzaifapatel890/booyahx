@@ -18,10 +18,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.booyahx.R;
 import com.booyahx.utils.NotificationPref;
 
-import org.json.JSONObject;
-
 import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 public class NotificationActivity extends AppCompatActivity {
 
@@ -29,197 +27,33 @@ public class NotificationActivity extends AppCompatActivity {
     private NotificationAdapter adapter;
     private ImageView backButton;
     private TextView emptyText;
+    private TextView clearAllButton;
     private NotificationManager notificationManager;
     private static final String TAG = "NotificationActivity";
 
-    // ✅ FIX: Dedup map for tournament notifications.
-    // Key = tournamentId + "|" + status, Value = last seen timestamp (ms).
-    // If the same tournament+status combo arrives within 5 seconds, it is dropped.
-    private final Map<String, Long> lastTournamentNotifTime = new HashMap<>();
-    private static final long TOURNAMENT_DEDUP_WINDOW_MS = 5000;
+    // ─── Duplicate-notification filter ───────────────────────────────────────
+    // Key   : "title|message"  (content fingerprint)
+    // Value : timestamp (ms) of the last time that key was displayed
+    //
+    // Capped manually at DEDUP_MAP_MAX_SIZE inside isDuplicate() — avoids the
+    // anonymous-LinkedHashMap pattern that caused compile errors on Android.
+    // ─────────────────────────────────────────────────────────────────────────
+    private final HashMap<String, Long> lastSeenNotifMap = new HashMap<>();
+    private static final long DEDUP_WINDOW_MS    = 5_000L; // 5-second dedup window
+    private static final int  DEDUP_MAP_MAX_SIZE = 200;    // max fingerprints kept
 
-    // ✅ FIX: BroadcastReceiver replaces direct socket.on() listeners in this Activity.
-    // SocketManager already listens to the socket globally and broadcasts these actions.
-    // Having direct socket.on() here AND in SocketManager caused duplicate/conflicting listeners.
     private final BroadcastReceiver notificationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            // ✅ USER ISOLATION: drop any broadcast not tagged for the current user
-            String targetUserId = intent.getStringExtra("targetUserId");
+            // USER ISOLATION: drop broadcasts not meant for the current user
+            String targetUserId  = intent.getStringExtra("targetUserId");
             String currentUserId = com.booyahx.TokenManager.getUserId(context);
             if (targetUserId != null && !targetUserId.equals(currentUserId)) {
-                return; // not for this user
+                return;
             }
-
-            String action = intent.getAction();
-            String rawData = intent.getStringExtra("data");
-            Log.d(TAG, "📨 Broadcast received: " + action);
-
-            try {
-                JSONObject data = (rawData != null) ? new JSONObject(rawData) : new JSONObject();
-
-                // ✅ TOURNAMENT ROOM UPDATED — same logic as before
-                if ("TOURNAMENT_ROOM_UPDATED".equals(action)) {
-                    Log.d(TAG, "🔥 Room update notification received");
-
-                    String tournamentName = data.optString("tournamentName", "Tournament");
-                    String roomId = data.optString("roomId", "");
-                    String roomPassword = data.optString("roomPassword", "");
-
-                    NotificationItem notification = new NotificationItem(
-                            "Room ID & Password Updated",
-                            tournamentName + " credentials updated. ID: " + roomId + " Pass: " + roomPassword,
-                            System.currentTimeMillis(),
-                            NotificationType.ROOM_UPDATE
-                    );
-
-                    addNewNotification(notification);
-
-                    // ✅ TOURNAMENT STATUS UPDATED — with dedup check to prevent duplicate notifications
-                } else if ("TOURNAMENT_STATUS_UPDATED".equals(action)) {
-                    Log.d(TAG, "🔥 Status update notification received");
-
-                    String tournamentId   = data.optString("tournamentId", "");
-                    String tournamentName = data.optString("tournamentName", "Tournament");
-                    String status         = data.optString("status", "");
-
-                    // ✅ FIX: Dedup — skip if same tournamentId+status was just received within 5s
-                    String dedupKey = tournamentId + "|" + status;
-                    long now = System.currentTimeMillis();
-                    Long lastSeen = lastTournamentNotifTime.get(dedupKey);
-                    if (lastSeen != null && (now - lastSeen) < TOURNAMENT_DEDUP_WINDOW_MS) {
-                        Log.d(TAG, "⚠️ Duplicate tournament notification suppressed: " + dedupKey);
-                        return;
-                    }
-                    lastTournamentNotifTime.put(dedupKey, now);
-
-                    String message = "";
-                    NotificationType type = NotificationType.SYSTEM;
-
-                    if ("live".equalsIgnoreCase(status)) {
-                        message = tournamentName + " is now live!";
-                        type = NotificationType.TOURNAMENT;
-                    } else if ("completed".equalsIgnoreCase(status)) {
-                        message = tournamentName + " has ended.";
-                        type = NotificationType.VICTORY;
-                    } else if ("cancelled".equalsIgnoreCase(status)) {
-                        message = tournamentName + " has been cancelled.";
-                        type = NotificationType.SYSTEM;
-                    } else if ("pendingResult".equalsIgnoreCase(status)) {
-                        message = tournamentName + " is awaiting results.";
-                        type = NotificationType.TOURNAMENT;
-                    }
-
-                    if (!message.isEmpty()) {
-                        NotificationItem notification = new NotificationItem(
-                                "Tournament Status Update",
-                                message,
-                                System.currentTimeMillis(),
-                                type
-                        );
-                        addNewNotification(notification);
-                    }
-
-                    // ✅ WALLET UPDATED — covers wallet:balance-updated, wallet:transaction-updated,
-                    //    wallet:history-updated (all broadcast as WALLET_UPDATED by SocketManager)
-                } else if ("WALLET_UPDATED".equals(action)) {
-
-                    // ✅ FIX: balanceGC is nested inside the "wallet" object, NOT at root level
-                    double balanceGC = -1;
-                    if (data.has("wallet") && !data.isNull("wallet")) {
-                        balanceGC = data.getJSONObject("wallet").optDouble("balanceGC", -1);
-                    }
-
-                    // ✅ FIX: transaction status and amount are nested inside "transaction" object
-                    String txStatus  = "";
-                    double txAmountGC = 0;
-                    if (data.has("transaction") && !data.isNull("transaction")) {
-                        JSONObject tx = data.getJSONObject("transaction");
-                        txStatus   = tx.optString("status", "");
-                        txAmountGC = tx.optDouble("amountGC", 0);
-                    }
-
-                    if (balanceGC >= 0) {
-                        // wallet:balance-updated
-                        Log.d(TAG, "🔥 Wallet balance update notification received");
-
-                        NotificationItem notification = new NotificationItem(
-                                "Wallet Balance Updated",
-                                "Your new balance is " + (int) Math.round(balanceGC) + " GC",
-                                System.currentTimeMillis(),
-                                NotificationType.REWARD
-                        );
-                        addNewNotification(notification);
-
-                    } else if (!txStatus.isEmpty()) {
-                        // wallet:transaction-updated or wallet:history-updated
-                        Log.d(TAG, "🔥 Wallet transaction update notification received");
-
-                        String message = "";
-                        NotificationType type = NotificationType.REWARD;
-
-                        if ("approved".equalsIgnoreCase(txStatus) || "success".equalsIgnoreCase(txStatus)) {
-                            message = "Your transaction of " + (int) Math.round(txAmountGC) + " GC has been approved";
-                        } else if ("rejected".equalsIgnoreCase(txStatus) || "failed".equalsIgnoreCase(txStatus)) {
-                            message = "Your transaction has been rejected";
-                            type = NotificationType.SYSTEM;
-                        } else if ("pending".equalsIgnoreCase(txStatus)) {
-                            message = "Your transaction of " + (int) Math.round(txAmountGC) + " GC is pending";
-                            type = NotificationType.SYSTEM;
-                        } else if ("updated".equalsIgnoreCase(txStatus)) {
-                            message = "Your transaction has been updated";
-                        }
-
-                        if (!message.isEmpty()) {
-                            NotificationItem notification = new NotificationItem(
-                                    "Transaction Update",
-                                    message,
-                                    System.currentTimeMillis(),
-                                    type
-                            );
-                            addNewNotification(notification);
-                        }
-                    }
-
-                    // ✅ PAYMENT QR UPDATED — same logic as before
-                } else if ("PAYMENT_QR_UPDATED".equals(action)) {
-                    Log.d(TAG, "🔥 QR payment status update notification received");
-
-                    String status = data.optString("status", "");
-                    String qrAction = data.optString("action", "");
-                    double amountGC = data.optDouble("amountGC", 0);
-
-                    String message = "";
-                    NotificationType type = NotificationType.REWARD;
-
-                    if ("success".equalsIgnoreCase(status) || "approved".equalsIgnoreCase(qrAction)) {
-                        message = "Payment successful! " + (int) Math.round(amountGC) + " GC credited to your wallet";
-                        type = NotificationType.REWARD;
-                    } else if ("pending".equalsIgnoreCase(status)) {
-                        message = "Payment is being processed";
-                        type = NotificationType.SYSTEM;
-                    } else if ("rejected".equalsIgnoreCase(qrAction)) {
-                        message = "Payment was rejected";
-                        type = NotificationType.SYSTEM;
-                    } else if ("failed".equalsIgnoreCase(status)) {
-                        message = "Payment failed. Please try again";
-                        type = NotificationType.SYSTEM;
-                    }
-
-                    if (!message.isEmpty()) {
-                        NotificationItem notification = new NotificationItem(
-                                "Payment Status Update",
-                                message,
-                                System.currentTimeMillis(),
-                                type
-                        );
-                        addNewNotification(notification);
-                    }
-                }
-
-            } catch (Exception e) {
-                Log.e(TAG, "Error handling broadcast: " + action, e);
-            }
+            Log.d(TAG, "📨 Broadcast received: " + intent.getAction());
+            // DashboardActivity already saved to NotificationManager — only refresh here.
+            refreshDisplay();
         }
     };
 
@@ -231,33 +65,26 @@ public class NotificationActivity extends AppCompatActivity {
         if (getSupportActionBar() != null)
             getSupportActionBar().hide();
 
-        backButton = findViewById(R.id.backButton);
-        recyclerView = findViewById(R.id.recyclerViewNotifications);
-        emptyText = findViewById(R.id.emptyNotificationsText);
+        backButton     = findViewById(R.id.backButton);
+        recyclerView   = findViewById(R.id.recyclerViewNotifications);
+        emptyText      = findViewById(R.id.emptyNotificationsText);
+        clearAllButton = findViewById(R.id.clearAllButton);
 
         backButton.setOnClickListener(v -> finish());
+        clearAllButton.setOnClickListener(v -> clearAllNotifications());
 
         notificationManager = NotificationManager.getInstance(this);
 
-        // ✅ USER ISOLATION FIX: Always enforce the correct user scope here, before reading
-        // any data. DashboardActivity.onResume() may not have run yet (cold start, deep link,
-        // banner tap, etc.), so we cannot rely on it having already called switchUser().
-        // If scope is already correct → switchUser() no-ops. If wrong user is in memory
-        // (User A/B swap) → switchUser() clears memory and loads the right user from disk.
+        // USER ISOLATION: enforce correct scope before reading any data
         String currentUserId = com.booyahx.TokenManager.getUserId(this);
         if (currentUserId != null) {
             notificationManager.switchUser(currentUserId);
         }
 
-        // ✅ FIX: Clear unread flag whenever NotificationActivity opens — covers both the
-        // bell button tap AND the in-app banner tap, so the red dot always clears on open.
         NotificationPref.setUnread(this, false);
 
         setupRecyclerView();
         loadNotifications();
-        // ✅ FIX: setupSocket() removed from here.
-        // SocketManager handles all socket events globally and broadcasts them via LocalBroadcast.
-        // This Activity just listens to those broadcasts via notificationReceiver (registered in onStart).
     }
 
     private void setupRecyclerView() {
@@ -270,7 +97,6 @@ public class NotificationActivity extends AppCompatActivity {
         updateEmptyState();
     }
 
-    // ✅ FIX: Register BroadcastReceiver when Activity is visible (onStart/onStop lifecycle)
     @Override
     protected void onStart() {
         super.onStart();
@@ -290,27 +116,92 @@ public class NotificationActivity extends AppCompatActivity {
         Log.d(TAG, "✅ BroadcastReceiver unregistered");
     }
 
-    private void addNewNotification(NotificationItem notification) {
-        notificationManager.addNotification(notification);
-        adapter.updateNotifications(notificationManager.getAllNotifications());
-        recyclerView.smoothScrollToPosition(0);
-        updateEmptyState();
+    // ─── Dedup helpers ────────────────────────────────────────────────────────
+
+    /** Stable content fingerprint: title + "|" + message. */
+    private static String dedupKey(NotificationItem item) {
+        return item.getTitle() + "|" + item.getMessage();
     }
 
+    /**
+     * Returns true if {@code item} is a duplicate (same fingerprint seen within
+     * DEDUP_WINDOW_MS). Side-effect: stamps/updates the map entry when not a
+     * duplicate. Evicts the oldest entry if map exceeds DEDUP_MAP_MAX_SIZE.
+     */
+    private boolean isDuplicate(NotificationItem item) {
+        String key  = dedupKey(item);
+        long   now  = System.currentTimeMillis();
+        Long   last = lastSeenNotifMap.get(key);
+
+        if (last != null && (now - last) < DEDUP_WINDOW_MS) {
+            Log.d(TAG, "⚠️ Duplicate suppressed: " + key);
+            return true;
+        }
+
+        // Evict the oldest entry if we're at the cap
+        if (lastSeenNotifMap.size() >= DEDUP_MAP_MAX_SIZE) {
+            String oldestKey = null;
+            long   oldestTs  = Long.MAX_VALUE;
+            for (HashMap.Entry<String, Long> e : lastSeenNotifMap.entrySet()) {
+                if (e.getValue() < oldestTs) {
+                    oldestTs  = e.getValue();
+                    oldestKey = e.getKey();
+                }
+            }
+            if (oldestKey != null) lastSeenNotifMap.remove(oldestKey);
+        }
+
+        lastSeenNotifMap.put(key, now);
+        return false;
+    }
+
+    /**
+     * Walks the full notification list and removes every duplicate entry.
+     * Iterates from the end so index-based removal is safe.
+     */
+    private void removeDuplicatesFromManager() {
+        List<NotificationItem> all = notificationManager.getAllNotifications();
+        for (int i = all.size() - 1; i >= 0; i--) {
+            if (isDuplicate(all.get(i))) {
+                notificationManager.removeNotification(i);
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Called when a live broadcast arrives. NotificationManager already has the
+     * new entry saved (via DashboardActivity). Dedup then re-render.
+     */
+    private void refreshDisplay() {
+        runOnUiThread(() -> {
+            removeDuplicatesFromManager();
+            adapter.updateNotifications(notificationManager.getAllNotifications());
+            recyclerView.smoothScrollToPosition(0);
+            updateEmptyState();
+        });
+    }
+
+    /**
+     * Initial load on Activity open. Cleans stale entries then runs a full dedup
+     * pass so duplicates saved to disk are removed before first render.
+     */
     private void loadNotifications() {
-        // Remove any already-stored "Transaction History Updated" notifications
-        java.util.List<NotificationItem> all = notificationManager.getAllNotifications();
+        List<NotificationItem> all = notificationManager.getAllNotifications();
         for (int i = all.size() - 1; i >= 0; i--) {
             if ("Transaction History Updated".equals(all.get(i).getTitle())) {
                 notificationManager.removeNotification(i);
             }
         }
+        removeDuplicatesFromManager();
         adapter.updateNotifications(notificationManager.getAllNotifications());
         updateEmptyState();
     }
 
     private void removeNotification(int position) {
-        RecyclerView.ViewHolder viewHolder = recyclerView.findViewHolderForAdapterPosition(position);
+        RecyclerView.ViewHolder viewHolder =
+                recyclerView.findViewHolderForAdapterPosition(position);
         if (viewHolder != null) {
             viewHolder.itemView.animate()
                     .translationX(-viewHolder.itemView.getWidth())
@@ -331,22 +222,34 @@ public class NotificationActivity extends AppCompatActivity {
         }
     }
 
+    private void clearAllNotifications() {
+        if (notificationManager.getCount() == 0) return;
+
+        recyclerView.animate()
+                .alpha(0f)
+                .translationY(30f)
+                .setDuration(250)
+                .withEndAction(() -> {
+                    notificationManager.clearAllNotifications();
+                    lastSeenNotifMap.clear(); // reset so fresh notifs always show
+                    adapter.updateNotifications(notificationManager.getAllNotifications());
+                    recyclerView.setTranslationY(0f);
+                    recyclerView.setAlpha(1f);
+                    updateEmptyState();
+                })
+                .start();
+    }
+
     private void updateEmptyState() {
-        if (notificationManager.getCount() == 0) {
-            recyclerView.setVisibility(View.GONE);
-            emptyText.setVisibility(View.VISIBLE);
-        } else {
-            recyclerView.setVisibility(View.VISIBLE);
-            emptyText.setVisibility(View.GONE);
-        }
+        boolean isEmpty = notificationManager.getCount() == 0;
+        recyclerView.setVisibility(isEmpty   ? View.GONE    : View.VISIBLE);
+        emptyText.setVisibility(isEmpty      ? View.VISIBLE : View.GONE);
+        clearAllButton.setVisibility(isEmpty ? View.GONE    : View.VISIBLE);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // ✅ FIX: No socket cleanup needed here anymore.
-        // SocketManager owns the socket lifecycle — unsubscribing here was also
-        // accidentally killing the global socket listeners for the whole app.
         Log.d(TAG, "✅ NotificationActivity destroyed");
     }
 }

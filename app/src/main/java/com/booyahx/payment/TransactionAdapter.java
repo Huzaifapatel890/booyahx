@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.booyahx.R;
+import com.booyahx.WalletFragment;
 import com.booyahx.network.models.Transaction;
 
 import java.util.ArrayList;
@@ -21,8 +22,12 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
     private Context context;
     private List<Transaction> transactionList = new ArrayList<>();
 
-    public TransactionAdapter(Context context, List<Transaction> list) {
+    // Reference to the fragment so we can call cancelWithdrawal()
+    private WalletFragment walletFragment;
+
+    public TransactionAdapter(Context context, List<Transaction> list, WalletFragment fragment) {
         this.context = context;
+        this.walletFragment = fragment;
         if (list != null) this.transactionList = list;
     }
 
@@ -40,17 +45,19 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
 
         holder.tvDateTime.setText(transaction.getDateTime());
 
-        // Capitalize first letter of type
+        // Capitalize type label
         String type = transaction.getType();
         if (type != null && !type.isEmpty()) {
-            type = type.substring(0, 1).toUpperCase() + type.substring(1).toLowerCase();
+            // Normalise: "withdrawal" → "Withdraw"
+            if (type.equalsIgnoreCase("withdrawal")) type = "Withdraw";
+            else type = type.substring(0, 1).toUpperCase() + type.substring(1).toLowerCase();
         }
         holder.tvType.setText(type);
 
         holder.tvAmount.setText(transaction.getAmount());
         holder.tvDescription.setText(transaction.getDescription());
 
-        // Format status - convert "fail" to "Failed"
+        // Format status
         String status = transaction.getStatus();
         if (status != null && !status.isEmpty()) {
             if (status.equalsIgnoreCase("fail")) {
@@ -61,21 +68,20 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
         }
         holder.tvStatus.setText(status);
 
-        // Set status background and color + amount color based on status
-        String statusLower = transaction.getStatus() != null ? transaction.getStatus().toLowerCase() : "";
+        // Status colour + amount colour
+        String statusLower = transaction.getStatus() != null
+                ? transaction.getStatus().toLowerCase() : "";
         switch (statusLower) {
             case "success":
             case "completed":
                 holder.tvStatus.setBackgroundResource(R.drawable.status_completed_bg);
                 holder.tvStatus.setTextColor(Color.parseColor("#00FF88"));
-                // 🔥 Amount color matches success color
                 holder.tvAmount.setTextColor(Color.parseColor("#00FF88"));
                 break;
 
             case "pending":
                 holder.tvStatus.setBackgroundResource(R.drawable.status_pending_bg);
                 holder.tvStatus.setTextColor(Color.parseColor("#FFB800"));
-                // 🔥 Amount color matches pending color
                 holder.tvAmount.setTextColor(Color.parseColor("#FFB800"));
                 break;
 
@@ -84,7 +90,6 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
             case "cancelled":
                 holder.tvStatus.setBackgroundResource(R.drawable.status_failed_bg);
                 holder.tvStatus.setTextColor(Color.parseColor("#FF4444"));
-                // 🔥 Amount color matches failed color (red)
                 holder.tvAmount.setTextColor(Color.parseColor("#FF4444"));
                 break;
 
@@ -95,21 +100,11 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
                 break;
         }
 
-        // ── Time display at bottom-right of each card ────────────────────────
-        // ROOT CAUSE FIX: getDateTime() returns only the pre-formatted date string
-        // e.g. "Feb 18" — it has no time component, so all old parsing branches
-        // produced an empty string and tvTime never showed anything.
-        //
-        // The API response includes "createdAt":"2026-02-17T17:20:07.653Z" (full ISO).
-        // We now use getCreatedAt() as the primary source for time extraction.
-        // getDateTime() is still used only for the date label (tvDateTime) — unchanged.
-        //
-        // Converts ISO "2026-02-17T17:20:07.652Z" → local 12-hour "05:20 PM"
+        // ── Time display ──────────────────────────────────────────────────────
         String timeStr = "";
         try {
-            String rawCreatedAt = transaction.getCreatedAt(); // full ISO-8601 from API
+            String rawCreatedAt = transaction.getCreatedAt();
             if (rawCreatedAt != null && rawCreatedAt.contains("T")) {
-                // "2026-02-17T17:20:07.652Z" → split on T → "17:20:07.652Z"
                 String timePart = rawCreatedAt.split("T")[1];
                 int hour   = Integer.parseInt(timePart.substring(0, 2));
                 int minute = Integer.parseInt(timePart.substring(3, 5));
@@ -118,36 +113,46 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
                 if (hour12 == 0) hour12 = 12;
                 timeStr = String.format("%02d:%02d %s", hour12, minute, amPm);
             } else if (rawCreatedAt != null && rawCreatedAt.contains(" ")) {
-                // Fallback: space-separated "Feb 17 5:30 PM"
-                int firstSpace  = rawCreatedAt.indexOf(' ');
-                int secondSpace = rawCreatedAt.indexOf(' ', firstSpace + 1);
-                if (secondSpace != -1) {
-                    timeStr = rawCreatedAt.substring(secondSpace + 1).trim();
-                }
+                int f = rawCreatedAt.indexOf(' ');
+                int s = rawCreatedAt.indexOf(' ', f + 1);
+                if (s != -1) timeStr = rawCreatedAt.substring(s + 1).trim();
             }
         } catch (Exception e) {
-            // Fallback to getDateTime() if getCreatedAt() is unavailable or throws
             String dateTime = transaction.getDateTime();
             if (dateTime != null && dateTime.contains(",")) {
                 timeStr = dateTime.substring(dateTime.lastIndexOf(",") + 1).trim();
             } else if (dateTime != null && dateTime.contains("T")) {
                 try {
-                    String timePart = dateTime.split("T")[1];
-                    timeStr = timePart.substring(0, 5); // "17:20"
-                } catch (Exception ignored) {
-                    timeStr = "";
-                }
-            } else if (dateTime != null && dateTime.contains(" ")) {
-                int firstSpace  = dateTime.indexOf(' ');
-                int secondSpace = dateTime.indexOf(' ', firstSpace + 1);
-                if (secondSpace != -1) {
-                    timeStr = dateTime.substring(secondSpace + 1).trim();
-                }
+                    timeStr = dateTime.split("T")[1].substring(0, 5);
+                } catch (Exception ignored) { }
             }
         }
-        // Null-safe: tvTime is null if item_transaction.xml doesn't have R.id.tvTime yet
-        if (holder.tvTime != null) {
-            holder.tvTime.setText(timeStr);
+        if (holder.tvTime != null) holder.tvTime.setText(timeStr);
+        // ─────────────────────────────────────────────────────────────────────
+
+        // ── Cancel button: visible only for PENDING withdrawals ───────────────
+        String rawType = transaction.getType() != null ? transaction.getType().toLowerCase() : "";
+        boolean isWithdrawal = rawType.equals("withdraw") || rawType.equals("withdrawal");
+        boolean isPending    = statusLower.equals("pending");
+
+        if (holder.btnCancelWithdrawal != null) {
+            if (isWithdrawal && isPending && transaction.getId() != null) {
+                holder.btnCancelWithdrawal.setVisibility(View.VISIBLE);
+                holder.btnCancelWithdrawal.setOnClickListener(v -> {
+                    if (walletFragment != null) {
+                        // Disable button immediately to prevent double-tap
+                        holder.btnCancelWithdrawal.setEnabled(false);
+                        holder.btnCancelWithdrawal.setAlpha(0.5f);
+                        walletFragment.cancelWithdrawal(
+                                transaction.getId(),
+                                holder.getAdapterPosition()
+                        );
+                    }
+                });
+            } else {
+                holder.btnCancelWithdrawal.setVisibility(View.GONE);
+                holder.btnCancelWithdrawal.setOnClickListener(null);
+            }
         }
         // ─────────────────────────────────────────────────────────────────────
     }
@@ -169,20 +174,18 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
 
     public static class TransactionViewHolder extends RecyclerView.ViewHolder {
         TextView tvDateTime, tvType, tvAmount, tvStatus, tvDescription;
-        // ── Time view added at bottom-right of each card ─────────────────────
         TextView tvTime;
-        // ─────────────────────────────────────────────────────────────────────
+        TextView btnCancelWithdrawal;
 
         public TransactionViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvDateTime    = itemView.findViewById(R.id.tvDateTime);
-            tvType        = itemView.findViewById(R.id.tvType);
-            tvAmount      = itemView.findViewById(R.id.tvAmount);
-            tvStatus      = itemView.findViewById(R.id.tvStatus);
-            tvDescription = itemView.findViewById(R.id.tvDescription);
-            // ── Wire tvTime ──────────────────────────────────────────────────
-            tvTime        = itemView.findViewById(R.id.tvTime);
-            // ─────────────────────────────────────────────────────────────────
+            tvDateTime           = itemView.findViewById(R.id.tvDateTime);
+            tvType               = itemView.findViewById(R.id.tvType);
+            tvAmount             = itemView.findViewById(R.id.tvAmount);
+            tvStatus             = itemView.findViewById(R.id.tvStatus);
+            tvDescription        = itemView.findViewById(R.id.tvDescription);
+            tvTime               = itemView.findViewById(R.id.tvTime);
+            btnCancelWithdrawal  = itemView.findViewById(R.id.btnCancelWithdrawal);
         }
     }
 }

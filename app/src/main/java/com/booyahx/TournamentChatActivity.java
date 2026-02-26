@@ -32,7 +32,9 @@ import org.json.JSONObject;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
 
@@ -109,6 +111,10 @@ public class TournamentChatActivity extends AppCompatActivity {
 
     // Live dot animator reference (so we can cancel in onDestroy)
     private ObjectAnimator liveDotAnimator;
+
+    // ✅ DUPLICATE PREVENTION: Track seen message IDs and composite keys
+    private Set<String> seenMessageIds = new HashSet<>();
+    private Set<String> seenMessageKeys = new HashSet<>();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -352,6 +358,16 @@ public class TournamentChatActivity extends AppCompatActivity {
 
             for (ChatHistoryResponse.MessageData msgData : messages) {
 
+                // ✅ DUPLICATE PREVENTION: Check message ID
+                String messageId = msgData.getId();
+                if (messageId != null && !messageId.isEmpty()) {
+                    if (seenMessageIds.contains(messageId)) {
+                        Log.d(TAG, "⚠️ Skipping duplicate history message (ID): " + messageId);
+                        continue;
+                    }
+                    seenMessageIds.add(messageId);
+                }
+
                 int messageType;
                 boolean msgIsHost = "host".equalsIgnoreCase(msgData.getRole());
                 String msgUserId  = msgData.getUserId();
@@ -376,6 +392,14 @@ public class TournamentChatActivity extends AppCompatActivity {
                 } catch (Exception e) {
                     timestamp = System.currentTimeMillis();
                 }
+
+                // ✅ DUPLICATE PREVENTION: Create and check composite key
+                String compositeKey = msgUserId + "_" + timestamp + "_" + msgData.getMessage();
+                if (seenMessageKeys.contains(compositeKey)) {
+                    Log.d(TAG, "⚠️ Skipping duplicate history message (KEY): " + compositeKey);
+                    continue;
+                }
+                seenMessageKeys.add(compositeKey);
 
                 ChatMessage chatMessage = new ChatMessage(
                         msgUserId,
@@ -644,14 +668,20 @@ public class TournamentChatActivity extends AppCompatActivity {
         etMessage.setText("");
 
 // Add to local UI immediately
+        long timestamp = System.currentTimeMillis();
         ChatMessage sentMessage = new ChatMessage(
                 userId,
                 username,
                 messageText,
-                System.currentTimeMillis(),
+                timestamp,
                 isHost,
                 ChatMessage.TYPE_SENT
         );
+
+        // ✅ DUPLICATE PREVENTION: Track sent message
+        String compositeKey = userId + "_" + timestamp + "_" + messageText;
+        seenMessageKeys.add(compositeKey);
+
         chatAdapter.addMessage(sentMessage);
 
         if (chatAdapter.getItemCount() > 0) {
@@ -685,6 +715,13 @@ public class TournamentChatActivity extends AppCompatActivity {
     private void handleNewMessage(JSONObject data) {
         try {
             Log.d(TAG, "📝 Parsing incoming message...");
+
+// ✅ DUPLICATE PREVENTION: Check message ID first
+            String messageId = data.optString("_id", "");
+            if (!messageId.isEmpty() && seenMessageIds.contains(messageId)) {
+                Log.d(TAG, "⚠️ DUPLICATE DETECTED (ID): " + messageId + " - SKIPPING");
+                return;
+            }
 
 // Payload field: userId
             String messageUserId = data.getString("userId");
@@ -724,6 +761,13 @@ public class TournamentChatActivity extends AppCompatActivity {
                 messageIsHost = data.getBoolean("isHost");
             }
 
+            // ✅ DUPLICATE PREVENTION: Check composite key
+            String compositeKey = messageUserId + "_" + timestamp + "_" + messageText;
+            if (seenMessageKeys.contains(compositeKey)) {
+                Log.d(TAG, "⚠️ DUPLICATE DETECTED (KEY): " + compositeKey + " - SKIPPING");
+                return;
+            }
+
             Log.d(TAG, "  _id: "   + data.optString("_id", "n/a"));
             Log.d(TAG, "  from: "  + messageUsername + " | host: " + messageIsHost);
             Log.d(TAG, "  msg: "   + messageText);
@@ -731,8 +775,15 @@ public class TournamentChatActivity extends AppCompatActivity {
             // Skip own message (already shown locally)
             if (messageUserId.equals(userId)) {
                 Log.d(TAG, "Skipping own message (already displayed)");
+                // ✅ DUPLICATE PREVENTION: Still track it
+                if (!messageId.isEmpty()) seenMessageIds.add(messageId);
+                seenMessageKeys.add(compositeKey);
                 return;
             }
+
+            // ✅ DUPLICATE PREVENTION: Mark as seen before adding
+            if (!messageId.isEmpty()) seenMessageIds.add(messageId);
+            seenMessageKeys.add(compositeKey);
 
             int messageType = messageIsHost ? ChatMessage.TYPE_HOST : ChatMessage.TYPE_RECEIVED;
 
@@ -776,6 +827,10 @@ public class TournamentChatActivity extends AppCompatActivity {
             socketManager.leaveTournamentRoom(tournamentId, userId);
             socketManager.removeAllListeners();
         }
+
+        // ✅ DUPLICATE PREVENTION: Clear tracking sets to free memory
+        seenMessageIds.clear();
+        seenMessageKeys.clear();
 
     }
 }
